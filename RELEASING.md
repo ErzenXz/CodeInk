@@ -43,7 +43,7 @@ The static site lives in `website/` and deploys automatically through the connec
 
 ## Before a release
 
-Run the desktop regression suite and type check, the changed frontend tests, a build, and the native fixture UI. Verify commands, read paths, approvals, chronology, context numbers, cancellation, and model switching. CI additionally verifies Linux terminal behavior and packages on every supported runner. Protocol fixtures do not call paid model services. Agent/version compatibility varies; the 22 ACP presets are not claims that every agent version has been tested live.
+Run the desktop regression suite and type check, the changed frontend tests, a build, and the native fixture UI. Verify commands, read paths, approvals, chronology, context numbers, cancellation, and model switching. CI additionally runs real protocol subprocesses and a native terminal smoke test on every supported runner before packaging. Protocol fixtures do not call paid model services. Agent/version compatibility varies; the 22 ACP presets are not claims that every agent version has been tested live.
 
 The Context panel reports agent-provided values. Historical sessions from versions that discarded usage cannot be reconstructed exactly; they retain unknown statistics. Historical ACP text already concatenated across tools cannot be reliably split after the fact. New turns preserve the correct order. Stored tool input fields are normalized for display without rewriting the original history.
 
