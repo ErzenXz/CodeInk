@@ -25,7 +25,7 @@ const assets = await Promise.all(
   files.map(async (name) => ({
     name,
     sha256: createHash("sha256")
-      .update(await Bun.file(`release/${name}`).arrayBuffer())
+      .update(Buffer.from(await Bun.file(`release/${name}`).arrayBuffer()))
       .digest("hex"),
     size: Bun.file(`release/${name}`).size,
   })),

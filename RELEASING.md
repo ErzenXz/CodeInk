@@ -39,7 +39,7 @@ Certificate enrollment, signing credentials, a custom domain, and DNS are accoun
 
 ## Download website
 
-The static site lives in `website/` and deploys from `main` through GitHub Pages. It is available at https://erzenxz.github.io/CodeInk/. Enable Pages with **Source: GitHub Actions**. Both channel tabs fetch public GitHub Releases; errors provide a direct Releases link rather than a broken download. Website updates do not rebuild desktop installers.
+The static site lives in `website/` and deploys automatically through the connected Vercel GitHub integration. `main` updates production; other branches receive preview deployments. It is available at https://codeink-desktop.vercel.app/. The Vercel project is `codeink` in `erzenxzs-projects`, with Root Directory `website`, framework `Other`, no install/build command, and Output Directory `.`. No Vercel token is stored in GitHub Actions. The old account-level GitHub Pages domain is unrelated to this site. Both channel tabs fetch public GitHub Releases; errors provide a direct Releases link rather than a broken download. Website updates do not rebuild desktop installers.
 
 ## Before a release
 

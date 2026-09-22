@@ -1,6 +1,6 @@
 # CodeInk
 
-By **[Erzen Krasniqi](https://github.com/ErzenXz)**. [Download CodeInk](https://erzenxz.github.io/CodeInk/) · [Releases](https://github.com/ErzenXz/CodeInk/releases)
+[Download CodeInk](https://codeink-desktop.vercel.app/) · [Releases](https://github.com/ErzenXz/CodeInk/releases)
 
 The **original OpenCode desktop application**, adapted to use coding agents installed separately on your computer. This repository is a desktop-only fork of [anomalyco/opencode](https://github.com/anomalyco/opencode), not a replacement interface.
 
@@ -68,3 +68,5 @@ If Claude Code reports an expired OAuth login, run `claude auth login` in your t
 CodeInk stores its own session data in the OS application-data directory under `CodeInk` (Production), `CodeInk Early Access`, or `CodeInk Dev` and does not migrate your OpenCode installation. Set `CODEINK_DATA_DIR` for an isolated development profile.
 
 See [UPSTREAM.md](UPSTREAM.md) for the exact source revision and retained packages. Original copyright and [MIT license](LICENSE) are preserved.
+
+Author: [Erzen Krasniqi](https://github.com/ErzenXz).

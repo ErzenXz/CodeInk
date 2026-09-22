@@ -17,5 +17,5 @@ jobs:
         working-directory: packages/desktop
       - run: bun test src/test
         working-directory: packages/desktop
-      - run: bun test --conditions=browser src/context/sync-optimistic.test.ts src/context/global-sync/event-reducer.test.ts src/components/session/session-context-metrics.test.ts src/components/model-presentation.test.ts
+      - run: bun test --conditions=solid src/context/sync-optimistic.test.ts src/context/server-session.test.ts src/context/global-sync/event-reducer.test.ts src/components/session/session-context-metrics.test.ts src/components/model-presentation.test.ts
         working-directory: packages/app

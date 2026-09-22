@@ -1640,3 +1640,12 @@ describe("server session", () => {
     expect(ctx.store.data.session_status["session-0"]).toBeUndefined()
   })
 })
+
+test("live confirmation replaces an optimistic ID when server timestamps differ", async () => {
+  const store = createServerSession(messageClient(response()))
+  const optimistic = userMessage("msg_same", { time: { created: 100 } })
+  const confirmed = userMessage("msg_same", { time: { created: 200 } })
+  store.optimistic.add({ sessionID: "child", message: optimistic, parts: [] })
+  store.apply({ type: "message.updated", properties: { info: confirmed } })
+  expect(store.data.message.child).toEqual([confirmed])
+})
