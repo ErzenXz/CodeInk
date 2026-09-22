@@ -1,7 +1,7 @@
-import {
-  "codeink.channel.earlyAccess": "Early Access", DESKTOP_NATIVE_ENGLISH } from "./desktop-native"
+import { DESKTOP_NATIVE_ENGLISH } from "./desktop-native"
 
 export const dict = {
+  "codeink.channel.earlyAccess": "Early Access",
   ...DESKTOP_NATIVE_ENGLISH,
   "command.category.suggested": "Suggested",
   "command.category.view": "View",
