@@ -1,0 +1,21 @@
+name: Checks
+on:
+  pull_request:
+    branches: [main, development]
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.14
+      - run: bun install --frozen-lockfile
+      - run: bun typecheck
+        working-directory: packages/desktop
+      - run: bun test src/test
+        working-directory: packages/desktop
+      - run: bun test --conditions=browser src/context/sync-optimistic.test.ts src/context/global-sync/event-reducer.test.ts src/components/session/session-context-metrics.test.ts src/components/model-presentation.test.ts
+        working-directory: packages/app

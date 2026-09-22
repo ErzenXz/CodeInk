@@ -1,0 +1,14 @@
+node_modules/
+**/out/
+**/dist/
+**/.ts-dist/
+.DS_Store
+*.tsbuildinfo
+.env
+.env.*
+!.env.example
+**/artifacts/
+
+packages/desktop/resources/THIRD-PARTY-NOTICES.txt
+release/
+.vercel/

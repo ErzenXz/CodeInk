@@ -1,0 +1,48 @@
+// English source copy for the external-agent bridge.
+const en = {
+  modelsLoadingDefault: "Agent default (loading models…)",
+  agentDefaultModel: "Agent default",
+  modelsUnavailableDefault: "Agent default (model list unavailable)",
+  claudeSignIn:
+    "Claude Code is signed out or its login has expired. Run `claude auth login` in your terminal, finish signing in, then send your message again.",
+  acpResumeUnsupported: "This agent cannot resume a conversation after reconnecting. Start a new session.",
+  acpModelUnavailable: "The selected model is no longer available in this agent. Choose another model and try again.",
+  acpVersionUnsupported:
+    "This agent uses an unsupported ACP version. Update the agent or configure a compatible executable.",
+  permission: "Approval required",
+  messageConflict: "This message ID was already used for a different request.",
+  busy: "This session is already running.",
+  unknownSession: "Session not found.",
+  missingAgent: "Agent executable not found. Check its path in Settings.",
+  unknownAgent: "Agent not found.",
+  pending: "This agent has an active session. Stop it before changing its configuration.",
+  outsideProject: "This path is outside the selected project.",
+  invalidProject: "Select this project with the folder picker first.",
+  fileTooLarge: "This file is too large to preview (limit: 2 MB).",
+  binaryFile: "Binary files cannot be previewed as text.",
+  connectionClosed: "The agent process exited before completing this turn.",
+  connectionTimeout: "The agent did not respond in time.",
+  malformedProtocol: "The agent returned an invalid protocol message.",
+  processStopped: "The agent process was stopped.",
+  unsupportedRequest: "This agent request is not supported by CodeInk.",
+  denied: "Declined by the user.",
+  failed: "The agent could not complete this turn.",
+  noApproval: "This request is no longer waiting for a response.",
+  unsupportedFile: "Only regular text files can be previewed.",
+  notGit: "This project is not a Git repository.",
+  modelLocked: "The agent and project are fixed for this session. Start a new session to change them.",
+  sessionInterrupted: "This session was interrupted when CodeInk closed. Send a message to resume.",
+  bridgeStarting: "Agent bridge is starting.",
+  requestTooLarge: "This request is too large.",
+  externalSignIn: "Sign in using the installed agent CLI.",
+  agentDescription: "Use your selected coding agent",
+  newSession: "New session",
+  unsupportedAttachments: "This agent connection currently accepts text and local file mentions.",
+  unsupportedFeature: "This feature is not supported by the selected agent connection yet.",
+  unknownTerminal: "Terminal not found in this project.",
+  unsupportedTerminal: "Unsupported terminal request.",
+  externalInstall: "Install the agent independently, then configure its executable in Agents.",
+} as const
+export function t(key: keyof typeof en) {
+  return en[key]
+}

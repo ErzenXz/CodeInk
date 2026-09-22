@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#f6f4ee" />
+    <meta
+      name="description"
+      content="CodeInk brings your coding agents into one desktop workspace. Use Codex, Claude Code, OpenCode, Pi, and ACP agents on macOS, Windows, and Linux."
+    />
+    <meta property="og:title" content="CodeInk — your agents, one workspace" />
+    <meta
+      property="og:description"
+      content="A desktop home for the coding agents you choose. Free and open source. By Erzen Krasniqi."
+    />
+    <meta property="og:image" content="https://erzenxz.github.io/CodeInk/icon.png" />
+    <title>CodeInk — your agents, one workspace</title>
+    <link rel="icon" href="icon.png" />
+    <link rel="stylesheet" href="style.css" />
+    <script type="module" src="app.js"></script>
+  </head>
+  <body>
+    <a class="skip" href="#downloads">Skip to downloads</a>
+    <header class="wrap">
+      <a class="brand" href="./" aria-label="CodeInk home"
+        ><img src="icon.png" width="42" height="42" alt="" />CodeInk<span class="edition">DESKTOP</span></a
+      >
+      <nav aria-label="Main">
+        <a href="#how">How it works</a
+        ><a href="https://github.com/ErzenXz/CodeInk">GitHub <span aria-hidden="true">↗</span></a
+        ><a class="nav-download" href="#downloads">Download <span aria-hidden="true">↓</span></a>
+      </nav>
+    </header>
+    <main>
+      <section class="hero wrap">
+        <div class="hero-copy">
+          <p class="eyebrow"><span class="dot"></span> Your desktop. Your choice.</p>
+          <h1>Good tools.<br />Great ideas.<br /><em>One workspace.</em></h1>
+          <p class="intro">
+            Bring your coding agents into CodeInk. Keep the models you like, the accounts you have, and your work in one
+            place.
+          </p>
+          <a class="button" href="#downloads">Get CodeInk <span aria-hidden="true">↓</span></a
+          ><span class="free">Free & open source</span>
+        </div>
+        <div class="hero-mark" aria-hidden="true">
+          <div class="orbit"></div>
+          <div class="orbit inner"></div>
+          <img src="icon.png" width="400" height="400" alt="" /><span class="mark-note"
+            >Made for the way you build.</span
+          ><span class="small-cross one">+</span><span class="small-cross two">+</span>
+        </div>
+      </section>
+      <div class="agent-strip">
+        <div class="wrap">
+          <span class="eyebrow">WORKS WITH YOUR TOOLS</span>
+          <p>
+            Codex <span>·</span> Claude Code <span>·</span> OpenCode <span>·</span> Pi <span>·</span> Devin
+            <span>·</span> Gemini <span>·</span> & more
+          </p>
+        </div>
+      </div>
+      <section class="features wrap" id="how">
+        <div class="section-intro">
+          <p class="eyebrow">A LITTLE LESS SWITCHING</p>
+          <h2>A familiar place<br />to make things.</h2>
+        </div>
+        <div class="feature-list">
+          <article>
+            <span class="number">01</span>
+            <div>
+              <h3>Choose your agent</h3>
+              <p>
+                Install and sign in to your preferred CLI. CodeInk connects to it on your computer. Choose a model
+                directly from the agent’s catalog.
+              </p>
+            </div>
+          </article>
+          <article>
+            <span class="number">02</span>
+            <div>
+              <h3>See the work happen</h3>
+              <p>
+                Follow responses, commands, file reads, and approvals in one conversation. Keep files, Git changes, and
+                a terminal close by.
+              </p>
+            </div>
+          </article>
+          <article>
+            <span class="number">03</span>
+            <div>
+              <h3>Make it your own</h3>
+              <p>
+                Use four native agent connections, 22 additional ACP presets, or configure your own compatible agent.
+                CodeInk doesn’t bundle an agent CLI.
+              </p>
+            </div>
+          </article>
+        </div>
+      </section>
+      <section class="download-section" id="downloads">
+        <div class="wrap">
+          <div class="download-heading">
+            <div>
+              <p class="eyebrow">YOUR NEXT WORKSPACE</p>
+              <h2>Pick your platform.</h2>
+            </div>
+            <div class="channels" role="tablist" aria-label="Release channel">
+              <button
+                id="production-tab"
+                role="tab"
+                aria-selected="true"
+                aria-controls="release-panel"
+                data-channel="production"
+              >
+                Production</button
+              ><button
+                id="early-tab"
+                role="tab"
+                aria-selected="false"
+                aria-controls="release-panel"
+                data-channel="early-access"
+                tabindex="-1"
+              >
+                Early Access
+              </button>
+            </div>
+          </div>
+          <div id="release-panel" role="tabpanel" aria-labelledby="production-tab">
+            <p id="channel-note">The production release, built from main.</p>
+            <p id="release-status" class="release-status" role="status">Checking for the latest release…</p>
+            <div class="platforms">
+              <article>
+                <div class="platform-top">
+                  <span class="platform-symbol" aria-hidden="true">⌘</span><span class="eyebrow">01 / APPLE</span>
+                </div>
+                <h3>macOS</h3>
+                <p>Apple Silicon & Intel</p>
+                <div class="download-links" data-platform="mac"></div>
+              </article>
+              <article>
+                <div class="platform-top">
+                  <span class="platform-symbol windows-symbol" aria-hidden="true">⊞</span
+                  ><span class="eyebrow">02 / MICROSOFT</span>
+                </div>
+                <h3>Windows</h3>
+                <p>64-bit installer</p>
+                <div class="download-links" data-platform="win"></div>
+              </article>
+              <article>
+                <div class="platform-top">
+                  <span class="platform-symbol" aria-hidden="true">&gt;_</span><span class="eyebrow">03 / LINUX</span>
+                </div>
+                <h3>Linux</h3>
+                <p>AppImage & Debian · x64 / ARM64</p>
+                <div class="download-links" data-platform="linux"></div>
+              </article>
+            </div>
+            <div class="release-footer">
+              <a id="release-notes" href="https://github.com/ErzenXz/CodeInk/releases"
+                >All releases & checksums <span aria-hidden="true">↗</span></a
+              ><span>Agents are installed separately.</span>
+            </div>
+          </div>
+          <noscript
+            ><p>
+              <a href="https://github.com/ErzenXz/CodeInk/releases">Download CodeInk from GitHub Releases.</a>
+            </p></noscript
+          >
+          <details class="install-notes">
+            <summary>Installation & release notes</summary>
+            <div>
+              <p>
+                Initial builds may be unsigned. On macOS, use Privacy & Security to approve the app after checking its
+                source. Windows may show a SmartScreen notice. SHA-256 checksums are included with each release.
+              </p>
+              <p>
+                Early Access installs as a separate app and uses separate session data. Both channels need an
+                independently installed, authenticated agent. Some upstream features, including cloud sharing and
+                session forking, are not available across all agents yet.
+              </p>
+              <p>
+                CodeInk keeps its own session data on your computer. Your selected agent controls its connections to
+                model providers. CodeInk does not add its own account or collect your CLI credentials.
+              </p>
+            </div>
+          </details>
+        </div>
+      </section>
+      <section class="closing wrap">
+        <p>A little ink.<br /><em>A lot of possibility.</em></p>
+        <a href="https://github.com/ErzenXz/CodeInk">Build with us <span aria-hidden="true">↗</span></a>
+      </section>
+    </main>
+    <footer class="wrap">
+      <div>
+        <a class="brand" href="./"><img src="icon.png" alt="" width="30" height="30" />CodeInk</a>
+        <p>Created by <a href="https://github.com/ErzenXz">Erzen Krasniqi</a>.</p>
+      </div>
+      <div class="legal">
+        <a href="https://github.com/ErzenXz/CodeInk/blob/main/LICENSE">MIT license</a
+        ><a href="https://github.com/ErzenXz/CodeInk/blob/main/UPSTREAM.md">Acknowledgments</a
+        ><a href="https://github.com/ErzenXz/CodeInk/issues">Report an issue</a>
+        <p>Independent fork of OpenCode. Agent names belong to their respective owners.</p>
+      </div>
+    </footer>
+  </body>
+</html>

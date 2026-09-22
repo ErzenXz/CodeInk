@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>CodeInk Help</title>
+    <link rel="icon" href="../icons/icon.png" />
+    <style>
+      :root {
+        color-scheme: light dark;
+        font:
+          16px/1.65 system-ui,
+          sans-serif;
+      }
+      body {
+        max-width: 720px;
+        margin: 64px auto;
+        padding: 0 24px 64px;
+      }
+      header {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+      }
+      header img {
+        width: 72px;
+        height: 72px;
+      }
+      h1 {
+        margin: 0;
+        letter-spacing: -0.04em;
+        font-size: 36px;
+      }
+      h2 {
+        margin-top: 32px;
+        font-size: 20px;
+      }
+      code {
+        background: light-dark(#eee, #242424);
+        padding: 2px 6px;
+        border-radius: 4px;
+      }
+      p,
+      li {
+        color: light-dark(#454545, #c9c9c9);
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <img src="../icons/icon.png" alt="" />
+      <h1>CodeInk</h1>
+    </header>
+    <p>Your desktop workspace for independently installed coding agents.</p>
+    <h2>Get started</h2>
+    <ol>
+      <li>Install and sign in to your preferred agent using its own CLI.</li>
+      <li>In CodeInk, add a project folder and create a session.</li>
+      <li>Choose an installed agent and one of its models in the composer, then send a prompt.</li>
+    </ol>
+    <h2>Configure an agent</h2>
+    <p>
+      Open <strong>Settings → Agents → Configure agents</strong>. Enter a command available on your PATH or an absolute
+      executable path. Custom executables must support one of the listed protocols. CodeInk does not bundle or install
+      agents or store their login credentials.
+    </p>
+    <h2>Appearance</h2>
+    <p>
+      Use <strong>Settings → General</strong> to choose a light or dark color scheme, theme, and fonts. CodeInk and
+      CodeInk Classic are the built-in default themes.
+    </p>
+    <h2>Troubleshooting</h2>
+    <p>
+      If an agent is unavailable, verify its executable path and confirm that it works in your terminal. Authentication
+      stays with that agent. For an expired Claude Code login, run <code>claude auth login</code> in your terminal and
+      retry your message.
+    </p>
+    <p>
+      Use <strong>Help → Export Debug Logs</strong> to collect diagnostics locally. Review those files before sharing
+      them with the person maintaining your CodeInk installation.
+    </p>
+    <h2>Supported connections</h2>
+    <p>
+      Codex uses <code>app-server</code>; Claude Code uses stream JSON; OpenCode uses its local HTTP server; Pi uses
+      RPC. ACP connects Gemini CLI, Copilot, Cursor, Cline, Kimi, Qwen, Goose, Vibe, Droid, Devin, and more. Agents must
+      be installed separately with ACP support. Start a new session to select a different agent; models can change
+      between turns.
+    </p>
+    <p>
+      Text, streaming, approvals, session resume, files, and terminals are supported. Some engine-specific features,
+      including fork/revert/compaction, rich attachments, and cloud sharing, are not yet translated across agents.
+    </p>
+  </body>
+</html>

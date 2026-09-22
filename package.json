@@ -1,0 +1,98 @@
+{
+  "name": "codeink",
+  "private": true,
+  "type": "module",
+  "version": "0.1.0",
+  "packageManager": "bun@1.3.14",
+  "scripts": {
+    "dev": "bun --cwd packages/desktop dev",
+    "build": "bun --cwd packages/desktop build",
+    "typecheck": "bun --cwd packages/desktop typecheck",
+    "test": "bun --cwd packages/desktop test",
+    "package": "bun --cwd packages/desktop package"
+  },
+  "workspaces": {
+    "packages": [
+      "packages/desktop",
+      "packages/app",
+      "packages/ui",
+      "packages/session-ui",
+      "packages/schema",
+      "packages/core",
+      "packages/sdk/js"
+    ],
+    "catalog": {
+      "@types/bun": "1.3.13",
+      "@types/cross-spawn": "6.0.6",
+      "@tanstack/solid-virtual": "3.13.32",
+      "@shikijs/stream": "4.2.0",
+      "@kobalte/core": "0.13.11",
+      "@corvu/drawer": "0.2.4",
+      "@types/luxon": "3.7.1",
+      "@types/node": "24.12.2",
+      "@tsconfig/node22": "22.0.2",
+      "@tsconfig/bun": "1.0.9",
+      "@pierre/diffs": "1.2.10",
+      "@solid-primitives/storage": "4.3.3",
+      "@tailwindcss/vite": "4.1.11",
+      "diff": "8.0.2",
+      "drizzle-orm": "1.0.0-rc.2",
+      "effect": "4.0.0-beta.83",
+      "cross-spawn": "7.0.6",
+      "fuzzysort": "3.1.0",
+      "luxon": "3.6.1",
+      "marked": "18.0.7",
+      "marked-shiki": "1.2.1",
+      "remend": "1.3.0",
+      "@playwright/test": "1.59.1",
+      "typescript": "5.8.2",
+      "@typescript/native-preview": "7.0.0-dev.20251207.1",
+      "zod": "4.1.8",
+      "remeda": "2.26.0",
+      "shiki": "4.2.0",
+      "solid-list": "0.3.0",
+      "tailwindcss": "4.1.11",
+      "vite": "7.1.4",
+      "@solidjs/meta": "0.29.4",
+      "@solidjs/router": "0.15.4",
+      "@sentry/solid": "10.36.0",
+      "@sentry/vite-plugin": "4.6.0",
+      "solid-js": "1.9.10",
+      "solid-sonner": "0.3.1",
+      "vite-plugin-solid": "2.11.10",
+      "@lydell/node-pty": "1.2.0-beta.12"
+    }
+  },
+  "devDependencies": {
+    "prettier": "3.6.2"
+  },
+  "license": "MIT",
+  "prettier": {
+    "semi": false,
+    "printWidth": 120
+  },
+  "trustedDependencies": [
+    "esbuild",
+    "electron"
+  ],
+  "patchedDependencies": {
+    "@dnd-kit/dom@0.5.0": "patches/@dnd-kit%2Fdom@0.5.0.patch",
+    "solid-js@1.9.10": "patches/solid-js@1.9.10.patch",
+    "@pierre/trees@1.0.0-beta.4": "patches/@pierre%2Ftrees@1.0.0-beta.4.patch",
+    "effect@4.0.0-beta.83": "patches/effect@4.0.0-beta.83.patch",
+    "@tanstack/virtual-core@3.17.3": "patches/@tanstack%2Fvirtual-core@3.17.3.patch"
+  },
+  "author": {
+    "name": "Erzen Krasniqi",
+    "email": "48888391+ErzenXz@users.noreply.github.com",
+    "url": "https://github.com/ErzenXz"
+  },
+  "homepage": "https://erzenxz.github.io/CodeInk/",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ErzenXz/CodeInk.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ErzenXz/CodeInk/issues"
+  }
+}
