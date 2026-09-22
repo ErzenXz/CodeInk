@@ -89,7 +89,10 @@ export function legacyMessages(session: Session): { info: Message; parts: Part[]
           role: "assistant",
           sessionID: session.id,
           parentID: parent,
-          time: { created: createdAt, ...(session.status !== "running" ? { completed: completedAt } : {}) },
+          time: {
+            created: createdAt,
+            ...(message.completedAt !== undefined || session.status !== "running" ? { completed: completedAt } : {}),
+          },
           modelID: model || "default",
           providerID: `local-${session.agentID}`,
           mode: "build",
@@ -103,12 +106,14 @@ export function legacyMessages(session: Session): { info: Message; parts: Part[]
             reasoning: usage?.reasoning ?? 0,
             cache: { read: usage?.cacheRead ?? 0, write: usage?.cacheWrite ?? 0 },
           },
-          ...(session.status !== "running" ? { finish: "stop" } : {}),
+          ...(message.completedAt !== undefined || session.status !== "running" ? { finish: "stop" } : {}),
         },
         parts: [],
       }
       result.push(current)
     }
+    if (current.info.role === "assistant" && message.completedAt !== undefined)
+      current.info.time.completed = Math.max(current.info.time.completed ?? 0, message.completedAt)
     if (message.role === "error" && current.info.role === "assistant") {
       current.info.error = { name: "UnknownError", data: { message: message.text } }
       return

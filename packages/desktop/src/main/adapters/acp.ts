@@ -175,10 +175,11 @@ export function acp(options: AdapterOptions): Adapter {
           ...toolInfo(previous?.name ?? name, update.rawInput ?? previous?.input),
           metadata: { ...previous?.metadata, locations: update.locations ?? previous?.metadata?.locations },
           title: string(update.title) || previous?.title || name,
-          status: (update.status === "failed" ? "error" : update.status === "completed" ? "completed" : "running") as
-            | "error"
-            | "completed"
-            | "running",
+          status: (update.status === "failed"
+            ? "error"
+            : update.status === "completed"
+              ? "completed"
+              : (previous?.status ?? "running")) as "error" | "completed" | "running",
           output,
         }
         const location = object(array(update.locations)[0])

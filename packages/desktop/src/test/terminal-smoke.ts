@@ -9,7 +9,10 @@ import { createOpencodeClient } from "@opencode-ai/sdk/v2/client"
 const cleanup: (() => Promise<void>)[] = []
 try {
   const directory = await mkdtemp(join(tmpdir(), "codeink-terminal-"))
-  const bridge = await startBridge("127.0.0.1", 0, "terminal-test", directory, process.env)
+  const bridge = await startBridge("127.0.0.1", 0, "terminal-test", directory, {
+    ...process.env,
+    CODEINK_TERMINAL_TEST: "verified",
+  })
   cleanup.push(async () => {
     await bridge.stop()
     await rm(directory, { recursive: true, force: true })
@@ -23,7 +26,13 @@ try {
     headers: { Authorization: `Basic ${Buffer.from("opencode:terminal-test").toString("base64")}` },
     throwOnError: true,
   })
-  const terminal = (await client.pty.create({ command: "/bin/sh", args: [], directory })).data!
+  const terminal = (
+    await client.pty.create({
+      command: process.platform === "win32" ? process.env.COMSPEC || "cmd.exe" : "/bin/sh",
+      args: [],
+      directory,
+    })
+  ).data!
   const ticket = (await client.pty.connectToken({ ptyID: terminal.id, directory })).data!.ticket
   const url = `${baseUrl.replace("http:", "ws:")}/pty/${terminal.id}/connect?ticket=${ticket}`
   const socket = new WebSocket(url)
@@ -31,7 +40,11 @@ try {
     const timer = setTimeout(() => reject(new Error("No terminal output")), 5000)
     let output = ""
     socket.once("error", reject)
-    socket.once("open", () => socket.send("printf 'terminal-%s\\n' verified\r"))
+    socket.once("open", () =>
+      socket.send(
+        process.platform === "win32" ? "echo terminal-%CODEINK_TERMINAL_TEST%\r" : "printf 'terminal-%s\\n' verified\r",
+      ),
+    )
     socket.on("message", (data, binary) => {
       if (binary) return
       output += data.toString()

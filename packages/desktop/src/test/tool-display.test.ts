@@ -44,3 +44,22 @@ test("previously stored ACP read inputs retain a visible file path", () => {
     state: { input: { filePath: "/tmp/README.md" } },
   })
 })
+
+test("starting a later turn preserves earlier completion times", () => {
+  const messages = legacyMessages({
+    id: "s",
+    agentID: "codex",
+    directory: "/tmp",
+    title: "Timing",
+    model: "test",
+    updatedAt: 10000,
+    status: "running",
+    approvals: [],
+    messages: [
+      { id: "u1", role: "user", text: "first", createdAt: 100 },
+      { id: "a1", role: "assistant", text: "done", createdAt: 200, completedAt: 300 },
+      { id: "u2", role: "user", text: "second", createdAt: 10000 },
+    ],
+  })
+  expect(messages[1].info.time).toEqual({ created: 200, completed: 300 })
+})

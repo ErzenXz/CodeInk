@@ -62,6 +62,12 @@ jobs:
           node-version: "24"
       - run: bun install --frozen-lockfile
       - run: bun scripts/release-version.ts
+      - name: Verify native protocol processes
+        run: bun test src/test/protocols.test.ts src/test/usage.test.ts
+        working-directory: packages/desktop
+      - name: Verify native terminal
+        run: bun run test:terminal
+        working-directory: packages/desktop
       - run: bun run build
         working-directory: packages/desktop
       - name: Package installers
