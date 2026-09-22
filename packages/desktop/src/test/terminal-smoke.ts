@@ -15,7 +15,7 @@ try {
   })
   cleanup.push(async () => {
     await bridge.stop()
-    await rm(directory, { recursive: true, force: true })
+    await rm(directory, { recursive: true, force: true, maxRetries: 20, retryDelay: 100 })
   })
   const address = bridge.server.address()
   if (!address || typeof address === "string") throw new Error("No listener")

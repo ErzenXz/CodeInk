@@ -1,5 +1,5 @@
 import { afterEach, expect, test } from "bun:test"
-import { mkdtemp, readFile, rm } from "node:fs/promises"
+import { mkdtemp, readFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { connectAgent, resolveExecutable } from "../main/agents"
@@ -7,6 +7,7 @@ import { JsonLines } from "../main/adapters/process"
 import type { Adapter } from "../main/adapters/types"
 import { array, object } from "../main/adapters/types"
 import type { AgentEvent, Protocol } from "../shared/types"
+import { removeFixture } from "./fixtures/cleanup"
 
 const cleanup: (() => void | Promise<void>)[] = []
 afterEach(async () => {
@@ -40,8 +41,7 @@ test("discovery never resolves an executable from a relative PATH entry", async 
 for (const protocol of ["codex", "claude", "opencode", "pi"] as const) {
   test(`${protocol}: real subprocess streams, requests approval, completes and resumes`, async () => {
     const directory = await mkdtemp(join(tmpdir(), "codeink-protocol-"))
-    // Windows holds the child process's working directory until taskkill finishes.
-    cleanup.push(() => rm(directory, { recursive: true, force: true, maxRetries: 20, retryDelay: 100 }))
+    cleanup.push(() => removeFixture(directory))
     const events: AgentEvent[] = []
     const log = join(directory, "requests.jsonl")
     const model =

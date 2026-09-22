@@ -1,10 +1,11 @@
 import { expect, test } from "bun:test"
-import { mkdtemp, rm } from "node:fs/promises"
+import { mkdtemp } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { WorkspaceStore } from "../main/agent-store"
 import { Sessions } from "../main/sessions"
 import { legacyMessages, legacySession } from "../main/bridge"
+import { removeFixture } from "./fixtures/cleanup"
 
 async function eventually(check: () => boolean) {
   const deadline = Date.now() + 5000
@@ -61,8 +62,7 @@ for (const protocol of ["codex", "claude", "opencode", "pi", "acp"] as const) {
       expect(restored.state.sessions[0].messages[0].usage).toEqual(usage)
     } finally {
       await sessions.dispose()
-      // Agent disposal initiates asynchronous process-tree termination on Windows.
-      await rm(directory, { recursive: true, force: true, maxRetries: 20, retryDelay: 100 })
+      await removeFixture(directory)
     }
   })
 }
