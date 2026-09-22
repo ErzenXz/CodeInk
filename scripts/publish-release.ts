@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto"
-import { readdir } from "node:fs/promises"
+import { readdir, rename } from "node:fs/promises"
 const {
   RELEASE_TAG: tag,
   RELEASE_CHANNEL: channel,
@@ -9,11 +9,18 @@ const {
 } = process.env
 if (!tag || !version || !repo || !commit || !["production", "early-access"].includes(channel ?? ""))
   throw new Error("Missing release metadata")
+// electron-builder uses native package architecture names for Linux targets.
+for (const name of await readdir("release")) {
+  const normalized = name.replace(/-linux-(x86_64|amd64)\./, "-linux-x64.").replace(/-linux-aarch64\./, "-linux-arm64.")
+  if (normalized !== name) await rename(`release/${name}`, `release/${normalized}`)
+}
 const files = (await readdir("release")).filter((file) => /\.(dmg|zip|exe|AppImage|deb)$/.test(file)).sort()
 // Never publish a partial matrix as a complete release.
 for (const target of [
   "mac-arm64.dmg",
   "mac-x64.dmg",
+  "mac-arm64.zip",
+  "mac-x64.zip",
   "win-x64.exe",
   "linux-x64.AppImage",
   "linux-arm64.AppImage",

@@ -1,4 +1,5 @@
-import { DESKTOP_NATIVE_ENGLISH } from "./desktop-native"
+import {
+  "codeink.channel.earlyAccess": "Early Access", DESKTOP_NATIVE_ENGLISH } from "./desktop-native"
 
 export const dict = {
   ...DESKTOP_NATIVE_ENGLISH,
