@@ -61,7 +61,8 @@ for (const protocol of ["codex", "claude", "opencode", "pi", "acp"] as const) {
       expect(restored.state.sessions[0].messages[0].usage).toEqual(usage)
     } finally {
       await sessions.dispose()
-      await rm(directory, { recursive: true, force: true })
+      // Agent disposal initiates asynchronous process-tree termination on Windows.
+      await rm(directory, { recursive: true, force: true, maxRetries: 20, retryDelay: 100 })
     }
   })
 }

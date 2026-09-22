@@ -10,7 +10,7 @@ import type { AgentEvent, Protocol } from "../shared/types"
 
 const cleanup: (() => void | Promise<void>)[] = []
 afterEach(async () => {
-  for (const fn of cleanup.splice(0)) await fn()
+  for (const fn of cleanup.splice(0).reverse()) await fn()
 })
 const fixture = join(import.meta.dirname, "fixtures/agent.ts")
 
@@ -40,7 +40,8 @@ test("discovery never resolves an executable from a relative PATH entry", async 
 for (const protocol of ["codex", "claude", "opencode", "pi"] as const) {
   test(`${protocol}: real subprocess streams, requests approval, completes and resumes`, async () => {
     const directory = await mkdtemp(join(tmpdir(), "codeink-protocol-"))
-    cleanup.push(() => rm(directory, { recursive: true, force: true }))
+    // Windows holds the child process's working directory until taskkill finishes.
+    cleanup.push(() => rm(directory, { recursive: true, force: true, maxRetries: 20, retryDelay: 100 }))
     const events: AgentEvent[] = []
     const log = join(directory, "requests.jsonl")
     const model =
