@@ -75,7 +75,7 @@ export function DialogEditProject(props: { project: LocalProject; server: Server
                   </Show>
                 </div>
                 <div
-                  class="absolute inset-0 size-16 bg-surface-raised-stronger-non-alpha/90 rounded-[6px] z-10 pointer-events-none flex items-center justify-center transition-opacity"
+                  class="absolute inset-0 size-16 bg-surface-raised-stronger-non-alpha/90 rounded-md z-10 pointer-events-none flex items-center justify-center transition-opacity"
                   classList={{
                     "opacity-100": model.store.iconHover && !model.store.iconOverride,
                     "opacity-0": !(model.store.iconHover && !model.store.iconOverride),
@@ -84,7 +84,7 @@ export function DialogEditProject(props: { project: LocalProject; server: Server
                   <Icon name="cloud-upload" size="large" class="text-icon-on-interactive-base drop-shadow-sm" />
                 </div>
                 <div
-                  class="absolute inset-0 size-16 bg-surface-raised-stronger-non-alpha/90 rounded-[6px] z-10 pointer-events-none flex items-center justify-center transition-opacity"
+                  class="absolute inset-0 size-16 bg-surface-raised-stronger-non-alpha/90 rounded-md z-10 pointer-events-none flex items-center justify-center transition-opacity"
                   classList={{
                     "opacity-100": model.store.iconHover && !!model.store.iconOverride,
                     "opacity-0": !(model.store.iconHover && !!model.store.iconOverride),
@@ -121,7 +121,7 @@ export function DialogEditProject(props: { project: LocalProject; server: Server
                       aria-label={language.t("dialog.project.edit.color.select", { color })}
                       aria-pressed={model.store.color === color}
                       classList={{
-                        "flex items-center justify-center size-10 p-0.5 rounded-lg overflow-hidden transition-colors cursor-default": true,
+                        "flex items-center justify-center size-10 p-0.5 rounded-lg overflow-hidden transition-colors cursor-pointer": true,
                         "bg-transparent border-2 border-icon-strong-base hover:bg-surface-base-hover":
                           model.store.color === color,
                         "bg-transparent border border-transparent hover:bg-surface-base-hover hover:border-border-weak-base":
@@ -135,7 +135,7 @@ export function DialogEditProject(props: { project: LocalProject; server: Server
                       <Avatar
                         fallback={model.store.name || model.defaultName()}
                         {...getAvatarColors(color)}
-                        class="size-full rounded"
+                        class="size-full rounded-sm"
                       />
                     </button>
                   )}

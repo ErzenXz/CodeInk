@@ -14,6 +14,10 @@ export type AgentModel = {
   variants?: string[]
   context?: number
   output?: number
+  /** Supports the agent's fast mode (Codex "priority" tier, Claude Code fastMode). */
+  fast?: boolean
+  /** Supports automatic review of actions instead of prompting (Claude Code auto mode). */
+  autoReview?: boolean
   cost?: { input: number; output: number; cache: { read: number; write: number } }
 }
 export type ModelDiscoveryOptions = {
@@ -93,6 +97,8 @@ export async function discoverModels(options: ModelDiscoveryOptions): Promise<Ag
               default: item.isDefault === true,
               reasoning: variants.length > 0,
               variants,
+              fast: array(item.serviceTiers).some((tier) => string(object(tier).id) === "priority"),
+              autoReview: true,
             })
           })
         cursor = string(page.nextCursor) || undefined
@@ -123,6 +129,8 @@ export async function discoverModels(options: ModelDiscoveryOptions): Promise<Ag
                 default: value === "default",
                 reasoning: item.supportsEffort === true,
                 variants: array(item.supportedEffortLevels).map(string).filter(Boolean),
+                fast: item.supportsFastMode === true,
+                autoReview: item.supportsAutoMode === true,
               },
             ]
           }),

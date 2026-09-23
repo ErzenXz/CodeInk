@@ -4,6 +4,7 @@ import { normalizeSessionMessages } from "@/utils/session-message"
 
 mock.module("@codeink/session-ui/message-part", () => ({
   renderable: () => true,
+  isGroupedTool: () => false,
   groupParts: (refs: Array<{ messageID: string; part: { id: string } }>) =>
     refs.map((ref) => ({
       type: "part" as const,
@@ -56,6 +57,68 @@ describe("current session timeline rows", () => {
       "turn-gap:msg_3",
       "user-message:msg_3",
       "assistant-part:msg_3:msg_4:reasoning:0",
+    ])
+  })
+
+  test("folds a settled turn's steps under one work summary above the final answer", () => {
+    // Completed tool content must be a non-empty tuple.
+    const content: [{ type: "text"; text: string }] = [{ type: "text", text: "ok" }]
+    const read = (id: string) => ({
+      type: "tool" as const,
+      id,
+      name: "read",
+      state: {
+        status: "completed" as const,
+        input: { filePath: `${id}.txt` },
+        metadata: {},
+        content,
+      },
+      time: { created: 2, ran: 2, completed: 3 },
+    })
+    const turn = (status: "busy" | "idle") => {
+      const source = [
+        { id: "msg_1", type: "user", text: "look", time: { created: 1 } },
+        {
+          id: "msg_2",
+          type: "assistant",
+          agent: "build",
+          model: { id: "model", providerID: "provider" },
+          content: [
+            { type: "text", text: "Checking." },
+            read("call_1"),
+            read("call_2"),
+            { type: "text", text: "Done." },
+          ],
+          time: { created: 2, completed: 4 },
+        },
+      ] satisfies SessionMessageInfo[]
+      const normalized = normalizeSessionMessages("ses_1", source)
+      const messages = new Map(normalized.messages.map((message) => [message.id, message]))
+      return Timeline.constructSessionMessageRows(
+        source,
+        (messageID) => messages.get(messageID),
+        (messageID) => normalized.parts.get(messageID) ?? [],
+        true,
+        status,
+        true,
+        normalized.messages.filter((message) => message.role === "user"),
+      ).rows
+    }
+
+    const settled = turn("idle")
+    expect(settled.map(TimelineRow.key)).toEqual([
+      "user-message:msg_1",
+      "work-summary:msg_1",
+      "assistant-part:msg_1:msg_2:text:1",
+    ])
+    const summary = settled[1]
+    expect(summary?._tag === "WorkSummary" ? summary.groups.length : 0).toBe(3)
+    expect(turn("busy").map(TimelineRow.key)).toEqual([
+      "user-message:msg_1",
+      "assistant-part:msg_1:msg_2:text:0",
+      "assistant-part:msg_1:call_1",
+      "assistant-part:msg_1:call_2",
+      "assistant-part:msg_1:msg_2:text:1",
     ])
   })
 

@@ -64,7 +64,7 @@
   align-self: stretch;
   width: 100%;
   column-gap: 10px;
-  cursor: default;
+  cursor: pointer;
   border: none;
   background: none;
   padding: 4px 10px;

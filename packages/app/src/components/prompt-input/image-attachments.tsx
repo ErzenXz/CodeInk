@@ -27,10 +27,10 @@ type PromptImageAttachmentsProps = {
 const fallbackClass = "size-16 rounded-md bg-surface-base flex items-center justify-center border border-border-base"
 const imageClass =
   "size-16 rounded-md object-cover border border-border-base hover:border-border-strong-base transition-colors"
-const imageClassV2 = "w-[58px] h-[46px] rounded-[6px] object-cover"
+const imageClassV2 = "w-[58px] h-[46px] rounded-md object-cover"
 // inset box-shadows do not paint over <img> content, so the hairline is a separate overlay
 const imageHairlineClassV2 =
-  "absolute inset-0 rounded-[6px] shadow-[inset_0_0_0_0.5px_var(--v2-border-border-base)] pointer-events-none"
+  "absolute inset-0 rounded-md shadow-[inset_0_0_0_0.5px_var(--v2-border-border-base)] pointer-events-none"
 const removeClass =
   "absolute -top-1.5 -right-1.5 size-5 rounded-full bg-surface-raised-stronger-non-alpha border border-border-base flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-surface-raised-base-hover"
 const removeClassV2 =

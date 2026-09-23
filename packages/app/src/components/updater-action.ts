@@ -9,12 +9,8 @@ export function updaterAction(state: UpdaterState | undefined) {
   switch (state.status) {
     case "checking":
       return { label: "settings.updates.action.checking" as const }
-    case "downloading":
-      return { label: "settings.updates.action.downloading" as const }
-    case "ready":
-      return { label: "toast.update.action.installRestart" as const, run: "install" as const }
-    case "installing":
-      return { label: "settings.updates.action.installing" as const }
+    case "available":
+      return { label: "settings.updates.action.viewDownload" as const, run: "openDownload" as const }
     case "disabled":
       return { label: "settings.updates.action.checkNow" as const }
     default:
@@ -31,7 +27,7 @@ export function useUpdaterAction() {
     action,
     async run() {
       const run = action().run
-      if (run === "install") return platform.updater?.install()
+      if (run === "openDownload") return platform.updater?.openDownload()
       if (run !== "check") return
 
       const state = await platform.updater?.check()

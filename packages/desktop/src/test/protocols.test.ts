@@ -58,6 +58,7 @@ for (const protocol of ["codex", "claude", "opencode", "pi"] as const) {
         executable: process.execPath,
         directory,
         env: { ...process.env, CODEINK_FIXTURE_RECORD: log },
+        rules: () => ({ access: "ask" as const, fast: false }),
         model,
         variant: protocol === "pi" ? undefined : "high",
         remoteID,
@@ -119,6 +120,7 @@ test("Pi command rejection fails the turn immediately", async () => {
     executable: process.execPath,
     directory: tmpdir(),
     env: process.env,
+    rules: () => ({ access: "ask" as const, fast: false }),
     model: "",
     emit: () => {},
   })

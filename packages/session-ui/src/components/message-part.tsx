@@ -611,6 +611,8 @@ function taskSession(
 
 const CONTEXT_GROUP_TOOLS = new Set(["read", "glob", "grep", "list"])
 const HIDDEN_TOOLS = new Set(["todowrite"])
+const STANDALONE_TOOLS = new Set(["task", "question"])
+const EDIT_TOOLS = new Set(["edit", "write", "apply_patch", "patch", "multiedit"])
 
 function list<T>(value: T[] | undefined | null, fallback: T[]) {
   if (Array.isArray(value)) return value
@@ -665,15 +667,37 @@ export function sameGroups(a: readonly PartGroup[] | undefined, b: readonly Part
   return a.every((item, i) => sameGroup(item, b[i]!))
 }
 
-export function groupParts(parts: { messageID: string; part: PartType }[]) {
+/**
+ * Collapses runs of consecutive tool calls into one group row. `tool` picks which tools may join a run, and
+ * shorter runs than `min` stay as individual parts so a lone call keeps its own descriptive row.
+ */
+export function groupParts(
+  parts: { messageID: string; part: PartType }[],
+  options: { tool: (part: PartType) => boolean; min: number } = { tool: isContextGroupTool, min: 1 },
+) {
   const result: PartGroup[] = []
   let start = -1
+
+  const single = (item: { messageID: string; part: PartType }) =>
+    result.push({
+      key: `part:${item.messageID}:${item.part.id}`,
+      type: "part",
+      ref: {
+        messageID: item.messageID,
+        partID: item.part.id,
+      },
+    })
 
   const flush = (end: number) => {
     if (start < 0) return
     const first = parts[start]
     const last = parts[end]
     if (!first || !last) {
+      start = -1
+      return
+    }
+    if (end - start + 1 < options.min) {
+      parts.slice(start, end + 1).forEach(single)
       start = -1
       return
     }
@@ -689,20 +713,13 @@ export function groupParts(parts: { messageID: string; part: PartType }[]) {
   }
 
   parts.forEach((item, index) => {
-    if (isContextGroupTool(item.part)) {
+    if (options.tool(item.part)) {
       if (start < 0) start = index
       return
     }
 
     flush(index - 1)
-    result.push({
-      key: `part:${item.messageID}:${item.part.id}`,
-      type: "part",
-      ref: {
-        messageID: item.messageID,
-        partID: item.part.id,
-      },
-    })
+    single(item)
   })
 
   flush(parts.length - 1)
@@ -832,6 +849,62 @@ export function AssistantParts(props: {
 
 function isContextGroupTool(part: PartType): part is ToolPart {
   return part.type === "tool" && CONTEXT_GROUP_TOOLS.has(part.tool)
+}
+
+/** Any tool call that can fold into a summary row; subagents and questions stay visible on their own. */
+export function isGroupedTool(part: PartType): part is ToolPart {
+  return part.type === "tool" && !STANDALONE_TOOLS.has(part.tool)
+}
+
+const toolGroupKeys = {
+  edit: "ui.messagePart.group.edit",
+  bash: "ui.messagePart.group.bash",
+  read: "ui.messagePart.group.read",
+  search: "ui.messagePart.group.search",
+  websearch: "ui.messagePart.group.websearch",
+  webfetch: "ui.messagePart.group.webfetch",
+  tool: "ui.messagePart.group.tool",
+} as const
+
+/** One sentence such as "Edited 2 files, ran a command, used claude-in-chrome", in order of first use. */
+export function toolGroupSummary(parts: ToolPart[], i18n: UiI18n) {
+  const kinds = parts.reduce((map, part) => {
+    const kind = toolGroupKind(part)
+    map.set(kind, [...(map.get(kind) ?? []), part])
+    return map
+  }, new Map<string, ToolPart[]>())
+  const text = [...kinds]
+    .map(([kind, items]) => {
+      if (kind.startsWith("mcp:")) return i18n.t("ui.messagePart.group.mcp", { name: kind.slice(4) })
+      const key = toolGroupKeys[kind as keyof typeof toolGroupKeys] ?? toolGroupKeys.tool
+      const files = kind === "edit" || kind === "read" ? new Set(items.flatMap(toolFiles)).size : 0
+      return i18n.plural(key, files || items.length)
+    })
+    .join(", ")
+  return text.charAt(0).toLocaleUpperCase(i18n.locale()) + text.slice(1)
+}
+
+function toolGroupKind(part: ToolPart) {
+  if (EDIT_TOOLS.has(part.tool)) return "edit"
+  if (CONTEXT_GROUP_TOOLS.has(part.tool) && part.tool !== "read") return "search"
+  if (part.tool in toolGroupKeys) return part.tool
+  // Claude names MCP tools mcp__server__tool; Codex reports server/tool.
+  const server = part.tool.startsWith("mcp__") ? part.tool.split("__")[1] : part.tool.split("/").at(-2)
+  return server ? `mcp:${server}` : "tool"
+}
+
+function toolFiles(part: ToolPart) {
+  const input = part.state.input ?? {}
+  const metadata = "metadata" in part.state ? part.state.metadata : undefined
+  const files = Array.isArray(metadata?.files)
+    ? metadata.files.flatMap((file: unknown) =>
+        file && typeof file === "object" && "filePath" in file && typeof file.filePath === "string"
+          ? [file.filePath]
+          : [],
+      )
+    : []
+  if (files.length > 0) return files
+  return typeof input.filePath === "string" ? [input.filePath] : []
 }
 
 function contextToolDetail(part: ToolPart): string | undefined {

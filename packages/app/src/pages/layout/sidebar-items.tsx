@@ -44,13 +44,13 @@ export const ProjectIcon = (props: {
   const name = createMemo(() => props.project.name || getFilename(props.project.worktree))
 
   return (
-    <div class={`relative size-8 shrink-0 rounded ${props.class ?? ""}`}>
-      <div class="size-full rounded overflow-clip">
+    <div class={`relative size-8 shrink-0 rounded-sm ${props.class ?? ""}`}>
+      <div class="size-full rounded-sm overflow-clip">
         <Avatar
           fallback={name()}
           src={getProjectAvatarSource(props.project.id, props.project.icon)}
           {...getAvatarColors(props.project.icon?.color)}
-          class="size-full rounded"
+          class="size-full rounded-sm"
           classList={{ "badge-mask": notify() }}
         />
       </div>

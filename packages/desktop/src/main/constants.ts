@@ -2,4 +2,4 @@ type Channel = "dev" | "beta" | "prod"
 const raw = import.meta.env.CODEINK_CHANNEL
 export const CHANNEL: Channel = raw === "dev" || raw === "beta" || raw === "prod" ? raw : "dev"
 
-export const UPDATER_ENABLED = false
+export const UPDATER_ENABLED = CHANNEL !== "dev"

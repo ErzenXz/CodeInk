@@ -25,8 +25,11 @@ import {
   MessageDivider,
   Part as MessagePart,
   partDefaultOpen,
+  toolGroupSummary,
   type UserActions,
 } from "@codeink/session-ui/message-part"
+import { ToolGroupV2 } from "@codeink/session-ui/v2/tool-group-v2"
+import { useI18n } from "@codeink/ui/context/i18n"
 import { DiffChanges } from "@codeink/ui/diff-changes"
 import { FileIcon } from "@codeink/ui/file-icon"
 import { Icon } from "@codeink/ui/icon"
@@ -82,6 +85,9 @@ type FramedTimelineRow = Exclude<TimelineRow.TimelineRow, { _tag: "TurnGap" }>
 type TimelineRowByTag<T extends TimelineRow.TimelineRow["_tag"]> = Extract<TimelineRow.TimelineRow, { _tag: T }>
 
 const timelineFallbackItemSize = 60
+const rowToggleSelector =
+  '[data-slot="basic-tool-v2-trigger"], [data-component="context-tool-group-trigger"], [data-slot="collapsible-trigger"]'
+
 const timelineCache = new Map<string, { measurements: VirtualItem[]; toolOpen: Record<string, boolean | undefined> }>()
 
 const taskDescription = (part: PartType, sessionID: string) => {
@@ -241,6 +247,7 @@ export function MessageTimeline(props: {
   onUserScroll: () => void
   onHistoryScroll: () => void
   onAutoScrollInteraction: (event: MouseEvent) => void
+  onPauseAutoScroll: () => void
   shouldAnchorBottom: () => boolean
   centered: boolean
   setContentRef: (el: HTMLDivElement) => void
@@ -257,6 +264,7 @@ export function MessageTimeline(props: {
   const sdk = useSDK()
   const sync = useSync()
   const settings = useSettings()
+  const i18n = useI18n()
   const dialog = useDialog()
   const sessionArchive = useSessionArchive()
   const language = useLanguage()
@@ -607,6 +615,22 @@ export function MessageTimeline(props: {
   const handleListPointerDown = (event: PointerEvent & { currentTarget: HTMLDivElement }) => {
     if (!prependLoading) clearPrependAnchor()
     props.onMarkScrollGesture(event.target)
+  }
+
+  // Expanding or collapsing a row must not yank the view to the bottom: stop following and hold the clicked
+  // header at the same screen position while the virtualizer re-measures over the next frames.
+  const holdToggledRow = (event: MouseEvent) => {
+    const root = listRoot()
+    const trigger = event.target instanceof Element ? event.target.closest(rowToggleSelector) : null
+    if (!root || !trigger) return
+    const top = trigger.getBoundingClientRect().top
+    props.onPauseAutoScroll()
+    const hold = (frames: number) =>
+      requestAnimationFrame(() => {
+        if (trigger.isConnected) root.scrollTop += trigger.getBoundingClientRect().top - top
+        if (frames > 1) hold(frames - 1)
+      })
+    hold(3)
   }
 
   const handleListPointerMove = (event: PointerEvent) => {
@@ -966,7 +990,64 @@ export function MessageTimeline(props: {
     }
   }
 
+  const renderToolPart = (part: PartType, message: MessageType, onSizeChange?: () => void) => {
+    const defaultOpen = partDefaultOpen(
+      part,
+      settings.general.shellToolPartsExpanded(),
+      settings.general.editToolPartsExpanded(),
+    )
+    return (
+      <MessagePart
+        part={part}
+        message={message}
+        useV2Actions={settings.general.newLayoutDesigns()}
+        defaultOpen={defaultOpen}
+        toolOpen={toolOpen[part.id] ?? defaultOpen}
+        onToolOpenChange={(open) => setToolOpen(part.id, open)}
+        deferToolContent
+        virtualizeDiff={false}
+        onContentRendered={onSizeChange}
+      />
+    )
+  }
+
   const renderAssistantPartGroup = (row: Accessor<TimelineRowMap["AssistantPart"]>, onSizeChange?: () => void) => {
+    if (row().group.type === "context" && settings.general.newLayoutDesigns()) {
+      const parts = createMemo(() => {
+        const group = row().group
+        if (group.type !== "context") return emptyTools
+        return group.refs
+          .map((ref) => getMsgPart(ref.messageID, ref.partID))
+          .filter((part): part is ToolPart => part?.type === "tool")
+      })
+      const openKey = () => `context:${row().group.key}`
+
+      return (
+        <ToolGroupV2
+          summary={toolGroupSummary(parts(), i18n)}
+          partIDs={parts()
+            .map((part) => part.id)
+            .join(",")}
+          active={
+            workingTurn(row().userMessageID) && lastAssistantGroupKey().get(row().userMessageID) === row().group.key
+          }
+          open={toolOpen[openKey()] === true}
+          onOpenChange={(value) => {
+            setToolOpen(openKey(), value)
+            onSizeChange?.()
+          }}
+        >
+          <For each={parts()}>
+            {(part) => (
+              <Show when={messageByID().get(part.messageID)}>
+                {(message) => renderToolPart(part, message(), onSizeChange)}
+              </Show>
+            )}
+          </For>
+        </ToolGroupV2>
+      )
+    }
+
     if (row().group.type === "context") {
       const parts = createMemo(() => {
         const group = row().group
@@ -1051,7 +1132,7 @@ export function MessageTimeline(props: {
         data-timeline-row={input.row()._tag}
         classList={{
           "min-w-0 w-full max-w-full": true,
-          "md:max-w-200 2xl:max-w-[1000px]": props.centered,
+          "md:max-w-[768px]": props.centered,
           "md:mx-auto": props.centered,
           "pt-3": previousAssistantPart(),
         }}
@@ -1081,7 +1162,7 @@ export function MessageTimeline(props: {
                     {(comment) => (
                       <div
                         classList={{
-                          "shrink-0 max-w-[260px] rounded-[6px] border-border-weak-base bg-background-stronger px-2.5 py-2": true,
+                          "shrink-0 max-w-[260px] rounded-md border-border-weak-base bg-background-stronger px-2.5 py-2": true,
                           "border-[0.5px]": settings.general.newLayoutDesigns(),
                           border: !settings.general.newLayoutDesigns(),
                         }}
@@ -1167,6 +1248,51 @@ export function MessageTimeline(props: {
                 aria-hidden={workingTurn(assistantPartRow().userMessageID)}
               >
                 {renderAssistantPartGroup(assistantPartRow, onSizeChange)}
+              </div>
+            </div>
+          </TimelineRowFrame>
+        )
+      }
+      case "WorkSummary": {
+        const workRow = row as Accessor<TimelineRowByTag<"WorkSummary">>
+        const openKey = () => `work:${workRow().userMessageID}`
+        const summary = () => {
+          const ms = turnDurationMs(workRow().userMessageID)
+          if (ms === undefined) return i18n.t("ui.messagePart.workedPlain")
+          const total = Math.round(ms / 1000)
+          const duration =
+            total < 60
+              ? i18n.t("ui.message.duration.seconds", { count: total })
+              : i18n.t("ui.message.duration.minutesSeconds", { minutes: Math.floor(total / 60), seconds: total % 60 })
+          return i18n.t("ui.messagePart.worked", { duration })
+        }
+        return (
+          <TimelineRowFrame row={workRow}>
+            <div data-slot="session-turn-message-container" class="w-full px-4 md:px-5">
+              <div data-slot="session-turn-assistant-content">
+                <ToolGroupV2
+                  variant="work"
+                  summary={summary()}
+                  partIDs={workRow()
+                    .groups.flatMap((group) =>
+                      group.type === "part" ? [group.ref.partID] : group.refs.map((ref) => ref.partID),
+                    )
+                    .join(",")}
+                  open={toolOpen[openKey()] === true}
+                  onOpenChange={(value) => {
+                    setToolOpen(openKey(), value)
+                    onSizeChange?.()
+                  }}
+                >
+                  <For each={workRow().groups}>
+                    {(group, index) =>
+                      renderAssistantPartGroup(
+                        () => ({ userMessageID: workRow().userMessageID, group, previousAssistantPart: index() > 0 }),
+                        onSizeChange,
+                      )
+                    }
+                  </For>
+                </ToolGroupV2>
               </div>
             </div>
           </TimelineRowFrame>
@@ -1313,7 +1439,7 @@ export function MessageTimeline(props: {
               onClick={props.onResumeScroll}
             >
               <div
-                class="flex items-center justify-center w-8 h-6 rounded-[6px] border border-border-weaker-base bg-[color-mix(in_srgb,var(--surface-raised-stronger-non-alpha)_80%,transparent)] backdrop-blur-[0.75px] transition-colors group-hover:border-[var(--border-weak-base)] group-hover:[--icon-base:var(--icon-hover)]"
+                class="flex items-center justify-center w-8 h-6 rounded-md border border-border-weaker-base bg-[color-mix(in_srgb,var(--surface-raised-stronger-non-alpha)_80%,transparent)] backdrop-blur-[0.75px] transition-colors group-hover:border-[var(--border-weak-base)] group-hover:[--icon-base:var(--icon-hover)]"
                 style={{
                   "box-shadow":
                     "0 51px 60px 0 rgba(0,0,0,0.10), 0 15px 18px 0 rgba(0,0,0,0.12), 0 6.386px 7.513px 0 rgba(0,0,0,0.12), 0 2.31px 2.717px 0 rgba(0,0,0,0.20)",
@@ -1355,8 +1481,11 @@ export function MessageTimeline(props: {
         onPointerMove={handleListPointerMove}
         onKeyDown={handleListKeyDown}
         onScroll={handleListScroll}
-        onClick={props.onAutoScrollInteraction}
-        class="relative min-w-0 w-full h-full"
+        onClick={(event) => {
+          holdToggledRow(event)
+          props.onAutoScrollInteraction(event)
+        }}
+        class="relative min-w-0 w-full h-full select-text"
         style={{
           "--sticky-accordion-top": showHeader() ? "48px" : "0px",
         }}
@@ -1411,7 +1540,7 @@ export function MessageTimeline(props: {
                           data-slot="session-title-child"
                           classList={{
                             "truncate text-[13px] font-[530] leading-4 tracking-[-0.04px] text-v2-text-text-base": true,
-                            "w-fit rounded-[6px] px-2 py-1 hover:bg-v2-overlay-simple-overlay-hover":
+                            "w-fit rounded-md px-2 py-1 hover:bg-v2-overlay-simple-overlay-hover":
                               settings.general.newLayoutDesigns(),
                             "grow-1 min-w-0": !settings.general.newLayoutDesigns(),
                           }}
@@ -1430,9 +1559,8 @@ export function MessageTimeline(props: {
                         disabled={titleMutation.isPending}
                         classList={{
                           "block text-[13px] font-[530] leading-4 tracking-[-0.04px] text-v2-text-text-base": true,
-                          "w-full flex-1 grow-1 min-w-0 pl-1 -ml-1 rounded-[6px]": !settings.general.newLayoutDesigns(),
-                          "field-sizing-content self-start rounded-[6px] px-2 py-1 ":
-                            settings.general.newLayoutDesigns(),
+                          "w-full flex-1 grow-1 min-w-0 pl-1 -ml-1 rounded-md": !settings.general.newLayoutDesigns(),
+                          "field-sizing-content self-start rounded-md px-2 py-1 ": settings.general.newLayoutDesigns(),
                         }}
                         style={{
                           "--inline-input-shadow": settings.general.newLayoutDesigns()
@@ -1641,7 +1769,7 @@ export function MessageTimeline(props: {
                           <KobaltePopover.Content
                             data-component="popover-content"
                             classList={{
-                              "flex w-80 max-w-none flex-col items-start gap-3 rounded-[10px] border-0 bg-v2-background-bg-layer-01 p-3 shadow-[var(--v2-elevation-floating)]":
+                              "flex w-80 max-w-none flex-col items-start gap-3 rounded-xl border-0 glass p-3 shadow-[var(--v2-elevation-floating)]":
                                 settings.general.newLayoutDesigns(),
                             }}
                             style={{ "min-width": "320px" }}
@@ -1757,7 +1885,7 @@ export function MessageTimeline(props: {
                                 >
                                   <div class="flex flex-col gap-2">
                                     <div
-                                      class="flex h-8 w-full items-center gap-1.5 rounded-[6px] py-1 pl-2.5 pr-1.5 shadow-[var(--v2-elevation-button-neutral)]"
+                                      class="flex h-8 w-full items-center gap-1.5 rounded-md py-1 pl-2.5 pr-1.5 shadow-[var(--v2-elevation-button-neutral)]"
                                       style={{
                                         background:
                                           "linear-gradient(180deg, var(--v2-alpha-light-2) 0%, var(--v2-alpha-light-0) 100%), var(--v2-background-bg-button-neutral)",

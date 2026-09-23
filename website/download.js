@@ -1,3 +1,4 @@
+// Lists the latest GitHub release for each channel on the download page.
 const repo = "ErzenXz/CodeInk"
 const releasesPage = `https://github.com/${repo}/releases`
 const tabs = [...document.querySelectorAll("[data-channel]")]
@@ -31,32 +32,8 @@ const channels = {
 let request
 let catalog
 
-// Illustration only: swap which agent the sample workspace shows.
-const chips = [...document.querySelectorAll(".agent-chip")]
-chips.forEach((chip) =>
-  chip.addEventListener("click", () => {
-    chips.forEach((other) => other.setAttribute("aria-pressed", String(other === chip)))
-    document.querySelectorAll('[data-slot="name"]').forEach((node) => (node.textContent = chip.dataset.name))
-    document.querySelectorAll('[data-slot="command"]').forEach((node) => (node.textContent = chip.dataset.command))
-    document.querySelectorAll('[data-slot="protocol"]').forEach((node) => (node.textContent = chip.dataset.protocol))
-    document
-      .querySelectorAll('[data-slot="icon"]')
-      .forEach((node) => node.setAttribute("href", `agents.svg#${chip.dataset.agent}`))
-    const stage = document.querySelector(".window")
-    stage.classList.remove("is-switching")
-    void stage.offsetWidth
-    stage.classList.add("is-switching")
-  }),
-)
-
-const os = detectOS()
-if (os) {
-  document.querySelector(`.platform[data-os="${os}"]`)?.classList.add("is-current")
-  document.querySelector("#hero-download").textContent =
-    `Download for ${{ mac: "macOS", win: "Windows", linux: "Linux" }[os]}`
-}
-
 async function load(channel) {
+  history.replaceState(null, "", channel === "early-access" ? "#early-access" : location.pathname + location.search)
   request?.abort()
   const controller = new AbortController()
   request = controller
@@ -116,7 +93,10 @@ async function load(channel) {
       const link = document.createElement("a")
       link.className = "download"
       link.href = asset.browser_download_url
-      link.setAttribute("aria-label", `Download ${config.label} for ${label}${asset.size ? `, ${size(asset.size)}` : ""}`)
+      link.setAttribute(
+        "aria-label",
+        `Download ${config.label} for ${label}${asset.size ? `, ${size(asset.size)}` : ""}`,
+      )
       link.append(
         Object.assign(document.createElement("span"), { className: "download-label", textContent: label }),
         Object.assign(document.createElement("span"), {
@@ -138,13 +118,18 @@ async function load(channel) {
       link.className = "download download-fallback"
       link.href = releasesPage
       link.append(
-        Object.assign(document.createElement("span"), { className: "download-label", textContent: "Open GitHub Releases" }),
+        Object.assign(document.createElement("span"), {
+          className: "download-label",
+          textContent: "Open GitHub Releases",
+        }),
       )
       const retry = document.createElement("button")
       retry.type = "button"
       retry.className = "retry"
       retry.textContent = "Try again"
-      retry.addEventListener("click", () => load(tabs.find((tab) => tab.getAttribute("aria-selected") === "true").dataset.channel))
+      retry.addEventListener("click", () =>
+        load(tabs.find((tab) => tab.getAttribute("aria-selected") === "true").dataset.channel),
+      )
       slot.replaceChildren(link, retry)
     })
   } finally {
@@ -170,7 +155,7 @@ tabs.forEach((tab, index) => {
   })
 })
 
-load("production")
+load(location.hash === "#early-access" ? "early-access" : "production")
 
 // Match electron-builder's native Linux arch names too, as the release script does.
 function normalize(name) {
@@ -200,12 +185,4 @@ function message(text) {
 
 function strong(text) {
   return Object.assign(document.createElement("strong"), { textContent: text })
-}
-
-function detectOS() {
-  const platform = `${navigator.userAgentData?.platform ?? ""} ${navigator.platform ?? ""} ${navigator.userAgent}`
-  if (/android|iphone|ipad/i.test(platform)) return
-  if (/mac/i.test(platform)) return "mac"
-  if (/win/i.test(platform)) return "win"
-  if (/linux|x11/i.test(platform)) return "linux"
 }

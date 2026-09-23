@@ -1,0 +1,266 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0a0a0b" media="(prefers-color-scheme: dark)" />
+    <title>FAQ — CodeInk</title>
+    <meta name="description" content="Answers about accounts, privacy, supported agents and installing CodeInk." />
+    <meta name="author" content="Erzen Krasniqi" />
+    <link rel="canonical" href="https://codeink-desktop.vercel.app/faq.html" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="CodeInk" />
+    <meta property="og:url" content="https://codeink-desktop.vercel.app/faq.html" />
+    <meta property="og:title" content="FAQ — CodeInk" />
+    <meta
+      property="og:description"
+      content="Answers about accounts, privacy, supported agents and installing CodeInk."
+    />
+    <meta property="og:image" content="https://codeink-desktop.vercel.app/og.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="icon" href="icon-128.png" />
+    <link rel="apple-touch-icon" href="apple-touch-icon.png" />
+    <link rel="stylesheet" href="style.css" />
+    <script>
+      // Apply a saved theme before first paint so the page never flashes the other one.
+      try {
+        const theme = localStorage.getItem("codeink-site-theme")
+        if (theme === "light" || theme === "dark") document.documentElement.dataset.theme = theme
+      } catch {}
+      document.documentElement.classList.add("js")
+    </script>
+    <script type="module" src="site.js"></script>
+  </head>
+  <body>
+    <a class="skip" href="#main">Skip to content</a>
+    <header class="site-header">
+      <div class="wrap header-inner">
+        <a class="brand" href="index.html" aria-label="CodeInk home">
+          <img src="icon-128.png" width="26" height="26" alt="" />
+          <span>CodeInk</span>
+        </a>
+        <nav class="nav" aria-label="Main">
+          <a href="features.html">Features</a>
+          <a href="agents.html">Agents</a>
+          <a href="faq.html" aria-current="page">FAQ</a>
+          <a href="https://github.com/ErzenXz/CodeInk">GitHub</a>
+          <a class="nav-cta" href="download.html">Download</a>
+        </nav>
+        <details class="menu">
+          <summary aria-label="Menu"><span></span></summary>
+          <nav class="menu-panel" aria-label="Main">
+            <a href="index.html">Home</a>
+            <a href="features.html">Features</a>
+            <a href="agents.html">Agents</a>
+            <a href="faq.html" aria-current="page">FAQ</a>
+            <a href="download.html">Download</a>
+            <a href="https://github.com/ErzenXz/CodeInk">GitHub</a>
+          </nav>
+        </details>
+      </div>
+    </header>
+
+    <main id="main">
+      <section class="page-hero">
+        <div class="narrow">
+          <p class="eyebrow">FAQ</p>
+          <h1 class="display">Questions.</h1>
+          <p class="lead">Short answers about how CodeInk works, what it stores and how to install it.</p>
+        </div>
+      </section>
+
+      <section class="section-tight" style="padding-top: 0">
+        <div class="narrow">
+          <section class="faq-group">
+            <h2>Basics</h2>
+            <div class="faq">
+              <details>
+                <summary>What is CodeInk?</summary>
+                <div>
+                  <p>
+                    A desktop app that gives the coding agent CLIs you already use one shared window: projects,
+                    sessions, the agent’s replies and steps, your changes and a terminal.
+                  </p>
+                </div>
+              </details>
+              <details>
+                <summary>Do I need an account?</summary>
+                <div>
+                  <p>
+                    No. There’s no CodeInk account. Each agent keeps its own sign-in and plan, exactly as it does in the
+                    terminal.
+                  </p>
+                </div>
+              </details>
+              <details>
+                <summary>Which agents work?</summary>
+                <div>
+                  <p>
+                    Codex, Claude Code, OpenCode and Pi connect natively. 22 more connect through the Agent Client
+                    Protocol, and you can add any other ACP-compatible agent yourself. See
+                    <a href="agents.html">Agents</a>.
+                  </p>
+                </div>
+              </details>
+              <details>
+                <summary>Is it free?</summary>
+                <div>
+                  <p>
+                    Yes. CodeInk is free and open source under the MIT license. The agents themselves may need their own
+                    plan. <a href="https://github.com/ErzenXz/CodeInk">Source on GitHub</a>.
+                  </p>
+                </div>
+              </details>
+              <details>
+                <summary>How is it related to OpenCode?</summary>
+                <div>
+                  <p>
+                    CodeInk is an independent fork of OpenCode. Some upstream features, including cloud sharing and
+                    session forking, aren’t available across all agents yet.
+                  </p>
+                </div>
+              </details>
+            </div>
+          </section>
+          <section class="faq-group">
+            <h2>Privacy</h2>
+            <div class="faq">
+              <details>
+                <summary>Does CodeInk see my credentials?</summary>
+                <div>
+                  <p>
+                    No. Agents sign in through their own CLIs, and CodeInk doesn’t collect those credentials. Each agent
+                    controls its own connection to its model provider.
+                  </p>
+                </div>
+              </details>
+              <details>
+                <summary>Where are my sessions stored?</summary>
+                <div><p>On your computer. CodeInk keeps its session data locally.</p></div>
+              </details>
+            </div>
+          </section>
+          <section class="faq-group">
+            <h2>Install</h2>
+            <div class="faq">
+              <details>
+                <summary>The first builds may be unsigned</summary>
+                <div>
+                  <p>
+                    macOS may block the app the first time you open it. After checking where it came from, open System
+                    Settings, then Privacy &amp; Security, and choose Open Anyway. Windows may show a SmartScreen
+                    notice. On Linux, make the AppImage executable with <code>chmod +x</code>.
+                  </p>
+                </div>
+              </details>
+              <details>
+                <summary>Verify your download</summary>
+                <div>
+                  <p>
+                    Every release includes <code>SHA256SUMS.txt</code>. Compare it with
+                    <code>shasum -a 256 &lt;file&gt;</code> on macOS or Linux, or
+                    <code>Get-FileHash &lt;file&gt;</code> in PowerShell. Only download from
+                    <a href="https://github.com/ErzenXz/CodeInk/releases">ErzenXz/CodeInk releases</a>, or
+                    <a href="https://github.com/ErzenXz/CodeInk">build from source</a>.
+                  </p>
+                </div>
+              </details>
+              <details>
+                <summary>Early Access is a separate app</summary>
+                <div>
+                  <p>
+                    Early Access has the newest changes from development. It installs as CodeInk Early Access next to
+                    the production app and keeps its own session data. Sessions don’t move between the two.
+                  </p>
+                </div>
+              </details>
+              <details>
+                <summary>Set up an agent first</summary>
+                <div>
+                  <p>
+                    Install at least one agent with its own instructions and sign in using its CLI. CodeInk finds the
+                    command on your <code>PATH</code> and uses the account you already have.
+                  </p>
+                </div>
+              </details>
+              <details>
+                <summary>What’s the difference between Production and Early Access?</summary>
+                <div>
+                  <p>
+                    Production gets stable builds from the main branch. Early Access gets the newest changes sooner,
+                    installs as a separate app and keeps its own sessions.
+                  </p>
+                </div>
+              </details>
+            </div>
+          </section>
+        </div>
+      </section>
+
+      <hr class="rule" />
+      <section class="closing center">
+        <div class="wrap reveal">
+          <h2 class="title">Ready when you are.</h2>
+          <p class="lead">Download CodeInk and bring your own agent.</p>
+          <div class="actions">
+            <a class="button button-primary" href="download.html" data-download-label>Download CodeInk</a>
+            <a class="button" href="https://github.com/ErzenXz/CodeInk">View on GitHub</a>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="wrap">
+        <div class="footer-grid">
+          <div>
+            <a class="brand" href="index.html"
+              ><img src="icon-128.png" width="22" height="22" alt="" /><span>CodeInk</span></a
+            >
+            <p>
+              A desktop workspace for the coding agents you already use. Free, open source and an independent fork of
+              OpenCode.
+            </p>
+          </div>
+          <nav class="footer-col" aria-label="Product">
+            <h2>Product</h2>
+            <ul>
+              <li><a href="features.html">Features</a></li>
+              <li><a href="agents.html">Agents</a></li>
+              <li><a href="download.html">Download</a></li>
+            </ul>
+          </nav>
+          <nav class="footer-col" aria-label="Help">
+            <h2>Help</h2>
+            <ul>
+              <li><a href="faq.html">FAQ</a></li>
+              <li><a href="https://github.com/ErzenXz/CodeInk/releases">Releases</a></li>
+              <li><a href="https://github.com/ErzenXz/CodeInk/issues">Report an issue</a></li>
+            </ul>
+          </nav>
+          <nav class="footer-col" aria-label="Project">
+            <h2>Project</h2>
+            <ul>
+              <li><a href="https://github.com/ErzenXz/CodeInk">Source on GitHub</a></li>
+              <li><a href="https://github.com/ErzenXz/CodeInk/blob/main/LICENSE">MIT license</a></li>
+              <li><a href="https://github.com/ErzenXz/CodeInk/blob/main/UPSTREAM.md">Upstream</a></li>
+            </ul>
+          </nav>
+        </div>
+        <div class="footer-bottom">
+          <span
+            >Made by <a class="link" href="https://github.com/ErzenXz">Erzen Krasniqi</a>. Agent names and marks belong
+            to their owners.</span
+          >
+          <div class="theme-switch" role="group" aria-label="Theme">
+            <button type="button" data-theme-choice="system" aria-pressed="true">System</button>
+            <button type="button" data-theme-choice="light" aria-pressed="false">Light</button>
+            <button type="button" data-theme-choice="dark" aria-pressed="false">Dark</button>
+          </div>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

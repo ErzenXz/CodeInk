@@ -51,7 +51,25 @@ export type Session = {
   approvals: Approval[]
 }
 export type Project = { directory: string; name: string; icon?: Record<string, unknown> }
-export type State = { agents: Agent[]; projects: Project[]; sessions: Session[]; selectedAgent: string }
+/** CodeInk's shared vocabulary for how much an agent may do without asking; adapters map it to native modes. */
+export type AgentAccess = "ask" | "edits" | "auto" | "plan" | "full"
+export type AgentRules = { access: AgentAccess; fast: boolean }
+export type AgentRulesReport = AgentRules & {
+  agentID: string
+  name: string
+  /** Access levels this agent's CLI supports, in menu order. */
+  accessOptions: AgentAccess[]
+  /** Model ids that support fast mode, and those that support automatic review. */
+  fastModels: string[]
+  autoModels: string[]
+}
+export type State = {
+  agents: Agent[]
+  projects: Project[]
+  sessions: Session[]
+  selectedAgent: string
+  agentRules?: Record<string, AgentRules>
+}
 export type FileEntry = { name: string; path: string; directory: boolean }
 export type AgentEvent =
   | { type: "text"; id: string; text: string; replace?: boolean }
@@ -71,4 +89,60 @@ export type SendInput = {
   model: string
   variant?: string
   text: string
+}
+
+export type AgentExtension = {
+  id: string
+  agentID: string
+  kind: "skill" | "plugin" | "mcp"
+  name: string
+  description?: string
+  source?: string
+  version?: string
+  path?: string
+  enabled?: boolean
+  /** Whether CodeInk can flip `enabled` through the agent's own API or CLI. */
+  toggleable: boolean
+  status?: string
+  tools?: number
+}
+export type AgentExtensionReport = { agentID: string; name: string; extensions: AgentExtension[]; error?: string }
+export type AgentLimitWindow = {
+  id: string
+  kind: "session" | "weekly" | "other"
+  usedPercent: number
+  resetsAt?: number
+  /** Model or surface a scoped limit applies to, as the agent names it. */
+  label?: string
+  warning?: boolean
+}
+export type AgentUsageTotals = {
+  sessions: number
+  messages: number
+  input: number
+  output: number
+  cacheRead: number
+  cacheWrite: number
+  cost?: number
+  lastUsed?: number
+}
+export type AgentUsageReport = {
+  agentID: string
+  name: string
+  installed: boolean
+  plan?: string
+  windows: AgentLimitWindow[]
+  /** "live" comes from the agent's API; "cache" from the agent's own local usage cache. */
+  source?: "live" | "cache"
+  fetchedAt?: number
+  error?: string
+  totals: AgentUsageTotals
+}
+export type AgentInstructions = {
+  agentID: string
+  name: string
+  installed: boolean
+  path: string
+  content: string
+  exists: boolean
 }

@@ -1,4 +1,4 @@
-import type { Answer } from "../../shared/types"
+import type { AgentRules, Answer } from "../../shared/types"
 import { t } from "../../shared/i18n"
 import { AgentProcess } from "./process"
 import { codexUsage } from "./usage"
@@ -90,12 +90,14 @@ export function codex(options: AdapterOptions): Adapter {
   const initialize = async () => {
     await rpc("initialize", { clientInfo: { name: "codeink", title: "CodeInk", version: "0.1.0" } })
     proc.send({ method: "initialized", params: {} })
+    const access = codexAccess(options.rules())
     const response = await rpc(thread ? "thread/resume" : "thread/start", {
       ...(thread ? { threadId: thread } : {}),
       cwd: options.directory,
       ...(options.model ? { model: options.model } : {}),
-      // Keep approvals explicit; never request a sandbox bypass.
-      approvalPolicy: "on-request",
+      approvalPolicy: access.approvalPolicy,
+      approvalsReviewer: access.approvalsReviewer,
+      sandbox: access.sandbox,
     })
     if (response.model) options.emit({ type: "usage", id: "model", usage: { model: string(response.model) } })
     thread = string(object(response.thread).id)
@@ -105,13 +107,23 @@ export function codex(options: AdapterOptions): Adapter {
   return {
     async prompt(text) {
       await (ready ??= initialize())
+      const rules = options.rules()
+      const access = codexAccess(rules)
+      // Codex takes access and speed per turn, so rule changes apply without restarting the thread.
       const response = await rpc("turn/start", {
         threadId: thread,
         input: [{ type: "text", text }],
         ...(options.model ? { model: options.model } : {}),
         ...(options.variant ? { effort: options.variant } : {}),
+        approvalPolicy: access.approvalPolicy,
+        approvalsReviewer: access.approvalsReviewer,
+        sandboxPolicy: access.sandboxPolicy,
+        serviceTierForTurn: rules.fast ? "priority" : "default",
       })
       turn = string(object(response.turn).id)
+    },
+    setRules() {
+      return true
     },
     async stop() {
       if (thread && turn) await rpc("turn/interrupt", { threadId: thread, turnId: turn })
@@ -134,5 +146,28 @@ export function codex(options: AdapterOptions): Adapter {
       requests.delete(id)
     },
     dispose: () => proc.dispose(),
+  }
+}
+
+function codexAccess(rules: AgentRules) {
+  if (rules.access === "full")
+    return {
+      approvalPolicy: "never",
+      approvalsReviewer: "user",
+      sandbox: "danger-full-access",
+      sandboxPolicy: { type: "dangerFullAccess" },
+    }
+  if (rules.access === "plan")
+    return {
+      approvalPolicy: "on-request",
+      approvalsReviewer: "user",
+      sandbox: "read-only",
+      sandboxPolicy: { type: "readOnly" },
+    }
+  return {
+    approvalPolicy: "on-request",
+    approvalsReviewer: rules.access === "auto" ? "auto_review" : "user",
+    sandbox: "workspace-write",
+    sandboxPolicy: { type: "workspaceWrite" },
   }
 }

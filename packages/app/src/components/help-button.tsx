@@ -26,13 +26,13 @@ export function TabsInfoPopup() {
     <Drawer open={drawerOpen()} onOpenChange={setDrawerOpen} side={rtl() ? "left" : "right"}>
       <Show when={settings.general.shouldDisplayTabsToast()}>
         <div
-          class="fixed bottom-5 end-5 z-50 h-[240px] w-[192px] rounded-[8px] bg-v2-background-bg-base p-1 shadow-[var(--v2-elevation-floating)]"
+          class="fixed bottom-5 end-5 z-50 h-[240px] w-[192px] rounded-xl glass p-1 shadow-[var(--v2-elevation-floating)]"
           aria-label={language.t("help.tabs.toast.ariaLabel")}
         >
           <button
             type="button"
             aria-label={language.t("help.tabs.toast.dismiss")}
-            class="absolute top-3 end-3 z-10 size-5 flex items-center justify-center rounded-[4px] bg-[rgba(0,0,0,0.4)]"
+            class="absolute top-3 end-3 z-10 size-5 flex items-center justify-center rounded-sm bg-[rgba(0,0,0,0.4)]"
             onClick={settings.general.dismissTabsToast}
           >
             <svg
@@ -48,7 +48,7 @@ export function TabsInfoPopup() {
           </button>
           <button
             type="button"
-            class="relative block h-[232px] w-[184px] cursor-pointer overflow-hidden rounded-[4px] text-start"
+            class="relative block h-[232px] w-[184px] cursor-pointer overflow-hidden rounded-sm text-start"
             onClick={() => {
               settings.general.dismissTabsToast()
               setDrawerOpen(true)
@@ -128,11 +128,11 @@ export function TabsInfoPopup() {
           </p>
           <div class="flex w-full flex-1 flex-col gap-4 text-[13px] font-[440] leading-5 tracking-[-0.04px] text-v2-text-text-base">
             <p>{language.t("help.tabs.introduction")}</p>
-            <img src={tabsImage} alt="" class="aspect-video w-full rounded-[6px] object-cover" />
+            <img src={tabsImage} alt="" class="aspect-video w-full rounded-md object-cover" />
             <p>{language.t("help.tabs.sessions")}</p>
             <p>{language.t("help.tabs.organize")}</p>
             <p>{language.t("help.tabs.home")}</p>
-            <img src={homeImage} alt="" class="aspect-video w-full rounded-[6px] object-cover" />
+            <img src={homeImage} alt="" class="aspect-video w-full rounded-md object-cover" />
             <p>{language.t("help.tabs.persistence")}</p>
             <p>{language.t("help.tabs.worktrees")}</p>
           </div>

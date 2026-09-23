@@ -40,11 +40,13 @@
   pointer-events: auto;
   transition: all 150ms ease-out;
 
-  border-radius: var(--radius-lg);
-  border: 1px solid var(--border-weak-base);
-  background: var(--surface-float-base);
+  border-radius: var(--radius-xl);
+  border: none;
+  background: color-mix(in srgb, var(--surface-float-base) 86%, transparent);
+  -webkit-backdrop-filter: var(--v2-glass-filter);
+  backdrop-filter: var(--v2-glass-filter);
   color: var(--text-invert-base);
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--v2-glass-shadow-floating);
 
   [data-slot="toast-inner"] {
     display: flex;

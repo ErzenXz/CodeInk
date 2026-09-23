@@ -41,7 +41,7 @@ export function FileSearchBar(props: {
         <div class="flex items-center">
           <button
             type="button"
-            class="size-6 grid place-items-center rounded text-text-weak hover:bg-surface-base-hover hover:text-text-strong disabled:opacity-40 disabled:pointer-events-none"
+            class="size-6 grid place-items-center rounded-sm text-text-weak hover:bg-surface-base-hover hover:text-text-strong disabled:opacity-40 disabled:pointer-events-none"
             disabled={props.count() === 0}
             aria-label={i18n.t("ui.fileSearch.previousMatch")}
             onClick={props.onPrev}
@@ -50,7 +50,7 @@ export function FileSearchBar(props: {
           </button>
           <button
             type="button"
-            class="size-6 grid place-items-center rounded text-text-weak hover:bg-surface-base-hover hover:text-text-strong disabled:opacity-40 disabled:pointer-events-none"
+            class="size-6 grid place-items-center rounded-sm text-text-weak hover:bg-surface-base-hover hover:text-text-strong disabled:opacity-40 disabled:pointer-events-none"
             disabled={props.count() === 0}
             aria-label={i18n.t("ui.fileSearch.nextMatch")}
             onClick={props.onNext}
@@ -60,7 +60,7 @@ export function FileSearchBar(props: {
         </div>
         <button
           type="button"
-          class="size-6 grid place-items-center rounded text-text-weak hover:bg-surface-base-hover hover:text-text-strong"
+          class="size-6 grid place-items-center rounded-sm text-text-weak hover:bg-surface-base-hover hover:text-text-strong"
           aria-label={i18n.t("ui.fileSearch.close")}
           onClick={props.onClose}
         >

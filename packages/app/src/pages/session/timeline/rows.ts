@@ -1,12 +1,15 @@
 import { parseCommentNote, readCommentMetadata } from "@/utils/comment-note"
 import type { SessionMessageInfo } from "@opencode-ai/client/promise"
 import { AssistantMessage, Part, SessionStatus, UserMessage } from "@codeink/sdk/v2"
-import { groupParts, renderable, type PartGroup } from "@codeink/session-ui/message-part"
+import { groupParts, isGroupedTool, renderable, type PartGroup } from "@codeink/session-ui/message-part"
 import { TimelineRow, type SummaryDiff } from "./timeline-row"
 import { uniqueSummaryDiffs } from "./summary-diffs"
 import { compareMessages } from "@/utils/session-message"
 
 export { TimelineRow, type SummaryDiff } from "./timeline-row"
+
+// Two or more back-to-back tool calls fold into one summary row; a lone call keeps its own row.
+const toolRuns = { tool: isGroupedTool, min: 2 }
 
 export type TimelineRowMap = {
   TurnGap: { userMessageID: string }
@@ -26,6 +29,7 @@ export type TimelineRowMap = {
     group: PartGroup
     previousAssistantPart: boolean
   }
+  WorkSummary: { userMessageID: string; groups: PartGroup[] }
   Thinking: { userMessageID: string; reasoningHeading?: string }
   Retry: { userMessageID: string }
   DiffSummary: { userMessageID: string; diffs: SummaryDiff[] }
@@ -125,24 +129,44 @@ export namespace Timeline {
         .filter((part) => renderable(part, showReasoning))
         .map((part) => ({ messageID: message.id, messageIndex, part })),
     )
+    // Once a turn settles with a closing answer, every step before that answer folds under "Worked for …".
+    // Turns that end on a tool call, an error or an interruption stay unfolded so the last step stays visible.
+    const settled = !(isActive && status !== "idle") && !interrupted && !error
+    const answerStart = assistantPartRefs.findLastIndex((ref) => ref.part.type !== "text") + 1
+    const answered = answerStart > 0 && answerStart < assistantPartRefs.length
+    // A single step (such as a user-run shell command) reads better as its own row than behind a fold.
+    const workRefs =
+      settled && answered && answerStart > 1 && assistantPartRefs.some((ref) => ref.part.type === "tool")
+        ? answerStart
+        : 0
     const assistantItems =
-      interrupted && !compaction
+      workRefs > 0
         ? [
-            ...groupParts(assistantPartRefs.filter((ref) => ref.messageIndex <= interruptedMessageIndex)).map(
-              (group) => ({
-                type: "part" as const,
-                group,
-              }),
-            ),
-            { type: "interrupted" as const },
-            ...groupParts(assistantPartRefs.filter((ref) => ref.messageIndex > interruptedMessageIndex)).map(
-              (group) => ({
-                type: "part" as const,
-                group,
-              }),
-            ),
+            { type: "work" as const, groups: groupParts(assistantPartRefs.slice(0, workRefs), toolRuns) },
+            ...groupParts(assistantPartRefs.slice(workRefs), toolRuns).map((group) => ({
+              type: "part" as const,
+              group,
+            })),
           ]
-        : groupParts(assistantPartRefs).map((group) => ({ type: "part" as const, group }))
+        : interrupted && !compaction
+          ? [
+              ...groupParts(
+                assistantPartRefs.filter((ref) => ref.messageIndex <= interruptedMessageIndex),
+                toolRuns,
+              ).map((group) => ({
+                type: "part" as const,
+                group,
+              })),
+              { type: "interrupted" as const },
+              ...groupParts(
+                assistantPartRefs.filter((ref) => ref.messageIndex > interruptedMessageIndex),
+                toolRuns,
+              ).map((group) => ({
+                type: "part" as const,
+                group,
+              })),
+            ]
+          : groupParts(assistantPartRefs, toolRuns).map((group) => ({ type: "part" as const, group }))
     if (previousUserMessage) rows.push(new TimelineRow.TurnGap({ userMessageID: userMessage.id }))
 
     if (comments.length > 0 && !inlineComments)
@@ -170,6 +194,11 @@ export namespace Timeline {
 
     let assistantGroupIndex = 0
     assistantItems.forEach((item) => {
+      if (item.type === "work") {
+        rows.push(new TimelineRow.WorkSummary({ userMessageID: userMessage.id, groups: item.groups }))
+        assistantGroupIndex += 1
+        return
+      }
       if (item.type === "interrupted") {
         rows.push(
           new TimelineRow.TurnDivider({

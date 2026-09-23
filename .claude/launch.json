@@ -1,0 +1,44 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "opencode-server",
+      "runtimeExecutable": "opencode",
+      "runtimeArgs": [
+        "serve",
+        "--port",
+        "4096",
+        "--cors",
+        "http://localhost:3100"
+      ],
+      "port": 4096
+    },
+    {
+      "name": "app-web",
+      "runtimeExecutable": "bun",
+      "runtimeArgs": [
+        "run",
+        "--cwd",
+        "packages/app",
+        "dev",
+        "--",
+        "--port",
+        "3100",
+        "--strictPort"
+      ],
+      "port": 3100
+    },
+    {
+      "name": "website",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "4321",
+        "--directory",
+        "website"
+      ],
+      "port": 4321
+    }
+  ]
+}

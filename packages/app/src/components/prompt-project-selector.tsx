@@ -292,7 +292,7 @@ export function PromptProjectSelector(props: {
         <DropdownMenu.Content
           ref={contentRef}
           id="prompt-project-menu"
-          class="w-[243px] overflow-hidden rounded-md border-0 bg-v2-background-bg-layer-01 p-0 shadow-[var(--v2-elevation-floating)] focus:outline-none [&[data-closed]]:!animate-none"
+          class="w-[243px] overflow-hidden rounded-lg border-0 glass p-0 shadow-[var(--v2-elevation-floating)] focus:outline-none [&[data-closed]]:!animate-none"
           onOpenAutoFocus={(event) => event.preventDefault()}
           onPointerDownOutside={dismiss.preventTriggerRestore}
           onFocusOutside={dismiss.preventTriggerRestore}
@@ -425,7 +425,7 @@ export function PromptProjectSelector(props: {
                   <Icon name="chevron-right" size="small" class="shrink-0 text-v2-icon-icon-muted" />
                 </DropdownMenu.SubTrigger>
                 <DropdownMenu.Portal>
-                  <DropdownMenu.SubContent class="min-w-[180px] overflow-hidden rounded-md border-0 bg-v2-background-bg-layer-01 p-0.5 shadow-[var(--v2-elevation-floating)] focus:outline-none">
+                  <DropdownMenu.SubContent class="min-w-[180px] overflow-hidden rounded-lg border-0 glass p-1 shadow-[var(--v2-elevation-floating)] focus:outline-none">
                     <For each={props.controller.servers()}>
                       {(server) => <ServerAction server={server!} onSelect={selectAction} />}
                     </For>

@@ -83,7 +83,7 @@ function Stage(props: { count: number }) {
           data-dock-border-underlay={v2() ? "v2" : "legacy"}
           style={{ position: "relative", "z-index": 70, "margin-top": "-18px" }}
           classList={{
-            "min-h-24 w-full rounded-[12px] px-4 py-3 text-[13px]": true,
+            "min-h-24 w-full rounded-xl px-4 py-3 text-[13px]": true,
             "bg-v2-background-bg-base text-v2-text-text-faint": v2(),
             "text-text-weak": !v2(),
           }}

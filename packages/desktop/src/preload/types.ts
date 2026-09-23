@@ -26,7 +26,7 @@ export type WslServersAPI = WslServersPlatform
 export type UpdaterAPI = {
   subscribe: (cb: (state: UpdaterState) => void) => Promise<() => void>
   check: () => Promise<UpdaterState>
-  install: () => Promise<void>
+  openDownload: () => Promise<void>
 }
 
 export type LinuxDisplayBackend = "wayland" | "auto"
@@ -46,6 +46,22 @@ export type ElectronAPI = {
   killSidecar: () => Promise<void>
   listInstalledAgents: () => Promise<import("../shared/types").AgentStatus[]>
   saveInstalledAgent: (agent: import("../shared/types").Agent) => Promise<import("../shared/types").AgentStatus[]>
+  listAgentExtensions: (refresh?: boolean) => Promise<import("../shared/types").AgentExtensionReport[]>
+  setAgentExtensionEnabled: (input: {
+    agentID: string
+    kind: import("../shared/types").AgentExtension["kind"]
+    id: string
+    path?: string
+    enabled: boolean
+  }) => Promise<void>
+  listAgentRules: () => Promise<import("../shared/types").AgentRulesReport[]>
+  setAgentRules: (
+    agentID: string,
+    rules: import("../shared/types").AgentRules,
+  ) => Promise<import("../shared/types").AgentRulesReport[]>
+  readAgentUsage: (refresh?: boolean) => Promise<import("../shared/types").AgentUsageReport[]>
+  readAgentInstructions: () => Promise<import("../shared/types").AgentInstructions[]>
+  writeAgentInstructions: (agentID: string, content: string) => Promise<void>
   awaitInitialization: () => Promise<ServerReadyData>
   wslServers: WslServersAPI
   updater: UpdaterAPI

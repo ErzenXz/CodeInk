@@ -161,14 +161,13 @@ export default function LegacyLayout(props: ParentProps) {
 
   const updateVersion = () => {
     const state = platform.updater?.state()
-    if (state?.status !== "ready") return
+    if (state?.status !== "available") return
     return state.version
   }
-  const installUpdate = () => void platform.updater?.install()
+  const openUpdateDownload = () => void platform.updater?.openDownload()
   const titlebarUpdate: TitlebarUpdate = {
     version: updateVersion,
-    installing: () => platform.updater?.state().status === "installing",
-    install: installUpdate,
+    openDownload: openUpdateDownload,
   }
 
   const editor = createInlineEditorController()
@@ -1959,7 +1958,7 @@ export default function LegacyLayout(props: ParentProps) {
     return (
       <div
         classList={{
-          "flex flex-col min-h-0 min-w-0 box-border rounded-tl-[12px] px-3": true,
+          "flex flex-col min-h-0 min-w-0 box-border rounded-tl-xl px-3": true,
           "border border-b-0 border-border-weak-base": !merged(),
           "border-l border-t border-border-weaker-base": merged(),
           "bg-background-base": merged() || hover(),
@@ -2251,7 +2250,7 @@ export default function LegacyLayout(props: ParentProps) {
         }
       />
       <Show when={updateVersion() !== undefined}>
-        <UpdateAvailableToast version={updateVersion() ?? ""} install={installUpdate} language={language} />
+        <UpdateAvailableToast version={updateVersion() ?? ""} openDownload={openUpdateDownload} language={language} />
       </Show>
       <div class="flex-1 min-h-0 min-w-0 flex">
         <div class="flex-1 min-h-0 relative">
@@ -2346,7 +2345,7 @@ export default function LegacyLayout(props: ParentProps) {
             >
               <main
                 classList={{
-                  "size-full overflow-x-hidden flex flex-col items-start contain-strict border-t border-border-weak-base bg-background-base xl:border-s xl:rounded-ss-[12px]": true,
+                  "size-full overflow-x-hidden flex flex-col items-start contain-strict border-t border-border-weak-base bg-background-base xl:border-s xl:rounded-ss-xl": true,
                 }}
               >
                 <Show when={!autoselecting.loading} fallback={<div class="size-full" />}>
@@ -2405,7 +2404,7 @@ export default function LegacyLayout(props: ParentProps) {
 
 function UpdateAvailableToast(props: {
   version: string
-  install: () => void
+  openDownload: () => void
   language: ReturnType<typeof useLanguage>
 }) {
   let toastId: number | undefined
@@ -2415,11 +2414,11 @@ function UpdateAvailableToast(props: {
       persistent: true,
       icon: "download",
       title: props.language.t("toast.update.title"),
-      description: props.language.t("toast.update.description", { version: props.version }),
+      description: props.language.t("toast.update.description.downloadPage", { version: props.version }),
       actions: [
         {
-          label: props.language.t("toast.update.action.installRestart"),
-          onClick: props.install,
+          label: props.language.t("toast.update.action.viewDownload"),
+          onClick: props.openDownload,
         },
         {
           label: props.language.t("toast.update.action.notYet"),

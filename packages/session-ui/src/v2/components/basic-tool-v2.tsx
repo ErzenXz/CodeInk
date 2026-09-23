@@ -4,7 +4,7 @@ import { DiffChanges } from "@codeink/ui/v2/diff-changes-v2"
 import { TextShimmerV2 } from "@codeink/ui/v2/text-shimmer-v2"
 import "./basic-tool-v2.css"
 
-function ChevronIcon() {
+export function ChevronIcon() {
   return (
     <svg
       data-slot="basic-tool-v2-chevron"

@@ -1,27 +1,30 @@
-import { createEffect, createMemo, For, Show } from "solid-js"
+import { createEffect, createMemo, createSignal, For, Show } from "solid-js"
 import { createStore } from "solid-js/store"
 import { useNavigate } from "@solidjs/router"
 import { Icon as IconV2 } from "@codeink/ui/v2/icon"
 import { MenuV2 } from "@codeink/ui/v2/menu-v2"
-import { ProjectAvatar } from "@codeink/ui/v2/project-avatar-v2"
-import { SessionProgressIndicatorV2 } from "@codeink/session-ui/v2/session-progress-indicator-v2"
 import { useDialog } from "@codeink/ui/context/dialog"
+import {
+  DragDropProvider,
+  DragDropSensors,
+  SortableProvider,
+  closestCenter,
+  createSortable,
+  type DragEvent,
+} from "@thisbeyond/solid-dnd"
+import type { SessionSidebarControls } from "@/components/session-sidebar-filters"
+import { ConstrainDragXAxis } from "@/utils/solid-dnd"
+import { getRelativeTime } from "@/utils/time"
 import { useGlobal, type ServerCtx } from "@/context/global"
 import { useLanguage } from "@/context/language"
-import { getProjectAvatarVariant, useLayout, type LocalProject } from "@/context/layout"
+import { useLayout, type LocalProject } from "@/context/layout"
 import { ServerConnection, serverName } from "@/context/server"
 import { usePlatform } from "@/context/platform"
 import { useSettings } from "@/context/settings"
 import { tabKey, useTabs, type DraftTab, type SessionTab } from "@/context/tabs"
 import { settingsHref } from "@/components/settings-dialog"
 import { createDraftPromptSession, type PromptSession } from "@/context/prompt-state"
-import {
-  displayName,
-  errorMessage,
-  getProjectAvatarSource,
-  projectForSession,
-  sortedRootSessions,
-} from "@/pages/layout/helpers"
+import { displayName, errorMessage, projectForSession, sortedRootSessions } from "@/pages/layout/helpers"
 import { pathKey } from "@/utils/path-key"
 import { fileManagerApp } from "@/utils/file-manager"
 import { sessionHref } from "@/utils/session-route"
@@ -36,6 +39,7 @@ type SidebarItem = {
   project?: LocalProject
   title: string
   updated: number
+  created: number
   status: Status
   open: boolean
   sessionId?: string
@@ -54,7 +58,12 @@ type SidebarGroup = {
 const chatPageSize = 6
 const projectPageSize = 8
 
-export function SessionSidebar(props: { search: string }) {
+export function SessionSidebar(props: {
+  search: string
+  /** `projects` shows only projects; their chats live in the top tab bar. */
+  mode?: "sessions" | "projects"
+  onControls?: (controls: SessionSidebarControls) => void
+}) {
   const global = useGlobal()
   const tabs = useTabs()
   const layout = useLayout()
@@ -71,10 +80,15 @@ export function SessionSidebar(props: { search: string }) {
   })
   const requested = new Set<string>()
   const resolving = new Set<string>()
+  const defaultLimit = () => settings.general.sidebarChatLimit() || Infinity
+  const projectsOnly = () => props.mode === "projects"
+  // Projects mode always lists every project; its filters apply to the chat list mode only.
+  const groupBy = () => (projectsOnly() ? "project" : settings.general.sidebarGroupBy())
+  const view = () => (projectsOnly() ? "all" : settings.general.sidebarView())
 
   createEffect(() => {
-    settings.general.sidebarGroupBy()
-    settings.general.sidebarView()
+    groupBy()
+    view()
     props.search
     setPaging({ projects: projectPageSize, groups: {}, loading: {} })
   })
@@ -99,7 +113,7 @@ export function SessionSidebar(props: { search: string }) {
       const server = ServerConnection.key(conn)
       const ctx = global.ensureServerCtx(conn)
       const ids = [
-        ...(settings.general.sidebarView() === "activity" ? activeIDs(ctx) : []),
+        ...(view() === "activity" ? activeIDs(ctx) : []),
         ...tabs.store.flatMap((tab) => (tab.type === "session" && tab.server === server ? [tab.sessionId] : [])),
       ]
       ids.forEach((id) => {
@@ -147,6 +161,7 @@ export function SessionSidebar(props: { search: string }) {
         project: project ?? (session ? projectForSession(session, ctx.projects.list()) : projectFor(ctx, directory)),
         title: session?.title ?? info?.title ?? language.t("session.tab.unknown"),
         updated: session?.time.updated ?? session?.time.created ?? 0,
+        created: session?.time.created ?? 0,
         status: statusFor(ctx, id),
         open: openSessions.has(key),
       })
@@ -187,13 +202,21 @@ export function SessionSidebar(props: { search: string }) {
         project: projectFor(ctx, tab.directory),
         title: title || language.t("sidebar.sessions.newChat"),
         updated: 0,
+        created: 0,
         status: "idle",
         open: true,
         draft: tab,
         blankDraft: prompt.ready() && !prompt.dirty() && prompt.context.items().length === 0,
       })
     })
-    return [...result.values()].sort((a, b) => b.updated - a.updated)
+    const sort = settings.general.sidebarSort()
+    return [...result.values()].sort((a, b) =>
+      sort === "title"
+        ? a.title.localeCompare(b.title)
+        : sort === "created"
+          ? b.created - a.created
+          : b.updated - a.updated,
+    )
   })
 
   const visibleItems = createMemo(() => {
@@ -211,7 +234,10 @@ export function SessionSidebar(props: { search: string }) {
     }
     return list.filter(
       (item) =>
-        (settings.general.sidebarView() !== "activity" || (!!item.sessionId && item.status !== "idle")) &&
+        // Drafts stay off the list; a chat appears once its first message creates the session.
+        !item.draft &&
+        (view() !== "activity" || (!!item.sessionId && item.status !== "idle")) &&
+        (view() !== "attention" || item.status === "attention") &&
         (!item.blankDraft || blank.get(`${item.server}\n${pathKey(item.directory)}`) === item.key) &&
         (!query ||
           item.title.toLowerCase().includes(query) ||
@@ -220,9 +246,9 @@ export function SessionSidebar(props: { search: string }) {
   })
 
   const groups = createMemo(() => {
-    const by = settings.general.sidebarGroupBy()
+    const by = groupBy()
     const result = new Map<string, SidebarGroup>()
-    if (by === "project" && settings.general.sidebarView() === "all" && !props.search.trim()) {
+    if (by === "project" && view() === "all" && !props.search.trim()) {
       sources()
         .filter((source) => source.directory === source.project.worktree)
         .forEach((source) => {
@@ -361,15 +387,58 @@ export function SessionSidebar(props: { search: string }) {
     )
   }
 
+  const focusKey = (server: ServerConnection.Key, worktree: string) => `${server}\n${pathKey(worktree)}`
+  /** Projects mode: the project whose chats fill the top tab row. */
+  const focused = (group: SidebarGroup) =>
+    !!group.server && !!group.projectInfo && tabs.projectFocus() === focusKey(group.server, group.projectInfo.worktree)
+  const focusProject = (group: SidebarGroup) => {
+    if (!group.server || !group.projectInfo) return
+    tabs.setProjectFocus(focusKey(group.server, group.projectInfo.worktree))
+    const inProject = (item: SidebarItem) =>
+      item.server === group.server &&
+      !!item.project &&
+      pathKey(item.project.worktree) === pathKey(group.projectInfo!.worktree)
+    // Prefer a chat already open in the tab row, then the project's latest chat, then a fresh draft.
+    const tab = items().find((item) => item.open && item.sessionId && inProject(item))
+    if (tab?.sessionId) return tabs.select(tabs.addSessionTab({ server: tab.server, sessionId: tab.sessionId }))
+    const recent = group.items.find((item) => item.sessionId)
+    if (recent) return open(recent)
+    newProjectChat(group)
+  }
+
+  const canDrag = () => groupBy() === "project" && view() === "all" && !props.search.trim()
+  const dropTarget = (event: DragEvent) => {
+    const from = groups().find((group) => group.key === String(event.draggable?.id))
+    const to = groups().find((group) => group.key === String(event.droppable?.id))
+    if (!from?.projectInfo || !to?.projectInfo || !from.server || from === to || from.server !== to.server) return
+    return { from, to }
+  }
+  // Projects differ in height, so reordering on every drag-over would flip back and forth
+  // under the pointer; mark the target while dragging and move once on drop.
+  const [dropKey, setDropKey] = createSignal<string>()
+  const moveGroup = (event: DragEvent) => {
+    setDropKey(undefined)
+    const target = dropTarget(event)
+    if (!target) return
+    const conn = connection(target.from.server!)
+    if (!conn) return
+    const ctx = global.ensureServerCtx(conn)
+    const index = ctx.projects.list().findIndex((project) => project.worktree === target.to.projectInfo!.worktree)
+    if (index !== -1) ctx.projects.move(target.from.projectInfo!.worktree, index)
+  }
+
+  props.onControls?.({
+    expandAll: () => setExpanded(Object.fromEntries(groups().map((group) => [group.key, true]))),
+    collapseAll: () => setExpanded(Object.fromEntries(groups().map((group) => [group.key, false]))),
+  })
+
   const visibleGroups = createMemo(() =>
     groups().filter((group, index) => index < paging.projects || group.items.some((item) => item.open || active(item))),
   )
 
   createEffect(() => {
     const visible =
-      settings.general.sidebarGroupBy() === "project" &&
-      settings.general.sidebarView() === "all" &&
-      !props.search.trim()
+      groupBy() === "project" && view() === "all" && !props.search.trim()
         ? new Set(visibleGroups().map((group) => group.key))
         : undefined
     sources()
@@ -384,7 +453,7 @@ export function SessionSidebar(props: { search: string }) {
 
   const loadableSources = (group: SidebarGroup) =>
     sources().filter((source) => {
-      const by = settings.general.sidebarGroupBy()
+      const by = groupBy()
       if (by === "project" && group.key !== `project:${source.server}:${pathKey(source.project.worktree)}`) return false
       if (by === "workspace" && group.key !== `workspace:${source.server}:${pathKey(source.directory)}`) return false
       if (by === "server" && group.key !== `server:${source.server}`) return false
@@ -393,7 +462,7 @@ export function SessionSidebar(props: { search: string }) {
     })
 
   const showMore = async (group: SidebarGroup) => {
-    const next = (paging.groups[group.key] ?? chatPageSize) + chatPageSize
+    const next = (paging.groups[group.key] ?? defaultLimit()) + chatPageSize
     setPaging("groups", group.key, next)
     if (group.items.length >= next) return
     const pending = loadableSources(group)
@@ -403,7 +472,7 @@ export function SessionSidebar(props: { search: string }) {
       pending.map((source) => {
         const store = source.ctx.sync.child(source.directory, { bootstrap: false })[0]
         return source.ctx.sync.project.loadSessions(source.directory, {
-          limit: Math.max(store.limit + chatPageSize, next),
+          limit: Number.isFinite(next) ? Math.max(store.limit + chatPageSize, next) : store.limit + 50,
         })
       }),
     ).finally(() => setPaging("loading", group.key, false))
@@ -413,7 +482,7 @@ export function SessionSidebar(props: { search: string }) {
     <div class="flex min-h-0 flex-1 flex-col overflow-hidden">
       <div class="min-h-0 flex-1 overflow-y-auto no-scrollbar pb-4" data-slot="session-sidebar-list">
         <Show
-          when={visibleItems().length > 0 || (settings.general.sidebarView() === "all" && !props.search.trim())}
+          when={visibleItems().length > 0 || (view() === "all" && !props.search.trim())}
           fallback={
             <div class="px-3 py-6 text-12-regular text-v2-text-text-weak">
               {props.search.trim()
@@ -422,237 +491,326 @@ export function SessionSidebar(props: { search: string }) {
             </div>
           }
         >
-          <For each={visibleGroups()}>
-            {(group) => {
-              const isOpen = () => expanded[group.key] !== false
-              const limit = () => paging.groups[group.key] ?? chatPageSize
-              const showing = () => group.items.filter((item, index) => index < limit() || item.open || active(item))
-              const more = () => group.items.length > showing().length || loadableSources(group).length > 0
-              const canReveal = () => {
-                const conn = group.server ? connection(group.server) : undefined
-                return platform.platform === "desktop" && !!platform.openPath && !!conn && ServerConnection.local(conn)
-              }
-              return (
-                <section class="mb-3" data-sidebar-group={group.key}>
-                  <Show when={settings.general.sidebarGroupBy() !== "none"}>
-                    <MenuV2.Context>
-                      <MenuV2.Context.Trigger
-                        as="button"
-                        type="button"
-                        data-action="sidebar-group"
-                        class="flex h-7 w-full items-center gap-2 rounded px-1.5 text-left text-12-medium text-v2-text-text-muted hover:bg-v2-background-bg-layer-03"
-                        aria-expanded={isOpen()}
-                        onClick={() => setExpanded(group.key, !isOpen())}
-                      >
-                        <Show when={group.project}>
-                          <ProjectAvatar
-                            fallback={group.label}
-                            src={getProjectAvatarSource(group.projectInfo?.id, group.projectInfo?.icon)}
-                            variant={getProjectAvatarVariant(group.projectInfo?.icon?.color)}
-                          />
-                        </Show>
-                        <span class="min-w-0 flex-1 truncate">{group.label}</span>
-                        <IconV2
-                          name="chevron-down"
-                          size="small"
-                          class={isOpen() ? "shrink-0" : "shrink-0 -rotate-90"}
-                        />
-                      </MenuV2.Context.Trigger>
-                      <MenuV2.Context.Portal>
-                        <MenuV2.Context.Content>
-                          <Show when={group.projectInfo && group.server}>
-                            <MenuV2.Item data-action="sidebar-project-open" onSelect={() => openProject(group)}>
-                              {language.t("command.project.open")}
-                            </MenuV2.Item>
-                            <MenuV2.Item data-action="sidebar-project-new-chat" onSelect={() => newProjectChat(group)}>
-                              {language.t("sidebar.context.project.newChat")}
-                            </MenuV2.Item>
-                            <MenuV2.Item data-action="sidebar-project-edit" onSelect={() => editProject(group)}>
-                              {language.t("dialog.project.edit.title")}
-                            </MenuV2.Item>
-                            <MenuV2.Separator />
-                            <Show when={canReveal()}>
-                              <MenuV2.Item data-action="sidebar-project-reveal" onSelect={() => revealProject(group)}>
-                                {language.t(fileManagerApp(platform.os ?? "unknown").actionLabel)}
-                              </MenuV2.Item>
-                            </Show>
-                            <MenuV2.Item
-                              data-action="sidebar-project-copy-path"
-                              onSelect={() => group.projectInfo && copy(group.projectInfo.worktree)}
-                            >
-                              {language.t("sidebar.context.project.copyPath")}
-                            </MenuV2.Item>
-                            <MenuV2.Separator />
-                            <MenuV2.Item data-action="sidebar-project-close" onSelect={() => closeProject(group)}>
-                              {language.t("sidebar.context.project.close")}
-                            </MenuV2.Item>
-                            <MenuV2.Separator />
-                          </Show>
-                          <MenuV2.Item onSelect={() => setExpanded(group.key, !isOpen())}>
-                            {language.t(isOpen() ? "sidebar.context.group.collapse" : "sidebar.context.group.expand")}
-                          </MenuV2.Item>
-                        </MenuV2.Context.Content>
-                      </MenuV2.Context.Portal>
-                    </MenuV2.Context>
-                  </Show>
-                  <Show when={isOpen()}>
-                    <div class="flex flex-col gap-0.5">
-                      <For each={showing()}>
-                        {(item) => (
+          <DragDropProvider
+            onDragOver={(event) => setDropKey(dropTarget(event)?.to.key)}
+            onDragEnd={moveGroup}
+            collisionDetector={closestCenter}
+          >
+            <Show when={canDrag()}>
+              <DragDropSensors />
+            </Show>
+            <ConstrainDragXAxis />
+            <SortableProvider ids={visibleGroups().map((group) => group.key)}>
+              <For each={visibleGroups()}>
+                {(group) => {
+                  const isOpen = () => expanded[group.key] !== false
+                  const limit = () => paging.groups[group.key] ?? defaultLimit()
+                  const showing = () =>
+                    group.items.filter((item, index) => index < limit() || item.open || active(item))
+                  const more = () => group.items.length > showing().length || loadableSources(group).length > 0
+                  const canReveal = () => {
+                    const conn = group.server ? connection(group.server) : undefined
+                    return (
+                      platform.platform === "desktop" && !!platform.openPath && !!conn && ServerConnection.local(conn)
+                    )
+                  }
+                  const sortable = createSortable(group.key)
+                  const working = () => group.items.some((item) => item.status === "working")
+                  const attention = () => group.items.some((item) => item.status === "attention")
+                  return (
+                    <section
+                      use:sortable
+                      class="mb-2"
+                      classList={{
+                        "opacity-40": sortable.isActiveDraggable,
+                        "rounded-md bg-[var(--v2-glass-surface-hover)] shadow-[inset_0_0_0_1px_var(--v2-border-border-base)]":
+                          dropKey() === group.key,
+                      }}
+                      data-sidebar-group={group.key}
+                    >
+                      <Show when={groupBy() !== "none"}>
+                        <div class="group/project relative">
                           <MenuV2.Context>
                             <MenuV2.Context.Trigger
                               as="button"
                               type="button"
-                              data-action="sidebar-session"
-                              data-session-id={item.sessionId}
-                              data-draft-id={item.draft?.draftID}
-                              aria-current={active(item) ? "page" : undefined}
-                              class="group flex h-7 w-full min-w-0 items-center gap-2 rounded pr-2 text-left text-12-regular text-v2-text-text-base hover:bg-v2-background-bg-layer-03"
+                              data-action="sidebar-group"
+                              class="flex h-8 w-full items-center gap-2.5 rounded-md px-2.5 text-left text-[13px] leading-5 font-[440] text-v2-text-text-base hover:bg-[var(--v2-glass-surface-hover)] transition-colors duration-150"
                               classList={{
-                                "bg-v2-background-bg-layer-03": active(item),
-                                "pl-6": settings.general.sidebarGroupBy() === "project",
-                                "pl-2": settings.general.sidebarGroupBy() !== "project",
+                                "pr-9": !!group.projectInfo,
+                                "!bg-[var(--v2-glass-surface-pressed)]": projectsOnly() && focused(group),
                               }}
-                              onClick={(event) => open(item, event)}
-                              title={item.title}
+                              aria-expanded={projectsOnly() ? undefined : isOpen()}
+                              aria-current={projectsOnly() && focused(group) ? "page" : undefined}
+                              onClick={() => (projectsOnly() ? focusProject(group) : setExpanded(group.key, !isOpen()))}
                             >
-                              <span
-                                class="flex size-4 shrink-0 items-center justify-center"
-                                data-slot="sidebar-session-state"
-                              >
-                                <Show when={item.status === "working"}>
-                                  <SessionProgressIndicatorV2 class="size-4" />
-                                </Show>
-                                <Show when={item.status === "attention"}>
-                                  <span
-                                    class="size-2 rounded-full bg-v2-state-fg-warning"
-                                    aria-label={language.t("sidebar.sessions.group.attention")}
+                              <Show
+                                when={group.project}
+                                fallback={
+                                  <IconV2
+                                    name="chevron-down"
+                                    size="small"
+                                    class={
+                                      isOpen()
+                                        ? "shrink-0 text-v2-icon-icon-muted"
+                                        : "shrink-0 -rotate-90 text-v2-icon-icon-muted"
+                                    }
                                   />
-                                </Show>
-                              </span>
-                              <span class="min-w-0 flex-1 truncate" data-slot="sidebar-session-title">
-                                {item.title}
-                              </span>
+                                }
+                              >
+                                <IconV2
+                                  name={isOpen() ? "folder-open" : "folder"}
+                                  size="normal"
+                                  class="shrink-0 text-v2-icon-icon-base"
+                                />
+                              </Show>
+                              <span class="min-w-0 flex-1 truncate">{group.label}</span>
+                              <Show when={projectsOnly() && (working() || attention())}>
+                                <span class="flex size-4 shrink-0 items-center justify-center transition-opacity group-hover/project:opacity-0">
+                                  <Show
+                                    when={working()}
+                                    fallback={<span class="size-2 rounded-full bg-v2-state-fg-warning" />}
+                                  >
+                                    <WorkingSpinner label={language.t("sidebar.sessions.group.working")} />
+                                  </Show>
+                                </span>
+                              </Show>
                             </MenuV2.Context.Trigger>
                             <MenuV2.Context.Portal>
                               <MenuV2.Context.Content>
-                                <MenuV2.Item data-action="sidebar-session-open" onSelect={() => open(item)}>
-                                  {language.t(
-                                    item.draft ? "sidebar.context.session.openDraft" : "sidebar.context.session.open",
-                                  )}
-                                </MenuV2.Item>
-                                <Show when={item.sessionId && !item.open}>
-                                  <MenuV2.Item
-                                    data-action="sidebar-session-open-background"
-                                    onSelect={() =>
-                                      item.sessionId &&
-                                      tabs.addSessionTab({ server: item.server, sessionId: item.sessionId })
-                                    }
-                                  >
-                                    {language.t("sidebar.context.session.openBackground")}
+                                <Show when={group.projectInfo && group.server}>
+                                  <MenuV2.Item data-action="sidebar-project-open" onSelect={() => openProject(group)}>
+                                    {language.t("command.project.open")}
                                   </MenuV2.Item>
-                                </Show>
-                                <Show when={item.directory}>
                                   <MenuV2.Item
-                                    data-action="sidebar-session-new-chat"
-                                    onSelect={() =>
-                                      void tabs.newDraft({
-                                        server: item.server,
-                                        directory: item.project?.worktree ?? item.directory,
-                                      })
-                                    }
+                                    data-action="sidebar-project-new-chat"
+                                    onSelect={() => newProjectChat(group)}
                                   >
-                                    {language.t("sidebar.context.session.newChat")}
+                                    {language.t("sidebar.context.project.newChat")}
                                   </MenuV2.Item>
-                                </Show>
-                                <Show when={item.sessionId}>
+                                  <MenuV2.Item data-action="sidebar-project-edit" onSelect={() => editProject(group)}>
+                                    {language.t("dialog.project.edit.title")}
+                                  </MenuV2.Item>
                                   <MenuV2.Separator />
+                                  <Show when={canReveal()}>
+                                    <MenuV2.Item
+                                      data-action="sidebar-project-reveal"
+                                      onSelect={() => revealProject(group)}
+                                    >
+                                      {language.t(fileManagerApp(platform.os ?? "unknown").actionLabel)}
+                                    </MenuV2.Item>
+                                  </Show>
                                   <MenuV2.Item
-                                    data-action="sidebar-session-rename"
-                                    onSelect={() => renameSession(item)}
-                                  >
-                                    {language.t("common.rename")}
-                                  </MenuV2.Item>
-                                  <MenuV2.Item
-                                    data-action="sidebar-session-copy-link"
-                                    onSelect={() =>
-                                      item.sessionId &&
-                                      copy(
-                                        new URL(sessionHref(item.server, item.sessionId), window.location.origin).href,
-                                      )
-                                    }
-                                  >
-                                    {language.t("sidebar.context.session.copyLink")}
-                                  </MenuV2.Item>
-                                  <MenuV2.Item
-                                    data-action="sidebar-session-copy-id"
-                                    onSelect={() => item.sessionId && copy(item.sessionId)}
-                                  >
-                                    {language.t("sidebar.context.session.copyID")}
-                                  </MenuV2.Item>
-                                </Show>
-                                <Show when={item.directory}>
-                                  <MenuV2.Item
-                                    data-action="sidebar-session-copy-path"
-                                    onSelect={() => copy(item.directory)}
+                                    data-action="sidebar-project-copy-path"
+                                    onSelect={() => group.projectInfo && copy(group.projectInfo.worktree)}
                                   >
                                     {language.t("sidebar.context.project.copyPath")}
                                   </MenuV2.Item>
-                                </Show>
-                                <Show when={item.sessionId && item.open}>
                                   <MenuV2.Separator />
-                                  <MenuV2.Item
-                                    data-action="sidebar-session-close-tab"
-                                    onSelect={() => closeSessionTab(item)}
-                                  >
-                                    {language.t("common.closeTab")}
+                                  <MenuV2.Item data-action="sidebar-project-close" onSelect={() => closeProject(group)}>
+                                    {language.t("sidebar.context.project.close")}
                                   </MenuV2.Item>
+                                  <MenuV2.Separator />
                                 </Show>
+                                <MenuV2.Item onSelect={() => setExpanded(group.key, !isOpen())}>
+                                  {language.t(
+                                    isOpen() ? "sidebar.context.group.collapse" : "sidebar.context.group.expand",
+                                  )}
+                                </MenuV2.Item>
                               </MenuV2.Context.Content>
                             </MenuV2.Context.Portal>
                           </MenuV2.Context>
-                        )}
-                      </For>
-                      <Show when={more()}>
-                        <button
-                          type="button"
-                          data-action="sidebar-group-more"
-                          class="h-7 px-3 text-left text-12-regular text-v2-text-text-weak hover:text-v2-text-text-base"
-                          disabled={paging.loading[group.key]}
-                          aria-busy={paging.loading[group.key] || undefined}
-                          onClick={() => void showMore(group)}
-                        >
-                          {language.t("sidebar.sessions.showMore")}
-                        </button>
+                          <Show when={group.projectInfo && group.server}>
+                            <button
+                              type="button"
+                              data-action="sidebar-project-new-chat-inline"
+                              class="absolute right-1 top-1 flex size-6 items-center justify-center rounded-md text-v2-icon-icon-muted opacity-0 transition-opacity hover:bg-[var(--v2-glass-surface-pressed)] hover:text-v2-icon-icon-base focus-visible:opacity-100 group-hover/project:opacity-100"
+                              aria-label={language.t("sidebar.context.project.newChat")}
+                              title={language.t("sidebar.context.project.newChat")}
+                              onClick={() => newProjectChat(group)}
+                            >
+                              <IconV2 name="plus" size="small" />
+                            </button>
+                          </Show>
+                        </div>
                       </Show>
-                      <Show when={!more() && limit() > chatPageSize && group.items.length > chatPageSize}>
-                        <button
-                          type="button"
-                          data-action="sidebar-group-less"
-                          class="h-7 px-3 text-left text-12-regular text-v2-text-text-weak hover:text-v2-text-text-base"
-                          onClick={() => setPaging("groups", group.key, chatPageSize)}
-                        >
-                          {language.t("sidebar.sessions.showLess")}
-                        </button>
+                      <Show when={isOpen() && !projectsOnly()}>
+                        <div class="flex flex-col gap-0.5">
+                          <For each={showing()}>
+                            {(item) => (
+                              <MenuV2.Context>
+                                <MenuV2.Context.Trigger
+                                  as="button"
+                                  type="button"
+                                  data-action="sidebar-session"
+                                  data-session-id={item.sessionId}
+                                  data-draft-id={item.draft?.draftID}
+                                  aria-current={active(item) ? "page" : undefined}
+                                  class="group relative flex h-8 w-full min-w-0 items-center gap-2 rounded-md pr-2.5 text-left text-[13px] leading-5 font-[440] text-v2-text-text-base hover:bg-[var(--v2-glass-surface-hover)] transition-colors duration-150"
+                                  classList={{
+                                    "!bg-[var(--v2-glass-surface-pressed)]": active(item),
+                                    // Align chat titles with the project name, past the folder icon.
+                                    "pl-9": groupBy() === "project",
+                                    "pl-2.5": groupBy() !== "project",
+                                  }}
+                                  onClick={(event) => open(item, event)}
+                                  title={item.title}
+                                >
+                                  <Show when={item.status === "working"}>
+                                    {/* Sits in the indent under the folder icon so titles never shift. */}
+                                    <WorkingSpinner
+                                      class={
+                                        groupBy() === "project"
+                                          ? "absolute left-[11px] top-1/2 -translate-y-1/2"
+                                          : "shrink-0"
+                                      }
+                                      label={language.t("sidebar.sessions.group.working")}
+                                    />
+                                  </Show>
+                                  <span class="min-w-0 flex-1 truncate" data-slot="sidebar-session-title">
+                                    {item.title}
+                                  </span>
+                                  <Show
+                                    when={
+                                      settings.general.sidebarTimestamps() && item.updated > 0 && item.status === "idle"
+                                    }
+                                  >
+                                    <span class="shrink-0 text-[11px] tabular-nums text-v2-text-text-faint">
+                                      {getRelativeTime(new Date(item.updated).toISOString(), language.t)}
+                                    </span>
+                                  </Show>
+                                  <Show when={item.status === "attention"}>
+                                    <span
+                                      class="flex size-4 shrink-0 items-center justify-center"
+                                      data-slot="sidebar-session-attention"
+                                    >
+                                      <span
+                                        class="size-2 rounded-full bg-v2-state-fg-warning"
+                                        aria-label={language.t("sidebar.sessions.group.attention")}
+                                      />
+                                    </span>
+                                  </Show>
+                                </MenuV2.Context.Trigger>
+                                <MenuV2.Context.Portal>
+                                  <MenuV2.Context.Content>
+                                    <MenuV2.Item data-action="sidebar-session-open" onSelect={() => open(item)}>
+                                      {language.t(
+                                        item.draft
+                                          ? "sidebar.context.session.openDraft"
+                                          : "sidebar.context.session.open",
+                                      )}
+                                    </MenuV2.Item>
+                                    <Show when={item.sessionId && !item.open}>
+                                      <MenuV2.Item
+                                        data-action="sidebar-session-open-background"
+                                        onSelect={() =>
+                                          item.sessionId &&
+                                          tabs.addSessionTab({ server: item.server, sessionId: item.sessionId })
+                                        }
+                                      >
+                                        {language.t("sidebar.context.session.openBackground")}
+                                      </MenuV2.Item>
+                                    </Show>
+                                    <Show when={item.directory}>
+                                      <MenuV2.Item
+                                        data-action="sidebar-session-new-chat"
+                                        onSelect={() =>
+                                          void tabs.newDraft({
+                                            server: item.server,
+                                            directory: item.project?.worktree ?? item.directory,
+                                          })
+                                        }
+                                      >
+                                        {language.t("sidebar.context.session.newChat")}
+                                      </MenuV2.Item>
+                                    </Show>
+                                    <Show when={item.sessionId}>
+                                      <MenuV2.Separator />
+                                      <MenuV2.Item
+                                        data-action="sidebar-session-rename"
+                                        onSelect={() => renameSession(item)}
+                                      >
+                                        {language.t("common.rename")}
+                                      </MenuV2.Item>
+                                      <MenuV2.Item
+                                        data-action="sidebar-session-copy-link"
+                                        onSelect={() =>
+                                          item.sessionId &&
+                                          copy(
+                                            new URL(sessionHref(item.server, item.sessionId), window.location.origin)
+                                              .href,
+                                          )
+                                        }
+                                      >
+                                        {language.t("sidebar.context.session.copyLink")}
+                                      </MenuV2.Item>
+                                      <MenuV2.Item
+                                        data-action="sidebar-session-copy-id"
+                                        onSelect={() => item.sessionId && copy(item.sessionId)}
+                                      >
+                                        {language.t("sidebar.context.session.copyID")}
+                                      </MenuV2.Item>
+                                    </Show>
+                                    <Show when={item.directory}>
+                                      <MenuV2.Item
+                                        data-action="sidebar-session-copy-path"
+                                        onSelect={() => copy(item.directory)}
+                                      >
+                                        {language.t("sidebar.context.project.copyPath")}
+                                      </MenuV2.Item>
+                                    </Show>
+                                    <Show when={item.sessionId && item.open}>
+                                      <MenuV2.Separator />
+                                      <MenuV2.Item
+                                        data-action="sidebar-session-close-tab"
+                                        onSelect={() => closeSessionTab(item)}
+                                      >
+                                        {language.t("common.closeTab")}
+                                      </MenuV2.Item>
+                                    </Show>
+                                  </MenuV2.Context.Content>
+                                </MenuV2.Context.Portal>
+                              </MenuV2.Context>
+                            )}
+                          </For>
+                          <Show when={more()}>
+                            <button
+                              type="button"
+                              data-action="sidebar-group-more"
+                              class="h-8 pl-9 pr-3 text-left text-12-regular text-v2-text-text-faint hover:text-v2-text-text-base"
+                              disabled={paging.loading[group.key]}
+                              aria-busy={paging.loading[group.key] || undefined}
+                              onClick={() => void showMore(group)}
+                            >
+                              {language.t("sidebar.sessions.showMore")}
+                            </button>
+                          </Show>
+                          <Show when={!more() && limit() > defaultLimit() && group.items.length > defaultLimit()}>
+                            <button
+                              type="button"
+                              data-action="sidebar-group-less"
+                              class="h-8 pl-9 pr-3 text-left text-12-regular text-v2-text-text-faint hover:text-v2-text-text-base"
+                              onClick={() => setPaging("groups", group.key, defaultLimit())}
+                            >
+                              {language.t("sidebar.sessions.showLess")}
+                            </button>
+                          </Show>
+                        </div>
                       </Show>
-                    </div>
-                  </Show>
-                </section>
-              )
-            }}
-          </For>
+                    </section>
+                  )
+                }}
+              </For>
+            </SortableProvider>
+          </DragDropProvider>
           <Show when={visibleGroups().length < groups().length}>
             <button
               type="button"
               data-action="sidebar-projects-more"
-              class="h-7 px-3 text-left text-12-regular text-v2-text-text-weak hover:text-v2-text-text-base"
+              class="h-8 px-2.5 text-left text-12-regular text-v2-text-text-faint hover:text-v2-text-text-base"
               onClick={() => setPaging("projects", (count) => count + projectPageSize)}
             >
-              {language.t(
-                settings.general.sidebarGroupBy() === "project"
-                  ? "sidebar.projects.showMore"
-                  : "sidebar.groups.showMore",
-              )}
+              {language.t(groupBy() === "project" ? "sidebar.projects.showMore" : "sidebar.groups.showMore")}
             </button>
           </Show>
           <Show
@@ -665,14 +823,10 @@ export function SessionSidebar(props: { search: string }) {
             <button
               type="button"
               data-action="sidebar-projects-less"
-              class="h-7 px-3 text-left text-12-regular text-v2-text-text-weak hover:text-v2-text-text-base"
+              class="h-8 px-2.5 text-left text-12-regular text-v2-text-text-faint hover:text-v2-text-text-base"
               onClick={() => setPaging("projects", projectPageSize)}
             >
-              {language.t(
-                settings.general.sidebarGroupBy() === "project"
-                  ? "sidebar.projects.showLess"
-                  : "sidebar.groups.showLess",
-              )}
+              {language.t(groupBy() === "project" ? "sidebar.projects.showLess" : "sidebar.groups.showLess")}
             </button>
           </Show>
         </Show>
@@ -680,11 +834,11 @@ export function SessionSidebar(props: { search: string }) {
       <button
         type="button"
         data-action="sidebar-settings"
-        class="flex h-8 shrink-0 items-center gap-1.5 border-t border-v2-border-border-muted px-1.5 text-left text-12-medium text-v2-text-text-muted hover:text-v2-text-text-base"
+        class="mt-1 flex h-10 shrink-0 items-center gap-2.5 rounded-md border-t border-v2-border-border-muted px-2.5 text-left text-12-medium text-v2-text-text-muted hover:text-v2-text-text-base"
         classList={{ "text-v2-text-text-base": layout.route().type === "settings" }}
         onClick={() => navigate(settingsHref(layout.route()))}
       >
-        <IconV2 name="settings-gear" size="small" />
+        <IconV2 name="settings-gear" size="normal" />
         {language.t("sidebar.settings")}
       </button>
     </div>
@@ -756,4 +910,19 @@ function groupFor(
       ? { key: "draft", label: t("sidebar.sessions.group.draft"), project: false }
       : { key: "session", label: t("sidebar.sessions.group.session"), project: false }
   return { key: "none", label: "", project: false }
+}
+
+function WorkingSpinner(props: { class?: string; label: string }) {
+  return (
+    <svg
+      data-slot="sidebar-session-state"
+      viewBox="0 0 16 16"
+      role="img"
+      aria-label={props.label}
+      class={`size-3.5 text-v2-icon-icon-base animate-[sidebar-spin_0.8s_linear_infinite] motion-reduce:animate-none ${props.class ?? ""}`}
+    >
+      <circle cx="8" cy="8" r="6" fill="none" stroke="currentColor" stroke-opacity="0.2" stroke-width="2" />
+      <path d="M8 2a6 6 0 0 1 6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+    </svg>
+  )
 }

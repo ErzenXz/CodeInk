@@ -41,7 +41,7 @@ test("shows project sessions and activity in the sidebar, then moves to the top 
   await expect(sidebar.locator('[data-action="sidebar-search-toggle"]')).toBeVisible()
   await expect(sidebar.locator('[data-action="sidebar-filters"]')).toBeVisible()
   await expect(sidebar.locator('[data-sidebar-group^="project:"]')).toBeVisible()
-  await expect(sidebar.locator('[data-sidebar-group^="project:"] [data-component="project-avatar-v2"]')).toBeVisible()
+  await expect(sidebar.locator('[data-sidebar-group^="project:"] [data-action="sidebar-group"]')).toBeVisible()
   await expect(page.locator('[data-slot="titlebar-v2"]').getByRole("button", { name: "Settings" })).toBeHidden()
   await expect(sidebar.locator(`[data-session-id="${fixture.targetID}"]`)).toBeVisible()
   await sidebar.locator('[data-action="sidebar-view"]').click()

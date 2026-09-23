@@ -8,6 +8,8 @@ import { SettingsGeneralV2 } from "./general"
 import { SettingsKeybinds } from "../settings-keybinds"
 import { SettingsProvidersV2 } from "./providers"
 import { SettingsModelsV2 } from "./models"
+import { SettingsUsageV2 } from "./usage"
+import { SettingsInstructionsV2 } from "./instructions"
 import "./settings-v2.css"
 import { SettingsServersV2 } from "./servers"
 import { useTabs } from "@/context/tabs"
@@ -23,6 +25,8 @@ const sections = [
   "servers",
   "providers",
   "models",
+  "usage",
+  "instructions",
 ]
 
 const SettingsPage: Component = () => {
@@ -44,7 +48,7 @@ const SettingsPage: Component = () => {
   const showProviders = () => setTab("providers")
 
   return (
-    <div class="relative size-full overflow-hidden flex flex-col p-2">
+    <div class="relative size-full overflow-hidden flex flex-col p-2 group-data-[shell=sidebar]/shell:p-0">
       <div class="settings-v2-page" aria-label={language.t("sidebar.settings")}>
         <TabsV2
           orientation="vertical"
@@ -100,6 +104,14 @@ const SettingsPage: Component = () => {
                         <Icon name="models" />
                         {language.t("settings.models.title")}
                       </TabsV2.Trigger>
+                      <TabsV2.Trigger value="usage">
+                        <Icon name="chart-bar" />
+                        {language.t("settings.usage.title")}
+                      </TabsV2.Trigger>
+                      <TabsV2.Trigger value="instructions">
+                        <Icon name="pencil-line" />
+                        {language.t("settings.instructions.title")}
+                      </TabsV2.Trigger>
                     </div>
                   </div>
 
@@ -144,6 +156,12 @@ const SettingsPage: Component = () => {
           </TabsV2.Content>
           <TabsV2.Content value="models" class="settings-v2-panel">
             <SettingsModelsV2 />
+          </TabsV2.Content>
+          <TabsV2.Content value="usage" class="settings-v2-panel">
+            <SettingsUsageV2 />
+          </TabsV2.Content>
+          <TabsV2.Content value="instructions" class="settings-v2-panel">
+            <SettingsInstructionsV2 />
           </TabsV2.Content>
         </TabsV2>
       </div>

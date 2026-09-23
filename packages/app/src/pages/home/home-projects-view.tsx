@@ -208,7 +208,7 @@ function HomeServerRow(props: {
     if (props.contextMenuOpen(id)) props.onSetContextMenuOpen(id, false)
   })
   return (
-    <div class="group/server relative flex h-7 min-w-0 items-center rounded-[6px]">
+    <div class="group/server relative flex h-7 min-w-0 items-center rounded-md">
       <HomeProjectNavButton
         type="button"
         class="pr-16 disabled:opacity-60"
@@ -220,7 +220,7 @@ function HomeServerRow(props: {
           data-action="home-server-collapse"
           class={`
             -ml-0.5 -mr-1.5 inline-flex size-5 shrink-0 items-center justify-center
-            rounded-[4px] text-v2-icon-icon-muted
+            rounded-sm text-v2-icon-icon-muted
           `}
           classList={{
             "hover:bg-v2-overlay-simple-overlay-hover": canToggle(),
@@ -255,7 +255,7 @@ function HomeServerRow(props: {
             {(label) => (
               <span
                 class={`
-                  shrink-0 rounded-[3px] border border-v2-border-border-base px-1 py-0.5
+                  shrink-0 rounded-sm border border-v2-border-border-base px-1 py-0.5
                   text-[9px] leading-none text-v2-text-text-muted
                 `}
               >
@@ -473,7 +473,7 @@ function HomeProjectRow(
   return (
     <div
       ref={sortable.ref}
-      class="group/project relative flex h-7 min-w-0 items-center rounded-[6px]"
+      class="group/project relative flex h-7 min-w-0 items-center rounded-md"
       classList={{ "z-10": sortable.isDragSource() }}
       onContextMenu={(event) => {
         event.preventDefault()
@@ -591,7 +591,7 @@ function HomeProjectNavButton(props: JSX.ButtonHTMLAttributes<HTMLButtonElement>
     <button
       {...rest}
       class={`
-        flex h-7 min-w-0 w-full shrink-0 cursor-default items-center gap-2 rounded-[6px] bg-transparent px-1.5 text-left
+        flex h-7 min-w-0 w-full shrink-0 cursor-pointer items-center gap-2 rounded-md bg-transparent px-1.5 text-left
         text-v2-text-text-muted [font-weight:440] transition-[background-color,color,box-shadow] duration-[120ms] ease-in-out
         hover:bg-v2-background-bg-layer-01 hover:text-v2-text-text-base
         data-[selected]:bg-v2-background-bg-layer-03 data-[selected]:text-v2-text-text-base

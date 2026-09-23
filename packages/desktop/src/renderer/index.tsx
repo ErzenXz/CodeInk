@@ -168,6 +168,15 @@ const createPlatform = (windowState: DesktopWindowState): Platform => {
   return {
     platform: "desktop",
     localAgents: { list: window.api.listInstalledAgents, save: window.api.saveInstalledAgent },
+    agentWorkspace: {
+      extensions: window.api.listAgentExtensions,
+      setExtensionEnabled: window.api.setAgentExtensionEnabled,
+      usage: window.api.readAgentUsage,
+      rules: window.api.listAgentRules,
+      setRules: window.api.setAgentRules,
+      instructions: window.api.readAgentInstructions,
+      saveInstructions: window.api.writeAgentInstructions,
+    },
     os,
     version: pkg.version,
     windowID: windowState.id,
@@ -238,7 +247,7 @@ const createPlatform = (windowState: DesktopWindowState): Platform => {
     updater: {
       state: updaterState,
       check: () => window.api.updater.check(),
-      install: () => window.api.updater.install(),
+      openDownload: () => window.api.updater.openDownload(),
     },
 
     exportDebugLogs: () => window.api.exportDebugLogs(),

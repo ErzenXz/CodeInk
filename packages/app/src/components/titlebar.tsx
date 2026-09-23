@@ -36,7 +36,8 @@ import { createMediaQuery } from "@solid-primitives/media"
 import { readSessionTabsRemovedDetail, SESSION_TABS_REMOVED_EVENT } from "@/components/titlebar-session-events"
 import { useGlobal } from "@/context/global"
 import { ServerConnection, useServer } from "@/context/server"
-import { tabKey, useTabs } from "@/context/tabs"
+import { tabKey, useTabs, type Tab } from "@/context/tabs"
+import { pathKey } from "@/utils/path-key"
 import type { PromptSession } from "@/context/prompt"
 import "./titlebar.css"
 import { newTabTooltipKeybind } from "./command-tooltip-keybind"
@@ -50,8 +51,7 @@ const macTrafficLightsBaseWidth = 84
 
 export type TitlebarUpdate = {
   version: () => string | undefined
-  installing: () => boolean
-  install: () => void
+  openDownload: () => void
 }
 
 export function useTitlebarRightMount() {
@@ -136,15 +136,13 @@ export function Titlebar(props: { update?: TitlebarUpdate; debugTools?: { visibl
   const hasProjects = createMemo(() => layout.projects.list().length > 0)
   const nav = createMemo(() => (useV2Titlebar() ? settings.general.showNavigation() : true))
   const updateState = createMemo<TitlebarUpdatePillState>(() => {
-    const installing = props.update?.installing() ?? false
     const version = props.update?.version()
     return {
-      visible: version !== undefined || installing,
-      installing,
+      visible: version !== undefined,
       label: language.t("titlebar.update"),
-      ariaLabel: language.t("toast.update.action.installRestart"),
+      ariaLabel: language.t("toast.update.action.viewDownload"),
       title: version ? language.t("titlebar.updateVersion", { version }) : undefined,
-      onInstall: () => props.update?.install(),
+      onOpenDownload: () => props.update?.openDownload(),
     }
   })
   const v2RightState = createMemo<TitlebarV2RightState>(() => ({
@@ -201,7 +199,7 @@ export function Titlebar(props: { update?: TitlebarUpdate; debugTools?: { visibl
       data-slot={useV2Titlebar() ? "titlebar-v2" : undefined}
       classList={{
         "shrink-0 relative flex flex-row": true,
-        "h-9 bg-v2-background-bg-deep overflow-visible": useV2Titlebar(),
+        "h-9 bg-transparent overflow-visible": useV2Titlebar(),
         "h-10 bg-background-base overflow-hidden": !useV2Titlebar(),
         "order-last": bottom(),
       }}
@@ -401,10 +399,56 @@ export function Titlebar(props: { update?: TitlebarUpdate; debugTools?: { visibl
               ].filter((v) => v !== undefined)
             })
 
+            // Projects mode: the tab row holds only the chats of the project on screen.
+            const projectTabs = createMemo(() => wide() && settings.general.sessionTabPosition() === "projects")
+            const tabProject = (tab: Tab) => {
+              const conn = global.servers.list().find((item) => ServerConnection.key(item) === tab.server)
+              if (!conn) return
+              const ctx = global.ensureServerCtx(conn)
+              const directory =
+                tab.type === "draft"
+                  ? tab.directory
+                  : (tabs.info[tabKey(tab)]?.directory ?? ctx.sync.session.peek(tab.sessionId)?.directory)
+              if (!directory) return
+              const project = ctx.projects
+                .list()
+                .find(
+                  (item) =>
+                    pathKey(item.worktree) === pathKey(directory) ||
+                    item.sandboxes?.some((sandbox) => pathKey(sandbox) === pathKey(directory)),
+                )
+              return `${tab.server}\n${pathKey(project?.worktree ?? directory)}`
+            }
+            // Opening a chat (from the sidebar, Library, or a link) makes its project the current one;
+            // pages without a tab, like Settings, keep the last project.
+            createEffect(() => {
+              const current = currentTab()
+              if (!projectTabs() || !current) return
+              const key = tabProject(current)
+              if (key) tabs.setProjectFocus(key)
+            })
+            const visibleTabs = createMemo(() => {
+              if (!projectTabs()) return tabsStore
+              const current = currentTab()
+              const focus = tabs.projectFocus()
+              // Drafts join the row only while on screen, matching the sidebar, which lists chats once sent.
+              return tabsStore.filter(
+                (tab) =>
+                  (tab.type !== "draft" || tab === current) && (!focus || tab === current || tabProject(tab) === focus),
+              )
+            })
+            const reorderTabs = (keys: string[]) => {
+              if (!projectTabs()) return tabsStoreActions.reorder(keys)
+              // Put the reordered project tabs back into their slots in the full tab order.
+              const moved = new Set(keys)
+              const queue = [...keys]
+              tabsStoreActions.reorder(tabsStore.map((tab) => (moved.has(tabKey(tab)) ? queue.shift()! : tabKey(tab))))
+            }
+
             const [tabsAreOverflowing, setTabsAreOverflowing] = createSignal(false)
             const tabStrip = (vertical: boolean) => (
               <TitlebarTabStrip
-                tabs={tabsStore}
+                tabs={visibleTabs()}
                 currentTab={currentTab}
                 settingsTab={{
                   open: () => settingsPageTab.open,
@@ -424,7 +468,7 @@ export function Titlebar(props: { update?: TitlebarUpdate; debugTools?: { visibl
                   const index = tabsStore.findIndex((item) => tabKey(item) === tabKey(tab))
                   if (index !== -1) tabsStoreActions.closeTab(index)
                 }}
-                onReorder={(keys) => tabsStoreActions.reorder(keys)}
+                onReorder={reorderTabs}
               />
             )
 
@@ -679,11 +723,10 @@ export function Titlebar(props: { update?: TitlebarUpdate; debugTools?: { visibl
 
 type TitlebarUpdatePillState = {
   visible: boolean
-  installing: boolean
   label: string
   ariaLabel: string
   title?: string
-  onInstall: () => void
+  onOpenDownload: () => void
 }
 
 type TitlebarV2RightState = {
@@ -707,28 +750,24 @@ function TitlebarUpdateIconButton(props: { state: TitlebarUpdatePillState }) {
       <button
         type="button"
         class="absolute right-0 top-0 z-10 flex h-5 w-5 items-center justify-end overflow-hidden rounded-full bg-v2-icon-icon-accent/20 text-v2-icon-icon-accent transition-[width,background-color] duration-150 ease-out group-hover:w-[68px] group-hover:bg-[color-mix(in_srgb,var(--v2-icon-icon-accent)_20%,var(--v2-background-bg-deep))] group-focus-within:w-[68px] group-focus-within:bg-[color-mix(in_srgb,var(--v2-icon-icon-accent)_20%,var(--v2-background-bg-deep))] focus-visible:outline-none disabled:opacity-60 motion-reduce:transition-none"
-        onClick={props.state.onInstall}
-        disabled={props.state.installing}
-        aria-busy={props.state.installing}
+        onClick={props.state.onOpenDownload}
         aria-label={props.state.ariaLabel}
       >
         <span class="shrink-0 ml-[8px] mr-px text-[11px] text-v2-text-text-accent [font-weight:530] opacity-0 translate-x-2 motion-safe:transition-all duration-150 ease-out group-hover:opacity-100 group-hover:translate-x-0 group-focus-within:opacity-100 group-focus-within:translate-x-0 motion-reduce:translate-x-0">
           {props.state.label}
         </span>
         <span class="flex size-5 shrink-0 items-center justify-center">
-          <Show
-            when={!props.state.installing}
-            fallback={<span data-slot="titlebar-update-loader" aria-hidden="true" />}
-          >
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
-              <path d="M7 11V3M3.5 7.63128L7 11L10.5 7.63128" stroke="currentColor" />
-            </svg>
-          </Show>
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+            <path d="M7 11V3M3.5 7.63128L7 11L10.5 7.63128" stroke="currentColor" />
+          </svg>
         </span>
       </button>
     </div>
   )
 }
+
+const channelBadge =
+  "flex h-6 items-center gap-1.5 rounded-md bg-[var(--v2-glass-surface-hover)] px-2 text-[11px] font-[530] text-v2-text-text-muted transition-colors duration-150"
 
 function ChannelIndicator(props: { debugTools?: { visible: boolean; toggle: () => void } }) {
   const language = useLanguage()
@@ -738,18 +777,20 @@ function ChannelIndicator(props: { debugTools?: { visible: boolean; toggle: () =
     return (
       <button
         type="button"
-        class="bg-[#B54708] text-white font-medium px-2 rounded-sm uppercase font-mono cursor-pointer"
+        class={`${channelBadge} cursor-pointer hover:bg-[var(--v2-glass-surface-pressed)] hover:text-v2-text-text-base`}
         onClick={props.debugTools.toggle}
         aria-label="Toggle debug tools"
         aria-pressed={props.debugTools.visible}
       >
+        <span class="size-1.5 rounded-full bg-v2-state-fg-warning" />
         {language.t("codeink.channel.earlyAccess")}
       </button>
     )
   }
 
   return (
-    <div class="bg-[#B54708] text-white font-medium px-2 rounded-sm uppercase font-mono">
+    <div class={channelBadge}>
+      <span class="size-1.5 rounded-full bg-v2-state-fg-warning" />
       {language.t("codeink.channel.earlyAccess")}
     </div>
   )

@@ -33,7 +33,7 @@ export function SessionComposerRegion(props: {
       <div
         classList={{
           "w-full px-3 pointer-events-auto": true,
-          "md:max-w-200 md:mx-auto 2xl:max-w-[1000px]": controller.centered(),
+          "md:max-w-[768px] md:mx-auto": controller.centered(),
         }}
       >
         <Show when={controller.state.questionRequest()} keyed>
@@ -145,7 +145,7 @@ export function SessionComposerRegion(props: {
               >
                 <div
                   ref={controller.setPromptRef}
-                  class="w-full rounded-[12px] border border-border-weak-base bg-background-base p-3 text-16-regular text-text-weak"
+                  class="w-full rounded-xl border border-border-weak-base bg-background-base p-3 text-16-regular text-text-weak"
                 >
                   <span>{language.t("session.child.promptDisabled")} </span>
                   <Show when={controller.parentID()}>

@@ -10,7 +10,8 @@
 }
 
 [data-titlebar-tab] {
-  --tab-base: var(--v2-background-bg-deep);
+  /* Idle tabs sit directly on the ambient shell backdrop. */
+  --tab-base: transparent;
   --tab-overlay: transparent;
   background: linear-gradient(var(--tab-overlay), var(--tab-overlay)), var(--tab-base);
 }
@@ -25,6 +26,13 @@
 [data-titlebar-tab]:is([data-state="pressed"], [data-dragging="true"], [data-editing="true"]) {
   --tab-base: var(--v2-background-bg-layer-02);
   --tab-overlay: var(--v2-overlay-simple-overlay-pressed);
+}
+
+/* The active tab reads as a raised glass chip. */
+[data-titlebar-tab][data-active="true"]:not([data-dragging="true"]):not([data-editing="true"]) {
+  --tab-base: var(--v2-background-bg-base);
+  --tab-overlay: transparent;
+  box-shadow: var(--v2-glass-shadow-raised);
 }
 
 [data-titlebar-tab]:is(:hover, [data-state="pressed"]) [data-slot="tab-close"] {

@@ -1,0 +1,272 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0a0a0b" media="(prefers-color-scheme: dark)" />
+    <title>Agents — CodeInk</title>
+    <meta
+      name="description"
+      content="Codex, Claude Code, OpenCode, Pi and 22 ACP agents. CodeInk uses the agent you already installed and signed in to."
+    />
+    <meta name="author" content="Erzen Krasniqi" />
+    <link rel="canonical" href="https://codeink-desktop.vercel.app/agents.html" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="CodeInk" />
+    <meta property="og:url" content="https://codeink-desktop.vercel.app/agents.html" />
+    <meta property="og:title" content="Agents — CodeInk" />
+    <meta
+      property="og:description"
+      content="Codex, Claude Code, OpenCode, Pi and 22 ACP agents. CodeInk uses the agent you already installed and signed in to."
+    />
+    <meta property="og:image" content="https://codeink-desktop.vercel.app/og.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="icon" href="icon-128.png" />
+    <link rel="apple-touch-icon" href="apple-touch-icon.png" />
+    <link rel="stylesheet" href="style.css" />
+    <script>
+      // Apply a saved theme before first paint so the page never flashes the other one.
+      try {
+        const theme = localStorage.getItem("codeink-site-theme")
+        if (theme === "light" || theme === "dark") document.documentElement.dataset.theme = theme
+      } catch {}
+      document.documentElement.classList.add("js")
+    </script>
+    <script type="module" src="site.js"></script>
+  </head>
+  <body>
+    <a class="skip" href="#main">Skip to content</a>
+    <header class="site-header">
+      <div class="wrap header-inner">
+        <a class="brand" href="index.html" aria-label="CodeInk home">
+          <img src="icon-128.png" width="26" height="26" alt="" />
+          <span>CodeInk</span>
+        </a>
+        <nav class="nav" aria-label="Main">
+          <a href="features.html">Features</a>
+          <a href="agents.html" aria-current="page">Agents</a>
+          <a href="faq.html">FAQ</a>
+          <a href="https://github.com/ErzenXz/CodeInk">GitHub</a>
+          <a class="nav-cta" href="download.html">Download</a>
+        </nav>
+        <details class="menu">
+          <summary aria-label="Menu"><span></span></summary>
+          <nav class="menu-panel" aria-label="Main">
+            <a href="index.html">Home</a>
+            <a href="features.html">Features</a>
+            <a href="agents.html" aria-current="page">Agents</a>
+            <a href="faq.html">FAQ</a>
+            <a href="download.html">Download</a>
+            <a href="https://github.com/ErzenXz/CodeInk">GitHub</a>
+          </nav>
+        </details>
+      </div>
+    </header>
+
+    <main id="main">
+      <section class="page-hero">
+        <div class="wrap">
+          <p class="eyebrow">Agents</p>
+          <h1 class="display">Use the agent<br />you already pay for.</h1>
+          <p class="lead">
+            CodeInk finds each agent’s own command on your <code>PATH</code>. It never bundles or downloads an agent,
+            and your plan stays with the agent.
+          </p>
+        </div>
+      </section>
+
+      <section class="section-tight">
+        <div class="wrap">
+          <div class="group reveal">
+            <div class="group-head">
+              <h2 class="subtitle">Native</h2>
+              <p>Built for each agent’s own protocol</p>
+            </div>
+            <ul class="roster roster-native">
+              <li>
+                <svg aria-hidden="true"><use href="agents.svg#codex" /></svg><span class="name">Codex</span
+                ><code>codex</code>
+              </li>
+              <li>
+                <svg aria-hidden="true"><use href="agents.svg#claude" /></svg><span class="name">Claude Code</span
+                ><code>claude</code>
+              </li>
+              <li>
+                <svg aria-hidden="true"><use href="agents.svg#opencode" /></svg><span class="name">OpenCode</span
+                ><code>opencode</code>
+              </li>
+              <li>
+                <svg aria-hidden="true"><use href="agents.svg#pi" /></svg><span class="name">Pi</span><code>pi</code>
+              </li>
+            </ul>
+          </div>
+          <div class="group reveal">
+            <div class="group-head">
+              <h2 class="subtitle">ACP presets</h2>
+              <p>22 agents from the official Agent Client Protocol registry</p>
+            </div>
+            <ul class="roster">
+              <li>
+                <svg aria-hidden="true"><use href="agents.svg#gemini" /></svg><span class="name">Gemini CLI</span
+                ><code>gemini --acp</code>
+              </li>
+              <li>
+                <svg aria-hidden="true"><use href="agents.svg#github-copilot-cli" /></svg
+                ><span class="name">GitHub Copilot</span><code>copilot --acp</code>
+              </li>
+              <li>
+                <svg aria-hidden="true"><use href="agents.svg#cursor" /></svg><span class="name">Cursor</span
+                ><code>cursor-agent acp</code>
+              </li>
+              <li>
+                <svg aria-hidden="true"><use href="agents.svg#cline" /></svg><span class="name">Cline</span
+                ><code>cline --acp</code>
+              </li>
+              <li>
+                <svg aria-hidden="true"><use href="agents.svg#kimi" /></svg><span class="name">Kimi CLI</span
+                ><code>kimi acp</code>
+              </li>
+              <li>
+                <svg aria-hidden="true"><use href="agents.svg#qwen-code" /></svg><span class="name">Qwen Code</span
+                ><code>qwen --acp</code>
+              </li>
+              <li>
+                <svg aria-hidden="true"><use href="agents.svg#goose" /></svg><span class="name">Goose</span
+                ><code>goose acp</code>
+              </li>
+              <li>
+                <svg aria-hidden="true"><use href="agents.svg#mistral-vibe" /></svg
+                ><span class="name">Mistral Vibe</span><code>vibe-acp</code>
+              </li>
+              <li>
+                <svg aria-hidden="true"><use href="agents.svg#auggie" /></svg><span class="name">Auggie</span
+                ><code>auggie --acp</code>
+              </li>
+              <li>
+                <svg aria-hidden="true"><use href="agents.svg#factory-droid" /></svg
+                ><span class="name">Factory Droid</span><code>droid exec --output-format acp-daemon</code>
+              </li>
+              <li>
+                <svg aria-hidden="true"><use href="agents.svg#kilo" /></svg><span class="name">Kilo</span
+                ><code>kilo acp</code>
+              </li>
+              <li>
+                <svg aria-hidden="true"><use href="agents.svg#devin" /></svg><span class="name">Devin</span
+                ><code>devin acp</code>
+              </li>
+              <li>
+                <svg aria-hidden="true"><use href="agents.svg#amp-acp" /></svg><span class="name">Amp</span
+                ><code>amp-acp</code>
+              </li>
+              <li>
+                <svg aria-hidden="true"><use href="agents.svg#qoder" /></svg><span class="name">Qoder</span
+                ><code>qoder --acp</code>
+              </li>
+              <li>
+                <svg aria-hidden="true"><use href="agents.svg#codebuddy-code" /></svg><span class="name">CodeBuddy</span
+                ><code>codebuddy --acp</code>
+              </li>
+              <li>
+                <svg aria-hidden="true"><use href="agents.svg#cortex-code" /></svg><span class="name">Cortex Code</span
+                ><code>cortex acp serve</code>
+              </li>
+              <li>
+                <svg aria-hidden="true"><use href="agents.svg#junie" /></svg><span class="name">Junie</span
+                ><code>junie --acp=true</code>
+              </li>
+              <li>
+                <svg aria-hidden="true"><use href="agents.svg#deepagents" /></svg><span class="name">DeepAgents</span
+                ><code>deepagents-acp</code>
+              </li>
+              <li>
+                <svg aria-hidden="true"><use href="agents.svg#minimax-code" /></svg
+                ><span class="name">MiniMax Code</span><code>mcode acp</code>
+              </li>
+              <li>
+                <svg aria-hidden="true"><use href="agents.svg#grok-build" /></svg><span class="name">Grok Build</span
+                ><code>grok agent stdio</code>
+              </li>
+              <li>
+                <svg aria-hidden="true"><use href="agents.svg#stakpak" /></svg><span class="name">Stakpak</span
+                ><code>stakpak acp</code>
+              </li>
+              <li>
+                <svg aria-hidden="true"><use href="agents.svg#nova" /></svg><span class="name">Nova</span
+                ><code>nova acp</code>
+              </li>
+            </ul>
+            <p class="note">
+              Presets are launch settings, not endorsements. What works depends on the agent you install. Using a
+              different ACP-compatible agent? Add it in CodeInk with its own command and arguments.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <hr class="rule" />
+      <section class="closing center">
+        <div class="wrap reveal">
+          <h2 class="title">Pick one and start.</h2>
+          <p class="lead">Install an agent, sign in with its CLI, then open CodeInk.</p>
+          <div class="actions">
+            <a class="button button-primary" href="download.html" data-download-label>Download CodeInk</a>
+            <a class="button" href="https://github.com/ErzenXz/CodeInk">View on GitHub</a>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="wrap">
+        <div class="footer-grid">
+          <div>
+            <a class="brand" href="index.html"
+              ><img src="icon-128.png" width="22" height="22" alt="" /><span>CodeInk</span></a
+            >
+            <p>
+              A desktop workspace for the coding agents you already use. Free, open source and an independent fork of
+              OpenCode.
+            </p>
+          </div>
+          <nav class="footer-col" aria-label="Product">
+            <h2>Product</h2>
+            <ul>
+              <li><a href="features.html">Features</a></li>
+              <li><a href="agents.html">Agents</a></li>
+              <li><a href="download.html">Download</a></li>
+            </ul>
+          </nav>
+          <nav class="footer-col" aria-label="Help">
+            <h2>Help</h2>
+            <ul>
+              <li><a href="faq.html">FAQ</a></li>
+              <li><a href="https://github.com/ErzenXz/CodeInk/releases">Releases</a></li>
+              <li><a href="https://github.com/ErzenXz/CodeInk/issues">Report an issue</a></li>
+            </ul>
+          </nav>
+          <nav class="footer-col" aria-label="Project">
+            <h2>Project</h2>
+            <ul>
+              <li><a href="https://github.com/ErzenXz/CodeInk">Source on GitHub</a></li>
+              <li><a href="https://github.com/ErzenXz/CodeInk/blob/main/LICENSE">MIT license</a></li>
+              <li><a href="https://github.com/ErzenXz/CodeInk/blob/main/UPSTREAM.md">Upstream</a></li>
+            </ul>
+          </nav>
+        </div>
+        <div class="footer-bottom">
+          <span
+            >Made by <a class="link" href="https://github.com/ErzenXz">Erzen Krasniqi</a>. Agent names and marks belong
+            to their owners.</span
+          >
+          <div class="theme-switch" role="group" aria-label="Theme">
+            <button type="button" data-theme-choice="system" aria-pressed="true">System</button>
+            <button type="button" data-theme-choice="light" aria-pressed="false">Light</button>
+            <button type="button" data-theme-choice="dark" aria-pressed="false">Dark</button>
+          </div>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

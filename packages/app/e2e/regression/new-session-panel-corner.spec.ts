@@ -49,7 +49,7 @@ test("matches the rounded panel corners to the dark new-session background", asy
   await page.goto(`/new-session?draftId=${draftID}`)
   await expectAppVisible(page.locator('[data-component="prompt-input"]'))
   await expect(page.locator("html")).toHaveAttribute("data-color-scheme", "dark")
-  const panel = page.locator('main div[class*="rounded-[10px]"][class*="overflow-hidden"]')
+  const panel = page.locator('main div[class*="rounded-xl"][class*="overflow-hidden"]')
   await expect(panel).toHaveCount(1)
   const box = await panel.boundingBox()
   if (!box) throw new Error("New-session panel bounds are unavailable")
@@ -79,5 +79,9 @@ test("matches the rounded panel corners to the dark new-session background", asy
     },
   )
 
-  expect(corners.every(([red, green, blue, alpha]) => red <= 8 && green <= 8 && blue <= 8 && alpha === 255)).toBe(true)
+  // The shell backdrop carries a faint accent glow, so corners are near-black rather than pure black;
+  // a light fringe from the panel would push every channel well past this bound.
+  expect(corners.every(([red, green, blue, alpha]) => red <= 40 && green <= 40 && blue <= 40 && alpha === 255)).toBe(
+    true,
+  )
 })

@@ -3,342 +3,325 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="color-scheme" content="dark" />
-    <meta name="theme-color" content="#0e0e0f" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0a0a0b" media="(prefers-color-scheme: dark)" />
+    <title>CodeInk — bring your own coding agent</title>
     <meta
       name="description"
-      content="CodeInk is a desktop workspace for the coding agents you already use. Connect Codex, Claude Code, OpenCode, Pi, or one of 22 ACP presets on macOS, Windows, and Linux."
+      content="A calm desktop workspace for Codex, Claude Code and the agent CLIs you already use. Free and open source for macOS, Windows and Linux."
     />
     <meta name="author" content="Erzen Krasniqi" />
+    <link rel="canonical" href="https://codeink-desktop.vercel.app/" />
     <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="CodeInk" />
     <meta property="og:url" content="https://codeink-desktop.vercel.app/" />
     <meta property="og:title" content="CodeInk — bring your own coding agent" />
     <meta
       property="og:description"
-      content="A desktop workspace for the coding agents you install and sign in to yourself. Free and open source."
+      content="A calm desktop workspace for Codex, Claude Code and the agent CLIs you already use. Free and open source for macOS, Windows and Linux."
     />
-    <meta property="og:image" content="https://codeink-desktop.vercel.app/icon.png" />
-    <link rel="canonical" href="https://codeink-desktop.vercel.app/" />
-    <title>CodeInk — bring your own coding agent</title>
-    <link rel="icon" href="icon.png" />
+    <meta property="og:image" content="https://codeink-desktop.vercel.app/og.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="icon" href="icon-128.png" />
+    <link rel="apple-touch-icon" href="apple-touch-icon.png" />
     <link rel="stylesheet" href="style.css" />
-    <script type="module" src="app.js"></script>
+    <script>
+      // Apply a saved theme before first paint so the page never flashes the other one.
+      try {
+        const theme = localStorage.getItem("codeink-site-theme")
+        if (theme === "light" || theme === "dark") document.documentElement.dataset.theme = theme
+      } catch {}
+      document.documentElement.classList.add("js")
+    </script>
+    <script type="module" src="site.js"></script>
   </head>
   <body>
-    <a class="skip" href="#downloads">Skip to downloads</a>
-
+    <a class="skip" href="#main">Skip to content</a>
     <header class="site-header">
       <div class="wrap header-inner">
-        <a class="brand" href="./" aria-label="CodeInk home">
-          <img src="icon.png" width="28" height="28" alt="" />
+        <a class="brand" href="index.html" aria-label="CodeInk home">
+          <img src="icon-128.png" width="26" height="26" alt="" />
           <span>CodeInk</span>
         </a>
         <nav class="nav" aria-label="Main">
-          <a class="nav-link" href="#agents">Agents</a>
-          <a class="nav-link" href="#how">How it connects</a>
-          <a class="nav-link" href="https://github.com/ErzenXz/CodeInk">GitHub</a>
-          <a class="nav-cta" href="#downloads">Download</a>
+          <a href="features.html">Features</a>
+          <a href="agents.html">Agents</a>
+          <a href="faq.html">FAQ</a>
+          <a href="https://github.com/ErzenXz/CodeInk">GitHub</a>
+          <a class="nav-cta" href="download.html">Download</a>
         </nav>
+        <details class="menu">
+          <summary aria-label="Menu"><span></span></summary>
+          <nav class="menu-panel" aria-label="Main">
+            <a href="index.html" aria-current="page">Home</a>
+            <a href="features.html">Features</a>
+            <a href="agents.html">Agents</a>
+            <a href="faq.html">FAQ</a>
+            <a href="download.html">Download</a>
+            <a href="https://github.com/ErzenXz/CodeInk">GitHub</a>
+          </nav>
+        </details>
       </div>
     </header>
 
-    <main>
-      <section class="hero" aria-labelledby="hero-title">
-        <div class="wrap">
-          <div class="hero-copy">
-            <p class="kicker">Desktop app · macOS, Windows, Linux</p>
-            <h1 id="hero-title">Bring your own<br />coding agent.</h1>
-            <div class="hero-side">
-              <p class="lead">
-                CodeInk is a desktop workspace for the agent CLIs you already use. Install and sign in to them the way
-                you always have. CodeInk connects to them on your computer and gives every session the same window.
-              </p>
-              <div class="hero-actions">
-                <a class="button button-primary" href="#downloads" id="hero-download">Download CodeInk</a>
-                <a class="button button-quiet" href="https://github.com/ErzenXz/CodeInk">View source</a>
-              </div>
-              <p class="hero-meta">Free and open source · MIT license</p>
-            </div>
+    <main id="main">
+      <section class="hero">
+        <div class="wrap center">
+          <p class="eyebrow">Free and open source · macOS, Windows, Linux</p>
+          <h1 class="display">Bring your own<br />coding agent.</h1>
+          <p class="lead">
+            A calm desktop workspace for Codex, Claude Code and the other agent CLIs you already use. Same agents, same
+            accounts, one window.
+          </p>
+          <div class="actions">
+            <a class="button button-primary" href="download.html" data-download-label>Download CodeInk</a>
+            <a class="button" href="features.html">See the features</a>
           </div>
-
-          <figure class="stage">
-            <div class="switcher" role="group" aria-label="Show the workspace with an agent">
-              <span class="switcher-label" aria-hidden="true">Connect</span>
-              <button type="button" class="agent-chip" aria-pressed="true" data-agent="codex" data-name="Codex" data-command="codex" data-protocol="Native">
-                <svg class="icon" aria-hidden="true"><use href="agents.svg#codex" /></svg>Codex
-              </button>
-              <button type="button" class="agent-chip" aria-pressed="false" data-agent="claude" data-name="Claude Code" data-command="claude" data-protocol="Native">
-                <svg class="icon" aria-hidden="true"><use href="agents.svg#claude" /></svg>Claude Code
-              </button>
-              <button type="button" class="agent-chip" aria-pressed="false" data-agent="opencode" data-name="OpenCode" data-command="opencode" data-protocol="Native">
-                <svg class="icon" aria-hidden="true"><use href="agents.svg#opencode" /></svg>OpenCode
-              </button>
-              <button type="button" class="agent-chip" aria-pressed="false" data-agent="pi" data-name="Pi" data-command="pi" data-protocol="Native">
-                <svg class="icon" aria-hidden="true"><use href="agents.svg#pi" /></svg>Pi
-              </button>
-              <button type="button" class="agent-chip" aria-pressed="false" data-agent="gemini" data-name="Gemini CLI" data-command="gemini --acp" data-protocol="ACP">
-                <svg class="icon" aria-hidden="true"><use href="agents.svg#gemini" /></svg>Gemini CLI<span class="chip-tag">ACP</span>
-              </button>
-              <button type="button" class="agent-chip" aria-pressed="false" data-agent="cursor" data-name="Cursor" data-command="cursor-agent acp" data-protocol="ACP">
-                <svg class="icon" aria-hidden="true"><use href="agents.svg#cursor" /></svg>Cursor<span class="chip-tag">ACP</span>
-              </button>
+          <p class="meta">No account needed. Agents install separately.</p>
+          <figure class="shot reveal hero-shot">
+            <div class="shot-frame">
+              <img
+                class="shot-light"
+                src="screenshots/chat-light.webp"
+                width="2560"
+                height="1600"
+                alt="CodeInk showing a finished chat: the prompt, a collapsed ‘Worked for 1m 34s’ line and the agent’s answer."
+                decoding="async"
+              />
+              <img
+                class="shot-dark"
+                src="screenshots/chat-dark.webp"
+                width="2560"
+                height="1600"
+                alt="CodeInk showing a finished chat: the prompt, a collapsed ‘Worked for 1m 34s’ line and the agent’s answer."
+                decoding="async"
+              />
             </div>
-
-            <div class="window" aria-hidden="true">
-              <div class="window-bar">
-                <span class="window-dots"><i></i><i></i><i></i></span>
-                <span class="window-title">checkout-service</span>
-                <span class="window-agent">
-                  <svg class="icon"><use data-slot="icon" href="agents.svg#codex" /></svg>
-                  <span data-slot="name">Codex</span>
-                  <span class="window-protocol" data-slot="protocol">Native</span>
-                </span>
-              </div>
-              <div class="window-body">
-                <div class="pane pane-sessions">
-                  <p class="pane-label">Sessions</p>
-                  <p class="session is-active">Fix login redirect</p>
-                  <p class="session">Add rate limit tests</p>
-                  <p class="session">Split config loader</p>
-                  <p class="session">Update Node version</p>
-                </div>
-                <div class="pane pane-chat">
-                  <p class="msg-user">After signing in, people land back on /login. Find out why and fix it.</p>
-                  <div class="msg-agent">
-                    <p class="msg-by">
-                      <svg class="icon"><use data-slot="icon" href="agents.svg#codex" /></svg>
-                      <span data-slot="name">Codex</span>
-                    </p>
-                    <p class="tool"><span class="tool-verb">Read</span><span class="tool-arg">src/auth/session.ts</span></p>
-                    <p class="tool"><span class="tool-verb">Search</span><span class="tool-arg">redirectTo</span><span class="tool-note">6 matches</span></p>
-                    <p class="tool"><span class="tool-verb">Edit</span><span class="tool-arg">src/auth/session.ts</span><span class="tool-note"><b class="add">+12</b> <b class="del">−3</b></span></p>
-                    <p class="msg-text">
-                      The session cookie was written after the redirect, so the next request had no session. I moved
-                      the write before the redirect and added a test.
-                    </p>
-                    <p class="tool tool-ask"><span class="tool-verb">Run</span><span class="tool-arg">bun test auth</span><span class="tool-note">Waiting for your approval</span></p>
-                  </div>
-                  <div class="composer">
-                    <span class="composer-input">Ask <span data-slot="name">Codex</span> anything…</span>
-                    <span class="composer-meta"><span class="mono">$ <span data-slot="command">codex</span></span><span>Model from the agent’s catalog</span></span>
-                  </div>
-                </div>
-                <div class="pane pane-changes">
-                  <p class="pane-label">Changes</p>
-                  <p class="change"><span>src/auth/session.ts</span><span><b class="add">+9</b> <b class="del">−3</b></span></p>
-                  <p class="change"><span>src/auth/session.test.ts</span><span><b class="add">+3</b></span></p>
-                  <p class="pane-label pane-label-gap">Terminal</p>
-                  <pre class="terminal">~/checkout-service
-<span class="prompt">$</span> git status --short
- M src/auth/session.ts
- M src/auth/session.test.ts</pre>
-                </div>
-              </div>
-            </div>
-            <figcaption class="stage-caption">
-              <span class="caption-lead">Illustration, not a screenshot.</span>
-              <span>Preview a new session with another agent. Your project, files, and changes stay in place.</span>
-            </figcaption>
           </figure>
         </div>
       </section>
 
-      <section class="agents" id="agents" aria-labelledby="agents-title">
-        <div class="wrap">
-          <div class="section-head">
-            <p class="kicker">Agents</p>
-            <h2 id="agents-title">Four native connections.<br />Twenty-two ACP presets.</h2>
-            <p class="section-lead">
-              CodeInk looks for each agent’s own command on your <code>PATH</code>. It never bundles or downloads an
-              agent. Presets are launch settings, not endorsements. What works depends on the agent you install.
-            </p>
-          </div>
-
-          <h3 class="roster-title">Native <span>Built for each agent’s own protocol</span></h3>
-          <ul class="roster-native">
-            <li><svg class="icon" aria-hidden="true"><use href="agents.svg#codex" /></svg><span class="agent-name">Codex</span><code>codex</code></li>
-            <li><svg class="icon" aria-hidden="true"><use href="agents.svg#claude" /></svg><span class="agent-name">Claude Code</span><code>claude</code></li>
-            <li><svg class="icon" aria-hidden="true"><use href="agents.svg#opencode" /></svg><span class="agent-name">OpenCode</span><code>opencode</code></li>
-            <li><svg class="icon" aria-hidden="true"><use href="agents.svg#pi" /></svg><span class="agent-name">Pi</span><code>pi</code></li>
+      <section class="section-tight">
+        <div class="wrap reveal">
+          <ul class="logos" aria-label="Works with">
+            <li>
+              <svg aria-hidden="true"><use href="agents.svg#codex" /></svg>Codex
+            </li>
+            <li>
+              <svg aria-hidden="true"><use href="agents.svg#claude" /></svg>Claude Code
+            </li>
+            <li>
+              <svg aria-hidden="true"><use href="agents.svg#opencode" /></svg>OpenCode
+            </li>
+            <li>
+              <svg aria-hidden="true"><use href="agents.svg#pi" /></svg>Pi
+            </li>
+            <li>
+              <svg aria-hidden="true"><use href="agents.svg#gemini" /></svg>Gemini CLI
+            </li>
+            <li>
+              <svg aria-hidden="true"><use href="agents.svg#github-copilot-cli" /></svg>GitHub Copilot
+            </li>
+            <li>
+              <svg aria-hidden="true"><use href="agents.svg#cursor" /></svg>Cursor
+            </li>
+            <li>
+              <svg aria-hidden="true"><use href="agents.svg#goose" /></svg>Goose
+            </li>
           </ul>
-
-          <h3 class="roster-title">ACP presets <span>Agent Client Protocol, from the official ACP registry</span></h3>
-          <ul class="roster-acp">
-            <li><svg class="icon" aria-hidden="true"><use href="agents.svg#gemini" /></svg><span class="agent-name">Gemini CLI</span><code>gemini --acp</code></li>
-            <li><svg class="icon" aria-hidden="true"><use href="agents.svg#github-copilot-cli" /></svg><span class="agent-name">GitHub Copilot</span><code>copilot --acp</code></li>
-            <li><svg class="icon" aria-hidden="true"><use href="agents.svg#cursor" /></svg><span class="agent-name">Cursor</span><code>cursor-agent acp</code></li>
-            <li><svg class="icon" aria-hidden="true"><use href="agents.svg#cline" /></svg><span class="agent-name">Cline</span><code>cline --acp</code></li>
-            <li><svg class="icon" aria-hidden="true"><use href="agents.svg#kimi" /></svg><span class="agent-name">Kimi CLI</span><code>kimi acp</code></li>
-            <li><svg class="icon" aria-hidden="true"><use href="agents.svg#qwen-code" /></svg><span class="agent-name">Qwen Code</span><code>qwen --acp</code></li>
-            <li><svg class="icon" aria-hidden="true"><use href="agents.svg#goose" /></svg><span class="agent-name">Goose</span><code>goose acp</code></li>
-            <li><svg class="icon" aria-hidden="true"><use href="agents.svg#mistral-vibe" /></svg><span class="agent-name">Mistral Vibe</span><code>vibe-acp</code></li>
-            <li><svg class="icon" aria-hidden="true"><use href="agents.svg#auggie" /></svg><span class="agent-name">Auggie</span><code>auggie --acp</code></li>
-            <li><svg class="icon" aria-hidden="true"><use href="agents.svg#factory-droid" /></svg><span class="agent-name">Factory Droid</span><code>droid exec --output-format acp-daemon</code></li>
-            <li><svg class="icon" aria-hidden="true"><use href="agents.svg#kilo" /></svg><span class="agent-name">Kilo</span><code>kilo acp</code></li>
-            <li><svg class="icon" aria-hidden="true"><use href="agents.svg#devin" /></svg><span class="agent-name">Devin</span><code>devin acp</code></li>
-            <li><svg class="icon" aria-hidden="true"><use href="agents.svg#amp-acp" /></svg><span class="agent-name">Amp</span><code>amp-acp</code></li>
-            <li><svg class="icon" aria-hidden="true"><use href="agents.svg#qoder" /></svg><span class="agent-name">Qoder</span><code>qoder --acp</code></li>
-            <li><svg class="icon" aria-hidden="true"><use href="agents.svg#codebuddy-code" /></svg><span class="agent-name">CodeBuddy</span><code>codebuddy --acp</code></li>
-            <li><svg class="icon" aria-hidden="true"><use href="agents.svg#cortex-code" /></svg><span class="agent-name">Cortex Code</span><code>cortex acp serve</code></li>
-            <li><svg class="icon" aria-hidden="true"><use href="agents.svg#junie" /></svg><span class="agent-name">Junie</span><code>junie --acp=true</code></li>
-            <li><svg class="icon" aria-hidden="true"><use href="agents.svg#deepagents" /></svg><span class="agent-name">DeepAgents</span><code>deepagents-acp</code></li>
-            <li><svg class="icon" aria-hidden="true"><use href="agents.svg#minimax-code" /></svg><span class="agent-name">MiniMax Code</span><code>mcode acp</code></li>
-            <li><svg class="icon" aria-hidden="true"><use href="agents.svg#grok-build" /></svg><span class="agent-name">Grok Build</span><code>grok agent stdio</code></li>
-            <li><svg class="icon" aria-hidden="true"><use href="agents.svg#stakpak" /></svg><span class="agent-name">Stakpak</span><code>stakpak acp</code></li>
-            <li><svg class="icon" aria-hidden="true"><use href="agents.svg#nova" /></svg><span class="agent-name">Nova</span><code>nova acp</code></li>
-          </ul>
-          <p class="roster-note">
-            Using a different ACP-compatible agent? Add it in CodeInk with its own command and arguments.
-          </p>
+          <p class="logos-note"><a class="link" href="agents.html">And 18 more agents</a></p>
         </div>
       </section>
 
-      <section class="how" id="how" aria-labelledby="how-title">
-        <div class="wrap how-grid">
-          <div class="section-head">
-            <p class="kicker">How it connects</p>
-            <h2 id="how-title">Your agent does the work. CodeInk gives it a desk.</h2>
+      <section class="section">
+        <div class="wrap">
+          <article class="spotlight">
+            <div class="spotlight-copy reveal">
+              <div>
+                <p class="eyebrow">Timeline</p>
+                <h2 class="title">The answer, without the noise.</h2>
+              </div>
+              <p class="lead">
+                When a turn finishes, every read, edit and command folds into one line: Worked for 1m 34s. Open it
+                whenever you want the steps.
+              </p>
+            </div>
+            <figure class="shot reveal">
+              <div class="shot-frame">
+                <img
+                  class="shot-light"
+                  src="screenshots/chat-steps-light.webp"
+                  width="2560"
+                  height="1600"
+                  alt="An expanded ‘Worked for’ section listing grouped steps such as ‘Read 2 files, searched the code’ and ‘Edited 3 files, ran a command’."
+                  loading="lazy"
+                  decoding="async"
+                />
+                <img
+                  class="shot-dark"
+                  src="screenshots/chat-steps-dark.webp"
+                  width="2560"
+                  height="1600"
+                  alt="An expanded ‘Worked for’ section listing grouped steps such as ‘Read 2 files, searched the code’ and ‘Edited 3 files, ran a command’."
+                  loading="lazy"
+                  decoding="async"
+                />
+              </div>
+            </figure>
+          </article>
+          <article class="spotlight">
+            <div class="spotlight-copy reveal">
+              <div>
+                <p class="eyebrow">Control</p>
+                <h2 class="title">You decide what it can touch.</h2>
+              </div>
+              <p class="lead">
+                Ask before every action, let a reviewer approve the safe ones, plan without changes, or allow
+                everything. Turn on Fast mode where the model supports it.
+              </p>
+            </div>
+            <figure class="shot reveal shot-detail">
+              <div class="shot-frame">
+                <img
+                  class="shot-light"
+                  src="screenshots/access-crop-light.webp"
+                  width="1640"
+                  height="920"
+                  alt="The access menu with Ask for approval, Auto review, Plan only, Full access and Fast mode."
+                  loading="lazy"
+                  decoding="async"
+                />
+                <img
+                  class="shot-dark"
+                  src="screenshots/access-crop-dark.webp"
+                  width="1640"
+                  height="920"
+                  alt="The access menu with Ask for approval, Auto review, Plan only, Full access and Fast mode."
+                  loading="lazy"
+                  decoding="async"
+                />
+              </div>
+            </figure>
+          </article>
+        </div>
+      </section>
+
+      <section class="section-tight">
+        <div class="wrap">
+          <ul class="points reveal">
+            <li>
+              <h3>Your accounts</h3>
+              <p>Each agent keeps its own sign-in and plan. There’s no CodeInk account.</p>
+            </li>
+            <li>
+              <h3>Stays on your computer</h3>
+              <p>Sessions are stored locally, and CodeInk doesn’t collect your CLI credentials.</p>
+            </li>
+            <li>
+              <h3>Every model it offers</h3>
+              <p>Choose from the models and reasoning levels each agent reports, per chat.</p>
+            </li>
+            <li>
+              <h3>Projects and sessions</h3>
+              <p>Chats grouped by project in a quiet sidebar, with search and filters.</p>
+            </li>
+            <li>
+              <h3>Skills and plugins</h3>
+              <p>See what each agent has installed and switch items on or off.</p>
+            </li>
+            <li>
+              <h3>Usage at a glance</h3>
+              <p>Session and weekly limits for Codex and Claude Code, with reset times.</p>
+            </li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="wrap">
+          <div class="reveal">
+            <p class="eyebrow">How it works</p>
+            <h2 class="title">Three steps. No new account.</h2>
           </div>
-          <ol class="steps">
+          <ol class="steps reveal">
             <li>
               <h3>Install an agent</h3>
-              <p>Use the agent’s own installer. CodeInk never ships or fetches an agent CLI for you.</p>
+              <p>Use the agent’s own installer. CodeInk never ships or downloads an agent for you.</p>
             </li>
             <li>
               <h3>Sign in with its CLI</h3>
-              <p>Your existing account and plan stay with the agent. There’s no CodeInk account to create.</p>
+              <p>Your existing account and plan stay with the agent, exactly as before.</p>
             </li>
             <li>
-              <h3>Open a project in CodeInk</h3>
-              <p>
-                Pick the agent, choose a model from its catalog, and start a session. Follow replies, commands, file
-                reads, and approvals next to your files, Git changes, and a terminal.
-              </p>
+              <h3>Open a project</h3>
+              <p>Pick the agent and a model, then follow replies, edits and approvals in one window.</p>
             </li>
           </ol>
-          <ul class="yours">
-            <li><strong>Accounts</strong> Each agent keeps its own sign-in and controls its own connection to model providers.</li>
-            <li><strong>Credentials</strong> CodeInk doesn’t collect your CLI credentials.</li>
-            <li><strong>Sessions</strong> CodeInk keeps its session data on your computer.</li>
-          </ul>
         </div>
       </section>
 
-      <section class="downloads" id="downloads" aria-labelledby="downloads-title">
-        <div class="wrap">
-          <div class="downloads-head">
-            <div>
-              <p class="kicker">Download</p>
-              <h2 id="downloads-title">Get CodeInk</h2>
-            </div>
-            <div class="channels" role="tablist" aria-label="Release channel">
-              <button type="button" id="production-tab" role="tab" aria-selected="true" aria-controls="release-panel" data-channel="production">
-                Production
-              </button>
-              <button type="button" id="early-tab" role="tab" aria-selected="false" aria-controls="release-panel" data-channel="early-access" tabindex="-1">
-                Early Access
-              </button>
-            </div>
+      <hr class="rule" />
+      <section class="closing center">
+        <div class="wrap reveal">
+          <h2 class="title">Start with the agent you have.</h2>
+          <p class="lead">Free for macOS, Windows and Linux.</p>
+          <div class="actions">
+            <a class="button button-primary" href="download.html" data-download-label>Download CodeInk</a>
+            <a class="button" href="https://github.com/ErzenXz/CodeInk">View on GitHub</a>
           </div>
-
-          <div id="release-panel" class="release-panel" role="tabpanel" aria-labelledby="production-tab" tabindex="0">
-            <div class="release-bar">
-              <p id="channel-note" class="channel-note">Stable builds from the main branch.</p>
-              <p id="release-status" class="release-status" role="status" aria-live="polite">Checking GitHub for the latest release…</p>
-            </div>
-            <div class="platforms">
-              <article class="platform" data-os="mac">
-                <p class="platform-tag">Your system</p>
-                <h3>macOS</h3>
-                <p class="platform-sub">Apple Silicon and Intel · .dmg</p>
-                <div class="download-links" data-platform="mac"></div>
-              </article>
-              <article class="platform" data-os="win">
-                <p class="platform-tag">Your system</p>
-                <h3>Windows</h3>
-                <p class="platform-sub">x64 installer · .exe</p>
-                <div class="download-links" data-platform="win"></div>
-              </article>
-              <article class="platform" data-os="linux">
-                <p class="platform-tag">Your system</p>
-                <h3>Linux</h3>
-                <p class="platform-sub">x64 and ARM64 · AppImage and .deb</p>
-                <div class="download-links" data-platform="linux"></div>
-              </article>
-            </div>
-            <div class="release-links">
-              <a id="release-notes" href="https://github.com/ErzenXz/CodeInk/releases">All releases and checksums</a>
-              <a id="release-checksums" href="https://github.com/ErzenXz/CodeInk/releases" hidden>SHA256SUMS.txt</a>
-              <span class="release-aside">Agents are installed separately.</span>
-            </div>
-          </div>
-          <noscript>
-            <p class="noscript">
-              Downloads are listed with JavaScript.
-              <a href="https://github.com/ErzenXz/CodeInk/releases">Download CodeInk from GitHub Releases</a>.
-            </p>
-          </noscript>
-
-          <section class="notes" aria-labelledby="notes-title">
-            <h3 id="notes-title" class="notes-title">Before you install</h3>
-            <details>
-              <summary>The first builds may be unsigned</summary>
-              <p>
-                macOS may block the app on first open. After checking where it came from, open System Settings, then
-                Privacy &amp; Security, and choose Open Anyway. Windows may show a SmartScreen notice. On Linux, make
-                the AppImage executable with <code>chmod +x</code>.
-              </p>
-            </details>
-            <details>
-              <summary>Verify your download</summary>
-              <p>
-                Every release includes <code>SHA256SUMS.txt</code>. Compare it with <code>shasum -a 256 &lt;file&gt;</code>
-                on macOS or Linux, or <code>Get-FileHash &lt;file&gt;</code> in PowerShell. Only download from
-                <a href="https://github.com/ErzenXz/CodeInk/releases">ErzenXz/CodeInk releases</a>, or
-                <a href="https://github.com/ErzenXz/CodeInk">build from source</a>.
-              </p>
-            </details>
-            <details>
-              <summary>Early Access is a separate app</summary>
-              <p>
-                Early Access contains the newest changes from development. It installs as CodeInk Early Access, next to
-                the production app, and keeps its own session data. Sessions don’t move between the two.
-              </p>
-            </details>
-            <details>
-              <summary>Set up an agent first</summary>
-              <p>
-                Install at least one agent with its own instructions and sign in using its CLI. CodeInk finds the
-                command on your <code>PATH</code> and uses the account you already have.
-              </p>
-            </details>
-            <details>
-              <summary>Some features don’t work with every agent yet</summary>
-              <p>
-                CodeInk is a fork of OpenCode. Some upstream features, including cloud sharing and session forking,
-                aren’t available across all agents yet.
-              </p>
-            </details>
-          </section>
         </div>
       </section>
     </main>
 
     <footer class="site-footer">
-      <div class="wrap footer-inner">
-        <div class="footer-brand">
-          <a class="brand" href="./"><img src="icon.png" width="24" height="24" alt="" /><span>CodeInk</span></a>
-          <p>
-            An independent fork of OpenCode. Agent names and marks belong to their owners.<br />
-            Made by <a href="https://github.com/ErzenXz">Erzen Krasniqi</a>.
-          </p>
+      <div class="wrap">
+        <div class="footer-grid">
+          <div>
+            <a class="brand" href="index.html"
+              ><img src="icon-128.png" width="22" height="22" alt="" /><span>CodeInk</span></a
+            >
+            <p>
+              A desktop workspace for the coding agents you already use. Free, open source and an independent fork of
+              OpenCode.
+            </p>
+          </div>
+          <nav class="footer-col" aria-label="Product">
+            <h2>Product</h2>
+            <ul>
+              <li><a href="features.html">Features</a></li>
+              <li><a href="agents.html">Agents</a></li>
+              <li><a href="download.html">Download</a></li>
+            </ul>
+          </nav>
+          <nav class="footer-col" aria-label="Help">
+            <h2>Help</h2>
+            <ul>
+              <li><a href="faq.html">FAQ</a></li>
+              <li><a href="https://github.com/ErzenXz/CodeInk/releases">Releases</a></li>
+              <li><a href="https://github.com/ErzenXz/CodeInk/issues">Report an issue</a></li>
+            </ul>
+          </nav>
+          <nav class="footer-col" aria-label="Project">
+            <h2>Project</h2>
+            <ul>
+              <li><a href="https://github.com/ErzenXz/CodeInk">Source on GitHub</a></li>
+              <li><a href="https://github.com/ErzenXz/CodeInk/blob/main/LICENSE">MIT license</a></li>
+              <li><a href="https://github.com/ErzenXz/CodeInk/blob/main/UPSTREAM.md">Upstream</a></li>
+            </ul>
+          </nav>
         </div>
-        <nav class="footer-links" aria-label="Project">
-          <a href="https://github.com/ErzenXz/CodeInk/blob/main/LICENSE">MIT license</a>
-          <a href="https://github.com/ErzenXz/CodeInk/blob/main/UPSTREAM.md">Upstream acknowledgments</a>
-          <a href="https://github.com/ErzenXz/CodeInk">Source</a>
-          <a href="https://github.com/ErzenXz/CodeInk/issues">Report an issue</a>
-        </nav>
+        <div class="footer-bottom">
+          <span
+            >Made by <a class="link" href="https://github.com/ErzenXz">Erzen Krasniqi</a>. Agent names and marks belong
+            to their owners.</span
+          >
+          <div class="theme-switch" role="group" aria-label="Theme">
+            <button type="button" data-theme-choice="system" aria-pressed="true">System</button>
+            <button type="button" data-theme-choice="light" aria-pressed="false">Light</button>
+            <button type="button" data-theme-choice="dark" aria-pressed="false">Dark</button>
+          </div>
+        </div>
       </div>
     </footer>
   </body>

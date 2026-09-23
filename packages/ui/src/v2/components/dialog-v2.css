@@ -4,7 +4,7 @@
   position: fixed;
   inset: 0;
   z-index: 50;
-  background-color: var(--v2-overlay-simple-overlay-scrim);
+  background-color: var(--v2-glass-scrim);
 }
 
 [data-component="dialog-v2"] {
@@ -22,9 +22,11 @@
     align-items: flex-start;
     width: 480px;
     height: 368px;
-    background: var(--v2-background-bg-layer-01);
-    box-shadow: var(--v2-elevation-overlay);
-    border-radius: 6px;
+    background: var(--v2-glass-surface-strong);
+    -webkit-backdrop-filter: var(--v2-glass-filter);
+    backdrop-filter: var(--v2-glass-filter);
+    box-shadow: var(--v2-glass-shadow-overlay);
+    border-radius: var(--radius-2xl);
     overflow: hidden;
     pointer-events: auto;
 
@@ -111,7 +113,7 @@
           margin-top: -2px;
           margin-inline-end: -2px;
           margin-inline-start: auto;
-          border-radius: 4px;
+          border-radius: var(--radius-sm);
           flex-shrink: 0;
           cursor: pointer;
           color: var(--v2-icon-icon-muted);

@@ -24,7 +24,17 @@ import type { UpdaterController } from "./updater-controller"
 import { createUpdaterSubscriptions } from "./updater-subscriptions"
 import { createDesktopDraftStore } from "./draft-store"
 import { nativeT } from "./native-translations"
-import { listInstalledAgents, saveInstalledAgent } from "./server"
+import {
+  listAgentRules,
+  setAgentRules,
+  listInstalledAgentExtensions,
+  listInstalledAgents,
+  readInstalledAgentInstructions,
+  readInstalledAgentUsage,
+  saveInstalledAgent,
+  setInstalledAgentExtensionEnabled,
+  writeInstalledAgentInstructions,
+} from "./server"
 import { agentSchema } from "./agent-store"
 
 const pickerFilters = (ext?: string[]) => {
@@ -66,6 +76,24 @@ export function registerIpcHandlers(deps: Deps) {
 
   ipcMain.handle("agents-list", () => listInstalledAgents())
   ipcMain.handle("agents-save", (_, agent: unknown) => saveInstalledAgent(agentSchema.parse(agent)))
+  ipcMain.handle("agents-extensions", (_, refresh: unknown) => listInstalledAgentExtensions(refresh === true))
+  ipcMain.handle("agents-extension-toggle", (_, input: unknown) =>
+    setInstalledAgentExtensionEnabled(extensionToggle(input)),
+  )
+  ipcMain.handle("agents-rules", () => listAgentRules())
+  ipcMain.handle("agents-rules-set", (_, agentID: unknown, rules: unknown) => {
+    const value = rules !== null && typeof rules === "object" ? (rules as Record<string, unknown>) : {}
+    const access = (["ask", "edits", "auto", "plan", "full"] as const).find((item) => item === value.access)
+    if (typeof agentID !== "string" || !access || typeof value.fast !== "boolean")
+      throw new TypeError("Invalid agent rules")
+    return setAgentRules(agentID, { access, fast: value.fast })
+  })
+  ipcMain.handle("agents-usage", (_, refresh: unknown) => readInstalledAgentUsage(refresh === true))
+  ipcMain.handle("agents-instructions", () => readInstalledAgentInstructions())
+  ipcMain.handle("agents-instructions-save", (_, agentID: unknown, content: unknown) => {
+    if (typeof agentID !== "string" || typeof content !== "string") throw new TypeError("Invalid instructions")
+    return writeInstalledAgentInstructions(agentID, content)
+  })
   ipcMain.handle("kill-sidecar", () => deps.killSidecar())
   ipcMain.handle("await-initialization", () => deps.awaitInitialization())
   ipcMain.handle("consume-initial-deep-links", () => deps.consumeInitialDeepLinks())
@@ -97,7 +125,7 @@ export function registerIpcHandlers(deps: Deps) {
   })
   ipcMain.handle("updater-unsubscribe", (event) => updaterSubscriptions.delete(event.sender.id))
   ipcMain.handle("updater-check", () => deps.updater.check())
-  ipcMain.handle("updater-install", () => deps.updater.install())
+  ipcMain.handle("updater-open-download", () => deps.updater.openDownload())
   ipcMain.handle("set-background-color", (_event: IpcMainInvokeEvent, color: string) => deps.setBackgroundColor(color))
   ipcMain.handle("export-debug-logs", () => deps.exportDebugLogs())
   ipcMain.handle("set-force-focus", (event: IpcMainInvokeEvent, enabled: boolean) =>
@@ -309,4 +337,19 @@ export function sendMenuCommand(win: BrowserWindow, id: string) {
 
 export function sendDeepLinks(win: BrowserWindow, urls: string[]) {
   win.webContents.send("deep-link", urls)
+}
+
+// Renderer input is untrusted; accept only the fields the toggle needs.
+function extensionToggle(input: unknown) {
+  const value = input !== null && typeof input === "object" ? (input as Record<string, unknown>) : {}
+  const kind = (["skill", "plugin", "mcp"] as const).find((item) => item === value.kind)
+  if (
+    !kind ||
+    typeof value.agentID !== "string" ||
+    typeof value.id !== "string" ||
+    typeof value.enabled !== "boolean" ||
+    (value.path !== undefined && typeof value.path !== "string")
+  )
+    throw new TypeError("Invalid extension toggle")
+  return { agentID: value.agentID, kind, id: value.id, path: value.path, enabled: value.enabled }
 }

@@ -2,7 +2,7 @@
   display: flex;
   align-items: var(--checkbox-align, center);
   gap: 12px;
-  cursor: default;
+  cursor: pointer;
 
   [data-slot="checkbox-checkbox-input"] {
     position: absolute;
@@ -26,7 +26,7 @@
     margin-top: var(--checkbox-offset, 0px);
     aspect-ratio: 1;
     flex-shrink: 0;
-    border-radius: var(--radius-sm);
+    border-radius: calc(var(--radius-xs) + 1px);
     border: 1px solid var(--border-weak-base);
     transition:
       border-color 220ms var(--tool-motion-ease, cubic-bezier(0.22, 1, 0.36, 1)),

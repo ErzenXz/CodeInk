@@ -38,12 +38,12 @@
 }
 
 [data-component="avatar-v2"][data-kind="org"] {
-  --avatar-radius: 6px;
+  --avatar-radius: 30%;
 }
 
 [data-component="avatar-v2"][data-kind="org"][data-size="normal"],
 [data-component="avatar-v2"][data-kind="org"][data-size="small"] {
-  --avatar-radius: 4px;
+  --avatar-radius: 30%;
 }
 
 [data-component="avatar-v2"][data-size="normal"] {

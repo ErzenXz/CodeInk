@@ -34,9 +34,14 @@ export interface Settings {
     editToolPartsExpanded: boolean
     showCustomAgents: boolean
     mobileTitlebarPosition: "top" | "bottom"
-    sessionTabPosition: "top" | "sidebar"
-    sidebarView: "all" | "activity"
+    /** `projects` lists projects in the sidebar and the selected project's chats as top tabs. */
+    sessionTabPosition: "top" | "sidebar" | "projects"
+    sidebarView: "all" | "activity" | "attention"
     sidebarGroupBy: "project" | "workspace" | "status" | "server" | "recent" | "type" | "none"
+    sidebarSort: "updated" | "created" | "title"
+    /** Chats shown per group before "Show more"; 0 shows every loaded chat. */
+    sidebarChatLimit: number
+    sidebarTimestamps: boolean
     newLayoutDesigns?: boolean
     layoutTransitionEligible?: boolean
     agentVisibilityInitialized?: boolean
@@ -136,7 +141,7 @@ export function resolveNewLayoutDesigns(retired: boolean, preference: boolean | 
 
 const monoFallback =
   'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace'
-const sansFallback = 'ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif'
+const sansFallback = '-apple-system, BlinkMacSystemFont, "Segoe UI Variable Text", "Segoe UI", "Inter", sans-serif'
 const terminalFallback =
   '"JetBrainsMono Nerd Font Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace'
 
@@ -201,6 +206,9 @@ const defaultSettings: Settings = {
     sessionTabPosition: "sidebar",
     sidebarView: "all",
     sidebarGroupBy: "project",
+    sidebarSort: "updated",
+    sidebarChatLimit: 6,
+    sidebarTimestamps: false,
   },
   appearance: {
     fontSize: 14,
@@ -438,16 +446,31 @@ export const { use: useSettings, provider: SettingsProvider } = createSimpleCont
           () => store.general?.sessionTabPosition,
           defaultSettings.general.sessionTabPosition,
         ),
-        setSessionTabPosition(value: "top" | "sidebar") {
+        setSessionTabPosition(value: Settings["general"]["sessionTabPosition"]) {
           setStore("general", "sessionTabPosition", value)
         },
         sidebarView: withFallback(() => store.general?.sidebarView, defaultSettings.general.sidebarView),
-        setSidebarView(value: "all" | "activity") {
+        setSidebarView(value: Settings["general"]["sidebarView"]) {
           setStore("general", "sidebarView", value)
         },
         sidebarGroupBy: withFallback(() => store.general?.sidebarGroupBy, defaultSettings.general.sidebarGroupBy),
         setSidebarGroupBy(value: Settings["general"]["sidebarGroupBy"]) {
           setStore("general", "sidebarGroupBy", value)
+        },
+        sidebarSort: withFallback(() => store.general?.sidebarSort, defaultSettings.general.sidebarSort),
+        setSidebarSort(value: Settings["general"]["sidebarSort"]) {
+          setStore("general", "sidebarSort", value)
+        },
+        sidebarChatLimit: withFallback(() => store.general?.sidebarChatLimit, defaultSettings.general.sidebarChatLimit),
+        setSidebarChatLimit(value: number) {
+          setStore("general", "sidebarChatLimit", value)
+        },
+        sidebarTimestamps: withFallback(
+          () => store.general?.sidebarTimestamps,
+          defaultSettings.general.sidebarTimestamps,
+        ),
+        setSidebarTimestamps(value: boolean) {
+          setStore("general", "sidebarTimestamps", value)
         },
         newLayoutDesigns,
         setNewLayoutDesigns(value: boolean) {

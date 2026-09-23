@@ -182,7 +182,8 @@ export function SessionRouteErrorBoundary(
 ) {
   const settings = useSettings()
   const wide = createMediaQuery("(min-width: 1024px)")
-  const flat = () => settings.general.sessionTabPosition() === "sidebar" && wide()
+  // Any layout with a sidebar keeps the chat canvas flush against it.
+  const flat = () => settings.general.sessionTabPosition() !== "top" && wide()
   return (
     <ErrorBoundary
       fallback={(error) =>
@@ -229,7 +230,7 @@ function SessionErrorFallback(props: { error: unknown; sessionID?: string; serve
             {(sessionID) => (
               <div class="max-w-full flex flex-col items-center gap-1">
                 <div class="max-w-full text-11-regular text-text-faint break-all">{displayServer()}</div>
-                <code class="max-w-full rounded-[4px] px-1 py-0.5 font-mono text-xs font-medium leading-4 text-text-base break-all bg-[color-mix(in_oklch,var(--v2-text-text-base)_8%,transparent)]">
+                <code class="max-w-full rounded-sm px-1 py-0.5 font-mono text-xs font-medium leading-4 text-text-base break-all bg-[color-mix(in_oklch,var(--v2-text-text-base)_8%,transparent)]">
                   {sessionID()}
                 </code>
               </div>
@@ -345,7 +346,8 @@ function SessionPanelFrame(props: ParentProps<{ newLayout: boolean; raised?: boo
         "bg-v2-background-bg-base": props.newLayout,
         "bg-background-stronger": !props.newLayout,
         "overflow-hidden": props.newLayout,
-        "rounded-[10px]": props.newLayout && !props.flat,
+        "rounded-xl": props.newLayout && !props.flat,
+        "shadow-[inset_0.5px_0_0_var(--v2-border-border-muted)]": props.newLayout && props.flat,
         "shadow-[var(--v2-elevation-raised)]": props.newLayout && props.raised && !props.flat,
       }}
     >
@@ -452,7 +454,7 @@ export default function Page() {
   const isDesktop = createMediaQuery("(min-width: 768px)")
   const wide = createMediaQuery("(min-width: 1024px)")
   const flatSidebar = () =>
-    settings.general.newLayoutDesigns() && settings.general.sessionTabPosition() === "sidebar" && wide()
+    settings.general.newLayoutDesigns() && settings.general.sessionTabPosition() !== "top" && wide()
   const size = createSizing()
   const desktopReviewOpen = createMemo(() => isDesktop() && view().reviewPanel.opened())
   const desktopV2ReviewOpen = createMemo(() => newSessionDesign() && desktopReviewOpen() && !!params.id)
@@ -2102,6 +2104,7 @@ export default function Page() {
                   onUserScroll={markUserScroll}
                   onHistoryScroll={onHistoryScroll}
                   onAutoScrollInteraction={autoScroll.handleInteraction}
+                  onPauseAutoScroll={autoScroll.pause}
                   shouldAnchorBottom={() =>
                     !location.hash && !store.messageId && !ui.pendingMessage && !autoScroll.userScrolled()
                   }

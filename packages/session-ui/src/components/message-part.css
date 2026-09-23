@@ -39,11 +39,11 @@
     align-items: center;
     justify-content: center;
     min-width: 0;
-    border-radius: 6px;
+    border-radius: var(--radius-md);
     overflow: hidden;
     background: var(--v2-background-bg-layer-02);
     border: 0.5px solid var(--v2-border-border-base);
-    cursor: default;
+    cursor: pointer;
     transition:
       border-color 0.15s ease,
       opacity 0.3s ease;
@@ -139,10 +139,11 @@
     word-break: break-word;
     overflow: hidden;
     unicode-bidi: plaintext;
-    background: var(--v2-background-bg-layer-02);
+    background: var(--v2-background-bg-inverse);
+    color: var(--v2-text-text-inverse);
     border: none;
-    padding: 8px 12px;
-    border-radius: 10px;
+    padding: 10px 16px;
+    border-radius: var(--radius-xl);
 
     [data-highlight="file"] {
       color: var(--syntax-property);
@@ -373,7 +374,7 @@
   unicode-bidi: isolate;
   width: 100%;
   border: 0.5px solid var(--v2-border-border-base);
-  border-radius: 6px;
+  border-radius: var(--radius-md);
   background: transparent;
   position: relative;
   overflow: hidden;
@@ -637,7 +638,7 @@
   align-items: center;
   justify-content: flex-start;
   gap: 0px;
-  cursor: default;
+  cursor: pointer;
 
   [data-slot="context-tool-group-title"] {
     flex-shrink: 1;
@@ -974,7 +975,7 @@
     padding: 8px 8px 8px 10px;
     background-color: var(--v2-background-bg-layer-01);
     border: 0.5px solid var(--v2-border-border-base);
-    border-radius: 6px;
+    border-radius: var(--radius-md);
     box-shadow: none;
     text-align: left;
     width: 100%;
@@ -1335,9 +1336,13 @@
 
 body[data-new-layout] [data-component="user-message"] {
   font-weight: 440;
+  font-size: 15px;
+  line-height: 1.55;
+  letter-spacing: -0.1px;
 
   [data-slot="user-message-text"] {
     background: var(--v2-background-bg-layer-01);
+    color: var(--v2-text-text-base);
   }
 
   [data-slot="user-message-comments"] {
@@ -1379,7 +1384,8 @@ body[data-new-layout] [data-component="user-message"] {
 }
 
 [data-color-scheme="light"] body[data-new-layout] [data-component="user-message"] [data-slot="user-message-text"] {
-  background: var(--v2-background-bg-layer-02);
+  background: var(--v2-background-bg-inverse);
+  color: var(--v2-text-text-inverse);
 }
 
 body:not([data-new-layout]) {
@@ -1416,7 +1422,7 @@ body:not([data-new-layout]) {
     [data-slot="user-message-text"] {
       background: var(--surface-base);
       border: 1px solid var(--border-weak-base);
-      border-radius: 6px;
+      border-radius: var(--radius-md);
     }
 
     .text-text-strong {

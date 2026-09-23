@@ -18,6 +18,9 @@ const stateSchema = z.object({
     z.object({ directory: z.string(), name: z.string(), icon: z.record(z.string(), z.unknown()).optional() }),
   ),
   selectedAgent: z.string(),
+  agentRules: z
+    .record(z.string(), z.object({ access: z.enum(["ask", "edits", "auto", "plan", "full"]), fast: z.boolean() }))
+    .optional(),
   sessions: z.array(
     z.object({
       id: z.string(),

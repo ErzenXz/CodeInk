@@ -17,8 +17,10 @@ export function NewHome() {
   return (
     <div
       class={`
-        m-2 min-h-0 flex-1 self-stretch overflow-hidden rounded-[10px]
+        m-2 min-h-0 flex-1 self-stretch overflow-hidden rounded-xl
         bg-v2-background-bg-base shadow-[var(--v2-elevation-raised)]
+        group-data-[shell=sidebar]/shell:m-0 group-data-[shell=sidebar]/shell:rounded-none
+        group-data-[shell=sidebar]/shell:shadow-[inset_0.5px_0_0_var(--v2-border-border-muted)]
       `}
     >
       <ScrollView

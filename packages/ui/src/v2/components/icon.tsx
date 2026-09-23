@@ -9,6 +9,22 @@ const icons = {
     viewBox: "0 0 16 16",
     body: `<path d="M7.5 13.3333H1.5V2H6.83333L8.83333 4H14.8333V6M10.1667 11.3333H15.5M12.8333 8.66667V14" stroke="currentColor" stroke-miterlimit="10" stroke-linecap="square"/>`,
   },
+  shield: {
+    viewBox: "0 0 16 16",
+    body: `<path d="M8 1.75L13.25 3.75V7.75C13.25 10.75 11.1 13.1 8 14.25C4.9 13.1 2.75 10.75 2.75 7.75V3.75L8 1.75Z" stroke="currentColor" stroke-linejoin="round"/>`,
+  },
+  bolt: {
+    viewBox: "0 0 16 16",
+    body: `<path d="M9 1.75L3.5 9H8L7 14.25L12.5 7H8L9 1.75Z" stroke="currentColor" stroke-linejoin="round"/>`,
+  },
+  library: {
+    viewBox: "0 0 16 16",
+    body: `<path d="M3 2.5V13.5M6 2.5V13.5M9 3.5L12.5 12.8M2 13.5H14" stroke="currentColor" stroke-linecap="round"/>`,
+  },
+  "folder-open": {
+    viewBox: "0 0 16 16",
+    body: `<path d="M2.545 12.636V3.364H6.909L8.545 5H12.636V7M2.545 12.636L4.364 7H14.364L12.545 12.636H2.545Z" stroke="currentColor" stroke-miterlimit="10" stroke-linejoin="round"/>`,
+  },
   folder: {
     viewBox: "0 0 16 16",
     body: `<path d="M2.545 3.364V12.636H13.455V5H8.545L6.909 3.364H2.545Z" stroke="currentColor" stroke-miterlimit="10" stroke-linecap="square"/>`,

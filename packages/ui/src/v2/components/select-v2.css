@@ -13,9 +13,11 @@
   overflow: hidden;
   z-index: 60;
   pointer-events: auto;
-  background: var(--v2-background-bg-layer-01);
-  border-radius: 6px;
-  box-shadow: var(--v2-elevation-floating);
+  background: var(--v2-glass-surface);
+  -webkit-backdrop-filter: var(--v2-glass-filter);
+  backdrop-filter: var(--v2-glass-filter);
+  box-shadow: var(--v2-glass-shadow-floating);
+  border-radius: var(--radius-lg);
   transform-origin: top center;
   animation: select-v2-content-in 120ms ease-out;
 }
@@ -58,7 +60,7 @@
   width: 280px;
   height: 28px;
   border: 0;
-  border-radius: 6px;
+  border-radius: var(--radius-md);
   outline: 1px solid transparent;
   outline-offset: 0;
   background:
@@ -118,7 +120,7 @@
   min-width: 0;
   flex: 1 1 auto;
   min-height: 0;
-  cursor: default;
+  cursor: pointer;
 }
 
 [data-component="select-v2"] [data-slot="select-v2-value-text"] {
@@ -142,7 +144,7 @@
   letter-spacing: -0.04px;
   color: var(--v2-text-text-base);
   font-variation-settings: "slnt" 0;
-  cursor: default;
+  cursor: pointer;
 }
 
 [data-component="select-v2"] [data-slot="select-v2-value-text"][data-placeholder-shown] {
@@ -169,7 +171,7 @@
   padding: 2px;
   gap: 3px;
   border: 0;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   background: transparent;
   color: var(--v2-icon-icon-muted);
   pointer-events: none;
@@ -194,7 +196,7 @@
   padding-block: 4px;
   padding-inline: 8px 4px;
   gap: 4px;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   background: transparent;
   box-shadow: none;
   outline: none;
@@ -269,10 +271,14 @@
   --menu-v2-accent: var(--v2-text-text-accent);
   --menu-v2-badge-bg: var(--v2-background-bg-layer-02);
   --menu-v2-badge-border: var(--v2-border-border-base);
-  --menu-v2-hover: var(--v2-overlay-simple-overlay-hover);
+  --menu-v2-hover: var(--v2-glass-surface-hover);
 }
 
 /* Listbox uses data-selected; menu item CSS uses data-checked — mirror accent */
+[data-slot="select-v2-listbox"] [data-component="menu-v2-item"][data-selected] {
+  background: var(--v2-glass-surface-selected);
+}
+
 [data-slot="select-v2-listbox"] [data-component="menu-v2-item"][data-selected] [data-slot="menu-v2-item-content"] {
   font-weight: 530;
   color: var(--menu-v2-accent);

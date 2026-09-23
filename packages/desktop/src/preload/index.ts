@@ -14,6 +14,13 @@ const api: ElectronAPI = {
   killSidecar: () => ipcRenderer.invoke("kill-sidecar"),
   listInstalledAgents: () => ipcRenderer.invoke("agents-list"),
   saveInstalledAgent: (agent) => ipcRenderer.invoke("agents-save", agent),
+  listAgentExtensions: (refresh) => ipcRenderer.invoke("agents-extensions", refresh === true),
+  setAgentExtensionEnabled: (input) => ipcRenderer.invoke("agents-extension-toggle", input),
+  listAgentRules: () => ipcRenderer.invoke("agents-rules"),
+  setAgentRules: (agentID, rules) => ipcRenderer.invoke("agents-rules-set", agentID, rules),
+  readAgentUsage: (refresh) => ipcRenderer.invoke("agents-usage", refresh === true),
+  readAgentInstructions: () => ipcRenderer.invoke("agents-instructions"),
+  writeAgentInstructions: (agentID, content) => ipcRenderer.invoke("agents-instructions-save", agentID, content),
   awaitInitialization: () => ipcRenderer.invoke("await-initialization"),
   wslServers: {
     getState: () => ipcRenderer.invoke("wsl-servers-get-state"),
@@ -55,7 +62,7 @@ const api: ElectronAPI = {
       }
     },
     check: () => ipcRenderer.invoke("updater-check"),
-    install: () => ipcRenderer.invoke("updater-install"),
+    openDownload: () => ipcRenderer.invoke("updater-open-download"),
   },
   consumeInitialDeepLinks: () => ipcRenderer.invoke("consume-initial-deep-links"),
   getDefaultServerUrl: () => ipcRenderer.invoke("get-default-server-url"),

@@ -149,7 +149,7 @@ function DialogSelectFileLegacy(props: { filesOnly: () => boolean; onOpenFile?: 
                   </Show>
                 </div>
                 <Show when={item.keybind}>
-                  <Keybind class="rounded-[4px]">{formatKeybind(item.keybind ?? "", palette.language.t)}</Keybind>
+                  <Keybind class="rounded-sm">{formatKeybind(item.keybind ?? "", palette.language.t)}</Keybind>
                 </Show>
               </div>
             </Match>

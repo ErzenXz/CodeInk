@@ -21,10 +21,12 @@
   outline: none;
   user-select: none;
   -webkit-user-select: none;
-  border-radius: 8px;
   color: var(--v2-text-text-base);
-  background: var(--v2-background-bg-layer-01);
-  box-shadow: var(--v2-elevation-floating);
+  background: var(--v2-glass-surface);
+  -webkit-backdrop-filter: var(--v2-glass-filter);
+  backdrop-filter: var(--v2-glass-filter);
+  box-shadow: var(--v2-glass-shadow-floating);
+  border-radius: var(--radius-xl);
   transition:
     transform 280ms cubic-bezier(0.2, 0, 0, 1),
     opacity 160ms ease-out,
@@ -37,7 +39,7 @@
 
   &:focus-visible {
     box-shadow:
-      var(--v2-elevation-floating),
+      var(--v2-glass-shadow-floating),
       0 0 0 2px var(--v2-border-border-focus);
   }
 
@@ -90,7 +92,7 @@
     min-height: 20px;
     padding: 0;
     border: 0;
-    border-radius: 4px;
+    border-radius: var(--radius-sm);
     transform: none;
     background: transparent;
     color: var(--v2-icon-icon-muted);

@@ -17,6 +17,7 @@ test("Claude expired login produces one actionable error without an assistant ec
     executable: process.execPath,
     directory: tmpdir(),
     env: { ...process.env, CODEINK_FIXTURE_AUTH_ERROR: "1" },
+    rules: () => ({ access: "ask" as const, fast: false }),
     model: "haiku",
     emit(event) {
       events.push(event)

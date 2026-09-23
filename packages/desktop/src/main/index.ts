@@ -31,7 +31,7 @@ import {
   spawnLocalServer,
   type SidecarListener,
 } from "./server"
-import { setupAutoUpdater, showUpdaterDialog } from "./updater"
+import { setupUpdater, showUpdaterDialog } from "./updater"
 import { safeWebContentsURL } from "./window-state"
 import {
   getLastFocusedWindow,
@@ -270,7 +270,7 @@ const main = Effect.gen(function* () {
   app.setAsDefaultProtocolClient("codeink")
   registerRendererProtocol()
   setDockIcon()
-  const updater = setupAutoUpdater(stopSidecars)
+  const updater = setupUpdater()
   const menuDeps = {
     trigger: (id: string) => {
       const win = getLastFocusedWindow()
@@ -312,7 +312,7 @@ const main = Effect.gen(function* () {
   })
   registerWslIpcHandlers(wslServers)
   void updater.start()
-  const updateTimer = setInterval(() => void updater.check(), 10 * 60 * 1000)
+  const updateTimer = setInterval(() => void updater.check(), 6 * 60 * 60 * 1000)
   updateTimer.unref()
   app.once("will-quit", () => clearInterval(updateTimer))
   yield* Effect.promise(() => startNetLog()).pipe(

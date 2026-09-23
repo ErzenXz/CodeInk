@@ -61,8 +61,8 @@ export const PromptPopover: Component<PromptPopoverProps> = (props) => {
         class="absolute inset-x-0 -top-2 -translate-y-full origin-bottom-left max-h-80 min-h-10
                  overflow-auto no-scrollbar flex flex-col p-2"
         classList={{
-          "z-[70] rounded-[10px] bg-v2-background-bg-base shadow-[var(--v2-elevation-raised)]": props.newLayoutDesigns,
-          "rounded-[12px] bg-surface-raised-stronger-non-alpha shadow-[var(--shadow-lg-border-base)]":
+          "z-[70] rounded-xl glass-strong shadow-[var(--v2-elevation-floating)]": props.newLayoutDesigns,
+          "rounded-xl bg-surface-raised-stronger-non-alpha shadow-[var(--shadow-lg-border-base)]":
             !props.newLayoutDesigns,
         }}
         onMouseDown={(e) => e.preventDefault()}
@@ -92,7 +92,7 @@ export const PromptPopover: Component<PromptPopoverProps> = (props) => {
                       <button
                         class="w-full flex items-center gap-x-2 px-2 py-0.5"
                         classList={{
-                          "rounded-[4px]": props.newLayoutDesigns,
+                          "rounded-sm": props.newLayoutDesigns,
                           "rounded-md": !props.newLayoutDesigns,
                           "bg-v2-overlay-simple-overlay-hover": props.newLayoutDesigns && props.atActive === key,
                           "bg-surface-raised-base-hover": !props.newLayoutDesigns && props.atActive === key,
@@ -122,7 +122,7 @@ export const PromptPopover: Component<PromptPopoverProps> = (props) => {
                       <button
                         class="w-full flex items-center gap-x-2 px-2 py-0.5"
                         classList={{
-                          "rounded-[4px]": props.newLayoutDesigns,
+                          "rounded-sm": props.newLayoutDesigns,
                           "rounded-md": !props.newLayoutDesigns,
                           "bg-v2-overlay-simple-overlay-hover": props.newLayoutDesigns && props.atActive === key,
                           "bg-surface-raised-base-hover": !props.newLayoutDesigns && props.atActive === key,
@@ -168,7 +168,7 @@ export const PromptPopover: Component<PromptPopoverProps> = (props) => {
                       <button
                         class="w-full flex items-center gap-x-2 px-2 py-0.5"
                         classList={{
-                          "rounded-[4px]": props.newLayoutDesigns,
+                          "rounded-sm": props.newLayoutDesigns,
                           "rounded-md": !props.newLayoutDesigns,
                           "bg-v2-overlay-simple-overlay-hover": props.newLayoutDesigns && props.atActive === key,
                           "bg-surface-raised-base-hover": !props.newLayoutDesigns && props.atActive === key,
@@ -213,7 +213,7 @@ export const PromptPopover: Component<PromptPopoverProps> = (props) => {
                     <button
                       class="w-full flex items-center gap-x-2 px-2 py-0.5"
                       classList={{
-                        "rounded-[4px]": props.newLayoutDesigns,
+                        "rounded-sm": props.newLayoutDesigns,
                         "rounded-md": !props.newLayoutDesigns,
                         "bg-v2-overlay-simple-overlay-hover": props.newLayoutDesigns && props.atActive === key,
                         "bg-surface-raised-base-hover": !props.newLayoutDesigns && props.atActive === key,
@@ -295,7 +295,7 @@ export const PromptPopover: Component<PromptPopoverProps> = (props) => {
                       data-slash-id={cmd.id}
                       classList={{
                         "w-full flex items-center justify-between gap-4 px-2 py-1": true,
-                        "rounded-[4px] scroll-my-2": props.newLayoutDesigns,
+                        "rounded-sm scroll-my-2": props.newLayoutDesigns,
                         "rounded-md": !props.newLayoutDesigns,
                         "bg-v2-overlay-simple-overlay-hover": props.newLayoutDesigns && props.slashActive === cmd.id,
                         "bg-surface-raised-base-hover": !props.newLayoutDesigns && props.slashActive === cmd.id,
@@ -336,7 +336,7 @@ export const PromptPopover: Component<PromptPopoverProps> = (props) => {
                           <Show
                             when={props.newLayoutDesigns}
                             fallback={
-                              <span class="text-11-regular px-1.5 py-0.5 rounded bg-surface-base text-text-subtle">
+                              <span class="text-11-regular px-1.5 py-0.5 rounded-sm bg-surface-base text-text-subtle">
                                 {cmd.source === "skill"
                                   ? props.t("prompt.slash.badge.skill")
                                   : cmd.source === "mcp"

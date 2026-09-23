@@ -32,7 +32,7 @@
     text-align: left;
     color: inherit;
     outline: none;
-    border-radius: 2px;
+    border-radius: var(--radius-xs);
   }
 
   [data-slot="tool-error-card-trigger"]:focus-visible {

@@ -71,9 +71,7 @@ export function StatusPopover() {
     >
       <Show when={shown()}>
         <Suspense
-          fallback={
-            <div class="w-[360px] h-14 rounded-xl bg-background-strong shadow-[var(--shadow-lg-border-base)]" />
-          }
+          fallback={<div class="w-[360px] h-14 rounded-xl glass-strong shadow-[var(--v2-elevation-floating)]" />}
         >
           <Body shown={shown} />
         </Suspense>
@@ -162,9 +160,7 @@ type StatusPopoverState = {
 function StatusPopoverBody(props: { shown: boolean; children: JSX.Element }) {
   return (
     <Show when={props.shown}>
-      <Suspense
-        fallback={<div class="w-[360px] h-14 rounded-xl bg-background-strong shadow-[var(--shadow-lg-border-base)]" />}
-      >
+      <Suspense fallback={<div class="w-[360px] h-14 rounded-xl glass-strong shadow-[var(--v2-elevation-floating)]" />}>
         {props.children}
       </Suspense>
     </Show>

@@ -1,111 +1,60 @@
 import { describe, expect, test } from "bun:test"
-import { createUpdaterController, type UpdaterBackend, type UpdaterReadyRecord } from "./updater-controller"
-
-function setup(input?: { currentVersion?: string; ready?: UpdaterReadyRecord }) {
-  const calls: string[] = []
-  const backend: UpdaterBackend = {
-    async checkForUpdates() {
-      calls.push("check")
-      return { isUpdateAvailable: true, updateInfo: { version: "2.0.0" } }
-    },
-    async downloadUpdate() {
-      calls.push("download")
-    },
-    quitAndInstall() {
-      calls.push("install")
-    },
-  }
-  let ready = input?.ready
-  const controller = createUpdaterController({
-    enabled: true,
-    currentVersion: input?.currentVersion ?? "1.0.0",
-    backend,
-    persistence: {
-      get: () => ready,
-      set: (value) => {
-        ready = value
-      },
-      clear: () => {
-        ready = undefined
-      },
-    },
-    stop: async () => {
-      calls.push("stop")
-    },
-  })
-  return { controller, calls, getReady: () => ready }
-}
+import { createUpdaterController } from "./updater-controller"
 
 describe("updater controller", () => {
-  test("checks, downloads, persists, and publishes one authoritative ready state", async () => {
-    const app = setup()
-    const states: ReturnType<typeof app.controller.getState>[] = []
-    app.controller.subscribe((state) => states.push(state))
-
-    await app.controller.start()
-
-    expect(app.calls).toEqual(["check", "download"])
-    expect(app.getReady()).toEqual({ version: "2.0.0" })
-    expect(states.map((state) => state.status)).toEqual(["idle", "checking", "downloading", "ready"])
-    expect(app.controller.getState()).toEqual({ status: "ready", version: "2.0.0" })
-  })
-
-  test("revalidates a persisted target through the updater cache on launch", async () => {
-    const app = setup({ ready: { version: "2.0.0" } })
-
-    await app.controller.start()
-
-    expect(app.calls).toEqual(["check", "download"])
-    expect(app.controller.getState()).toEqual({ status: "ready", version: "2.0.0" })
-  })
-
-  test("clears a target already installed before checking", async () => {
-    const app = setup({ currentVersion: "2.0.0", ready: { version: "2.0.0" } })
-
-    await app.controller.start()
-
-    expect(app.getReady()).toBeUndefined()
-    expect(app.calls).toEqual(["check"])
-  })
-
-  test("coalesces concurrent checks", async () => {
-    const app = setup()
-
-    await Promise.all([app.controller.check(), app.controller.check(), app.controller.check()])
-
-    expect(app.calls).toEqual(["check", "download"])
-  })
-
-  test("returns to ready when quitAndInstall returns without exiting", async () => {
-    const app = setup()
-    await app.controller.start()
-
-    await app.controller.install()
-
-    expect(app.calls).toEqual(["check", "download", "stop", "install"])
-    expect(app.controller.getState()).toEqual({ status: "ready", version: "2.0.0" })
-  })
-
-  test("returns to ready when installation cannot start", async () => {
-    const app = setup()
-    await app.controller.start()
-
-    const failed = createUpdaterController({
+  test("reports a newer CodeInk release and opens its download page", async () => {
+    const calls: string[] = []
+    const controller = createUpdaterController({
       enabled: true,
-      currentVersion: "1.0.0",
-      backend: {
-        checkForUpdates: async () => ({ isUpdateAvailable: true, updateInfo: { version: "2.0.0" } }),
-        downloadUpdate: async () => {},
-        quitAndInstall() {},
+      currentVersion: "0.1.14",
+      checkForUpdates: async () => {
+        calls.push("check")
+        return "0.1.15"
       },
-      persistence: { get: () => undefined, set() {}, clear() {} },
-      stop: async () => {
-        throw new Error("stop failed")
-      },
+      openDownload: () => calls.push("open"),
     })
-    await failed.start()
+    const states: string[] = []
+    controller.subscribe((state) => states.push(state.status))
 
-    await expect(failed.install()).rejects.toThrow("stop failed")
-    expect(failed.getState()).toEqual({ status: "ready", version: "2.0.0" })
+    await controller.start()
+    controller.openDownload()
+
+    expect(states).toEqual(["idle", "checking", "available"])
+    expect(controller.getState()).toEqual({ status: "available", version: "0.1.15" })
+    expect(calls).toEqual(["check", "open"])
+  })
+
+  test("does not offer older releases or another download after they are current", async () => {
+    const calls: string[] = []
+    const controller = createUpdaterController({
+      enabled: true,
+      currentVersion: "0.1.15-early-access",
+      checkForUpdates: async () => "0.1.14-early-access",
+      openDownload: () => calls.push("open"),
+    })
+
+    await controller.check()
+    controller.openDownload()
+
+    expect(controller.getState()).toEqual({ status: "up-to-date" })
+    expect(calls).toEqual([])
+  })
+
+  test("coalesces concurrent checks and exposes a failed request", async () => {
+    let checks = 0
+    const controller = createUpdaterController({
+      enabled: true,
+      currentVersion: "0.1.14",
+      checkForUpdates: async () => {
+        checks++
+        throw new Error("GitHub responded with 403")
+      },
+      openDownload() {},
+    })
+
+    await Promise.all([controller.check(), controller.check(), controller.check()])
+
+    expect(checks).toBe(1)
+    expect(controller.getState()).toEqual({ status: "error", message: "GitHub responded with 403" })
   })
 })

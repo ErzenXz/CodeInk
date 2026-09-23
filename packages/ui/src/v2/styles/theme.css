@@ -111,18 +111,10 @@
     --v2-avatar-border-gray: #3a3a3aff;
 
     /* ── Elevation ── */
-    --v2-elevation-raised:
-      0px 2px 4px 0px var(--v2-alpha-dark-4), 0px 1px 2px -1px var(--v2-alpha-dark-8),
-      0px 0px 0px 0.5px var(--v2-alpha-dark-12), 0px 0px 0px 0px var(--v2-alpha-dark-0);
-    --v2-elevation-floating:
-      0px 8px 16px 0px var(--v2-alpha-dark-4), 0px 4px 8px 0px var(--v2-alpha-dark-8),
-      0px 0px 0px 0.5px var(--v2-alpha-dark-12), 0px 0px 0px 0px var(--v2-alpha-dark-0);
-    --v2-elevation-overlay:
-      0px 16px 32px 0px var(--v2-alpha-dark-4), 0px 8px 16px 0px var(--v2-alpha-dark-8),
-      0px 0px 0px 0.5px var(--v2-alpha-dark-12), 0px 0px 0px 0px var(--v2-alpha-dark-0);
-    --v2-elevation-button-neutral:
-      0px 1px 1.5px 0px var(--v2-alpha-dark-10), 0px 0px 0px 0.5px var(--v2-alpha-dark-14),
-      0px 0px 0px 0px var(--v2-alpha-dark-0);
+    --v2-elevation-raised: var(--v2-glass-shadow-raised);
+    --v2-elevation-floating: var(--v2-glass-shadow-floating);
+    --v2-elevation-overlay: var(--v2-glass-shadow-overlay);
+    --v2-elevation-button-neutral: var(--v2-glass-shadow-control);
     --v2-elevation-button-contrast:
       0px 1px 1.5px 0px var(--v2-alpha-dark-20), 0px 0px 0px 0.5px var(--v2-grey-800),
       inset 0px 1px 2px 0px var(--v2-alpha-light-14), inset 0px -1px 2px 0px var(--v2-alpha-dark-6),
@@ -140,8 +132,49 @@
     --v2-illustration-illustration-layer-02: var(--v2-grey-400);
     --v2-illustration-illustration-layer-03: var(--v2-grey-500);
 
-    --font-family-text: "Inter", sans-serif;
-    --v2-font-family-sans: "Inter", sans-serif;
+    /*
+     * ── Surfaces ──
+     * Floating surfaces derive from the active theme's background tokens, so every theme
+     * gets matching menus, dialogs, and shell chrome without per-theme overrides.
+     * light-dark() resolves against the color-scheme the theme runtime sets on :root.
+     */
+    /* Surfaces are near-opaque, so blurring what sits behind them only costs frame time. */
+    --v2-glass-filter: none;
+    --v2-glass-filter-subtle: none;
+    /* Menus float a touch brighter than the page in light mode and lift off it in dark mode. */
+    --v2-glass-surface: light-dark(
+      color-mix(in srgb, var(--v2-background-bg-base) 97%, transparent),
+      color-mix(in srgb, var(--v2-background-bg-layer-01) 97%, transparent)
+    );
+    --v2-glass-surface-strong: color-mix(in srgb, var(--v2-background-bg-base) 98%, transparent);
+    --v2-glass-surface-subtle: color-mix(in srgb, var(--v2-background-bg-base) 58%, transparent);
+    --v2-glass-surface-hover: light-dark(rgba(0, 0, 0, 0.04), rgba(255, 255, 255, 0.06));
+    --v2-glass-surface-selected: color-mix(in srgb, var(--v2-background-bg-accent) 11%, transparent);
+    --v2-glass-surface-pressed: light-dark(rgba(0, 0, 0, 0.065), rgba(255, 255, 255, 0.1));
+    --v2-glass-edge: light-dark(rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.06));
+    --v2-glass-stroke: light-dark(rgba(0, 0, 0, 0.08), rgba(255, 255, 255, 0.1));
+    --v2-glass-stroke-strong: light-dark(rgba(0, 0, 0, 0.12), rgba(255, 255, 255, 0.16));
+    --v2-glass-shadow-raised:
+      inset 0 1px 0 0 var(--v2-glass-edge), 0 0 0 0.5px var(--v2-glass-stroke),
+      0 1px 2px 0 light-dark(rgba(0, 0, 0, 0.04), rgba(0, 0, 0, 0.3)),
+      0 4px 14px -4px light-dark(rgba(0, 0, 0, 0.08), rgba(0, 0, 0, 0.4));
+    --v2-glass-shadow-floating:
+      inset 0 1px 0 0 var(--v2-glass-edge), 0 0 0 0.5px var(--v2-glass-stroke-strong),
+      0 4px 12px -4px light-dark(rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0.45)),
+      0 16px 40px -12px light-dark(rgba(0, 0, 0, 0.18), rgba(0, 0, 0, 0.6));
+    --v2-glass-shadow-overlay:
+      inset 0 1px 0 0 var(--v2-glass-edge), 0 0 0 0.5px var(--v2-glass-stroke-strong),
+      0 8px 24px -8px light-dark(rgba(0, 0, 0, 0.14), rgba(0, 0, 0, 0.5)),
+      0 32px 80px -16px light-dark(rgba(0, 0, 0, 0.24), rgba(0, 0, 0, 0.7));
+    --v2-glass-shadow-control:
+      inset 0 1px 0 0 var(--v2-glass-edge), 0 0 0 0.5px var(--v2-glass-stroke-strong),
+      0 1px 2px 0 light-dark(rgba(0, 0, 0, 0.07), rgba(0, 0, 0, 0.4));
+    --v2-glass-scrim: light-dark(rgba(20, 20, 24, 0.18), rgba(0, 0, 0, 0.45));
+    --v2-glass-ambient: var(--v2-background-bg-deep);
+
+    /* The platform UI face: SF Pro on macOS, Segoe UI Variable on Windows, bundled Inter elsewhere. */
+    --font-family-text: -apple-system, BlinkMacSystemFont, "Segoe UI Variable Text", "Segoe UI", "Inter", sans-serif;
+    --v2-font-family-sans: -apple-system, BlinkMacSystemFont, "Segoe UI Variable Text", "Segoe UI", "Inter", sans-serif;
   }
 
   /* OS preference fallback (no JS needed) */
@@ -330,18 +363,10 @@
     --v2-agent-review-solid: var(--v2-green-800);
     --v2-agent-writer-solid: var(--v2-purple-700);
 
-    --v2-elevation-raised:
-      0px 2px 4px 0px var(--v2-alpha-dark-4), 0px 1px 2px -1px var(--v2-alpha-dark-8),
-      0px 0px 0px 0.5px var(--v2-alpha-dark-12), 0px 0px 0px 0px var(--v2-alpha-dark-0);
-    --v2-elevation-floating:
-      0px 8px 16px 0px var(--v2-alpha-dark-4), 0px 4px 8px 0px var(--v2-alpha-dark-8),
-      0px 0px 0px 0.5px var(--v2-alpha-dark-12), 0px 0px 0px 0px var(--v2-alpha-dark-0);
-    --v2-elevation-overlay:
-      0px 16px 32px 0px var(--v2-alpha-dark-4), 0px 8px 16px 0px var(--v2-alpha-dark-8),
-      0px 0px 0px 0.5px var(--v2-alpha-dark-12), 0px 0px 0px 0px var(--v2-alpha-dark-0);
-    --v2-elevation-button-neutral:
-      0px 1px 1.5px 0px var(--v2-alpha-dark-10), 0px 0px 0px 0.5px var(--v2-alpha-dark-14),
-      0px 0px 0px 0px var(--v2-alpha-dark-0);
+    --v2-elevation-raised: var(--v2-glass-shadow-raised);
+    --v2-elevation-floating: var(--v2-glass-shadow-floating);
+    --v2-elevation-overlay: var(--v2-glass-shadow-overlay);
+    --v2-elevation-button-neutral: var(--v2-glass-shadow-control);
     --v2-elevation-button-contrast:
       0px 1px 1.5px 0px var(--v2-alpha-dark-20), 0px 0px 0px 0.5px var(--v2-grey-800),
       inset 0px 1px 2px 0px var(--v2-alpha-light-14), inset 0px -1px 2px 0px var(--v2-alpha-dark-6),
@@ -472,18 +497,10 @@
     --v2-avatar-bg-gray: #5c5c5cff;
     --v2-avatar-border-gray: #aeaeaeff;
 
-    --v2-elevation-raised:
-      0px 2px 4px 0px var(--v2-alpha-dark-30), 0px 1px 2px 0px var(--v2-alpha-dark-30),
-      0px 0px 0px 0.5px var(--v2-alpha-light-16), 0px -0.5px 0px 0px var(--v2-alpha-light-6);
-    --v2-elevation-floating:
-      0px 8px 16px 0px var(--v2-alpha-dark-30), 0px 4px 8px 0px var(--v2-alpha-dark-30),
-      0px 0px 0px 0.5px var(--v2-alpha-light-16), 0px -0.5px 0px 0px var(--v2-alpha-light-6);
-    --v2-elevation-overlay:
-      0px 16px 32px 0px var(--v2-alpha-dark-30), 0px 8px 16px 0px var(--v2-alpha-dark-30),
-      0px 0px 0px 0.5px var(--v2-alpha-light-16), 0px -0.5px 0px 0px var(--v2-alpha-light-6);
-    --v2-elevation-button-neutral:
-      0px 1px 2px 0px var(--v2-alpha-dark-40), 0px 0px 0px 0.5px var(--v2-alpha-light-20),
-      0px -0.5px 0px 0px var(--v2-alpha-light-10);
+    --v2-elevation-raised: var(--v2-glass-shadow-raised);
+    --v2-elevation-floating: var(--v2-glass-shadow-floating);
+    --v2-elevation-overlay: var(--v2-glass-shadow-overlay);
+    --v2-elevation-button-neutral: var(--v2-glass-shadow-control);
     --v2-elevation-button-contrast:
       0px 1px 2px 0px var(--v2-alpha-dark-40), 0px 0px 0px 0.5px var(--v2-alpha-light-40),
       inset 0px 0px 0px 0px var(--v2-alpha-light-0), inset 0px 0px 0px 0px var(--v2-alpha-light-0),

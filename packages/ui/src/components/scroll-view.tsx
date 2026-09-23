@@ -201,6 +201,20 @@ export function ScrollView(props: ScrollViewProps) {
     setState("thumbTop", boundedTop)
   }
 
+  // Reading scroll metrics forces layout; batch mount and resize reads into one frame instead of
+  // forcing a synchronous layout while the content is still being built.
+  let thumbFrame: number | undefined
+  const scheduleThumb = () => {
+    if (thumbFrame !== undefined) return
+    thumbFrame = requestAnimationFrame(() => {
+      thumbFrame = undefined
+      updateThumb()
+    })
+  }
+  onCleanup(() => {
+    if (thumbFrame !== undefined) cancelAnimationFrame(thumbFrame)
+  })
+
   onMount(() => {
     if (local.viewportRef) {
       local.viewportRef(viewportRef)
@@ -208,15 +222,15 @@ export function ScrollView(props: ScrollViewProps) {
 
     createResizeObserver(
       () => [viewportRef, viewportRef.firstElementChild, thumbMount()].filter(Boolean) as HTMLElement[],
-      updateThumb,
+      scheduleThumb,
     )
 
-    updateThumb()
+    scheduleThumb()
   })
 
   createEffect(() => {
     thumbMount()
-    updateThumb()
+    scheduleThumb()
   })
 
   createEffect(() => {

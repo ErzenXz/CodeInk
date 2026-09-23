@@ -191,9 +191,11 @@
         justify-content: space-between;
         align-items: center;
         align-self: stretch;
-        background: var(--surface-raised-stronger-non-alpha);
+        /* Lists live inside glass dialogs and popovers; stay clear until the header sticks. */
+        background: transparent;
         position: sticky;
         top: 0;
+        transition: background-color 0.15s ease;
 
         color: var(--text-weak);
 
@@ -212,10 +214,16 @@
           left: 0;
           right: 0;
           height: 16px;
-          background: linear-gradient(to bottom, var(--surface-raised-stronger-non-alpha), transparent);
+          background: linear-gradient(to bottom, var(--v2-glass-surface-subtle), transparent);
           pointer-events: none;
           opacity: 0;
           transition: opacity 0.15s ease;
+        }
+
+        &[data-stuck="true"] {
+          background: var(--v2-glass-surface-strong);
+          -webkit-backdrop-filter: var(--v2-glass-filter-subtle);
+          backdrop-filter: var(--v2-glass-filter-subtle);
         }
 
         &[data-stuck="true"]::after {

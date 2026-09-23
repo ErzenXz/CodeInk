@@ -13,8 +13,10 @@
   gap: 6px;
   padding: 12px;
 
-  background: var(--v2-background-bg-base);
-  border-radius: 6px;
+  background: var(--v2-glass-surface-strong);
+  -webkit-backdrop-filter: var(--v2-glass-filter);
+  backdrop-filter: var(--v2-glass-filter);
+  border-radius: var(--radius-lg);
   box-shadow: var(--v2-elevation-floating);
 
   color: var(--v2-text-text-base);

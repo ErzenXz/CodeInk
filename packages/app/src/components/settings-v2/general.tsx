@@ -28,7 +28,7 @@ import {
 import "./settings-v2.css"
 
 const schemeOptions: ("system" | "light" | "dark")[] = ["system", "light", "dark"]
-const sessionTabOptions: ("top" | "sidebar")[] = ["top", "sidebar"]
+const sessionTabOptions: ("top" | "sidebar" | "projects")[] = ["top", "sidebar", "projects"]
 const fontSettings = {
   ui: {
     action: "settings-ui-font",
@@ -137,11 +137,7 @@ const AppearanceSection: Component<{ controller: AppearanceSettingsController }>
             current={sessionTabOptions.find((option) => option === settings.general.sessionTabPosition())}
             placement="bottom-end"
             gutter={6}
-            label={(option) =>
-              language.t(
-                option === "top" ? "settings.general.row.sessionTabs.top" : "settings.general.row.sessionTabs.sidebar",
-              )
-            }
+            label={(option) => language.t(`settings.general.row.sessionTabs.${option}`)}
             onSelect={(option) => option && settings.general.setSessionTabPosition(option)}
           />
         </SettingsRowV2>
@@ -525,7 +521,7 @@ export const SettingsGeneralV2: Component<{
 
         <SettingsRowV2
           title={language.t("settings.updates.row.check.title")}
-          description={language.t("settings.updates.row.check.description")}
+          description={language.t("settings.updates.row.check.downloadDescription")}
         >
           <ButtonV2 size="normal" variant="neutral" disabled={!updater.action().run} onClick={() => updater.run()}>
             {language.t(updater.action().label)}

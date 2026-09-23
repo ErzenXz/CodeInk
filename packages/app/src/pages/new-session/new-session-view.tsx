@@ -35,12 +35,12 @@ export function NewSessionView(props: {
     <div class="@container relative flex flex-col min-h-0 h-full flex-1">
       <div
         data-component="session-new-design"
-        class="relative flex-1 min-h-0 overflow-hidden rounded-[10px] bg-v2-background-bg-deep"
+        class="relative flex-1 min-h-0 overflow-hidden rounded-xl bg-v2-background-bg-deep group-data-[shell=sidebar]/shell:rounded-none group-data-[shell=sidebar]/shell:bg-v2-background-bg-base group-data-[shell=sidebar]/shell:shadow-[inset_0.5px_0_0_var(--v2-border-border-muted)]"
       >
-        <div class="absolute inset-x-0 top-[25.375%] flex justify-center px-6">
+        <div class="absolute inset-0 flex items-center justify-center px-6">
           <div class={NEW_SESSION_CONTENT_WIDTH}>
-            <WordmarkV2 class="h-auto w-full text-v2-background-bg-inverse" />
-            <div class="mt-8 flex flex-col gap-8">
+            <WordmarkV2 class="mx-auto block h-auto w-[min(420px,70%)] text-v2-background-bg-inverse" />
+            <div class="mt-10 flex flex-col gap-6">
               <PromptInputV2Composer controller={props.input} />
               <Show when={props.project.empty()}>
                 <PromptProjectAddButton controller={props.project} />
@@ -132,7 +132,7 @@ function ProviderTip() {
         >
           <button
             type="button"
-            class="flex h-6 min-w-0 items-center rounded-[4px] pl-1.5 text-[13px] leading-none tracking-[-0.04px] text-v2-text-text-faint transition-[background-color,color] duration-150 ease-in-out hover:bg-v2-overlay-simple-overlay-hover hover:text-v2-text-text-muted focus-visible:bg-v2-overlay-simple-overlay-hover focus-visible:text-v2-text-text-muted focus-visible:outline-none"
+            class="flex h-6 min-w-0 items-center rounded-sm pl-1.5 text-[13px] leading-none tracking-[-0.04px] text-v2-text-text-faint transition-[background-color,color] duration-150 ease-in-out hover:bg-v2-overlay-simple-overlay-hover hover:text-v2-text-text-muted focus-visible:bg-v2-overlay-simple-overlay-hover focus-visible:text-v2-text-text-muted focus-visible:outline-none"
             onClick={openProviders}
           >
             <span class="truncate">{language.t("home.providerTip")}</span>
@@ -148,7 +148,7 @@ function ProviderTip() {
           >
             <button
               type="button"
-              class="flex size-6 items-center justify-center rounded-[4px] text-v2-icon-icon-muted transition-[background-color,color] duration-150 ease-in-out hover:bg-v2-overlay-simple-overlay-hover hover:text-v2-icon-icon-base focus-visible:bg-v2-overlay-simple-overlay-hover focus-visible:text-v2-icon-icon-base focus-visible:outline-none"
+              class="flex size-6 items-center justify-center rounded-sm text-v2-icon-icon-muted transition-[background-color,color] duration-150 ease-in-out hover:bg-v2-overlay-simple-overlay-hover hover:text-v2-icon-icon-base focus-visible:bg-v2-overlay-simple-overlay-hover focus-visible:text-v2-icon-icon-base focus-visible:outline-none"
               aria-label={language.t("common.dismiss")}
               onClick={() => setPersistedState("dismissedAt", Date.now())}
             >

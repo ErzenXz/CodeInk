@@ -3,6 +3,7 @@ import { compareModels, ModelLabel } from "./model-presentation"
 import { Popover as Kobalte } from "@kobalte/core/popover"
 import { Component, ComponentProps, createEffect, createMemo, For, JSX, Show } from "solid-js"
 import { createStore } from "solid-js/store"
+import { Portal } from "solid-js/web"
 import { useLocal } from "@/context/local"
 import { useDialog } from "@codeink/ui/context/dialog"
 import { popularProviders } from "@/hooks/use-providers"
@@ -16,7 +17,6 @@ import { Tooltip } from "@codeink/ui/tooltip"
 import { Icon } from "@codeink/ui/v2/icon"
 import { Tag as TagV2 } from "@codeink/ui/v2/badge-v2"
 import { MenuV2 } from "@codeink/ui/v2/menu-v2"
-import { TooltipV2 } from "@codeink/ui/v2/tooltip-v2"
 import { ModelTooltip } from "./model-tooltip"
 import { useLanguage } from "@/context/language"
 import { decode64 } from "@/utils/base64"
@@ -303,7 +303,14 @@ function ModelSelectorPopoverV2View(props: {
   onClose: () => void
 }) {
   const language = useLanguage()
-  const [store, setStore] = createStore({ open: false, search: "", active: "" })
+  const [store, setStore] = createStore({
+    open: false,
+    search: "",
+    active: "",
+    detail: undefined as { key: string; top: number; left: number } | undefined,
+    // Rows rendered so far; the first frame only needs what fits the 220px list.
+    limit: Infinity,
+  })
   let searchRef: HTMLInputElement | undefined
   let contentRef: HTMLDivElement | undefined
   const dismiss = createMenuDismissController(() => contentRef)
@@ -317,12 +324,25 @@ function ModelSelectorPopoverV2View(props: {
     if (selected && options.includes(selected)) return selected
     return options[0] ?? ""
   }
+  // Hand each group its share of the row limit, keeping group objects stable so rows don't remount.
+  const budgets = createMemo(() => {
+    let left = store.limit
+    return new Map(
+      groups().map((group) => {
+        const count = Math.max(0, Math.min(group.items.length, left))
+        left -= count
+        return [group, count] as const
+      }),
+    )
+  })
   const activeItem = () =>
     store.active ? contentRef?.querySelector<HTMLElement>(`[data-option-key="${CSS.escape(store.active)}"]`) : undefined
   const setOpen = (open: boolean) => {
     if (open) {
       dismiss.allowTriggerRestore()
-      setStore({ open: true, active: initialActive() })
+      const active = initialActive()
+      setStore({ open: true, active, limit: Math.max(24, models().findIndex((item) => modelKey(item) === active) + 8) })
+      requestAnimationFrame(() => requestAnimationFrame(() => setStore("limit", Infinity)))
       setTimeout(() =>
         requestAnimationFrame(() => {
           searchRef?.focus()
@@ -380,10 +400,11 @@ function ModelSelectorPopoverV2View(props: {
       <MenuV2.Portal>
         <MenuV2.Content
           ref={(element: HTMLDivElement) => (contentRef = element)}
-          class="w-[284px] overflow-hidden rounded-md border-0 bg-v2-background-bg-layer-01 !p-0 shadow-[var(--v2-elevation-floating)] focus:outline-none"
+          class="w-[284px] overflow-hidden rounded-lg border-0 glass !p-0 shadow-[var(--v2-elevation-floating)] focus:outline-none"
           onPointerDownOutside={dismiss.preventTriggerRestore}
           onFocusOutside={dismiss.preventTriggerRestore}
           onCloseAutoFocus={dismiss.onCloseAutoFocus}
+          onPointerLeave={() => setStore("detail", undefined)}
         >
           <div class="flex flex-col p-0.5">
             <div class="flex h-7 items-center gap-2 rounded-sm pl-3 pr-2.5 text-v2-icon-icon-muted">
@@ -439,7 +460,11 @@ function ModelSelectorPopoverV2View(props: {
             </div>
           </div>
           <div class="h-px bg-v2-border-border-muted" />
-          <ScrollView data-slot="model-selector-scroll" class="max-h-[220px] min-h-0">
+          <ScrollView
+            data-slot="model-selector-scroll"
+            class="max-h-[220px] min-h-0"
+            onScroll={() => setStore("detail", undefined)}
+          >
             <div class="flex flex-col p-0.5 pt-0">
               <Show
                 when={models().length > 0}
@@ -451,36 +476,31 @@ function ModelSelectorPopoverV2View(props: {
               >
                 <For each={groups()}>
                   {(group) => (
-                    <MenuV2.Group>
-                      <MenuV2.GroupLabel class="sticky top-0 z-10 gap-2 bg-v2-background-bg-layer-01 px-3">
-                        <ProviderIcon id={group.category} class="size-3.5" />
-                        <span class="min-w-0 truncate">{group.items[0].provider.name}</span>
-                      </MenuV2.GroupLabel>
-                      <MenuV2.RadioGroup value={props.current()}>
-                        <For each={group.items}>
-                          {(item) => (
-                            <TooltipV2
-                              class="w-full"
-                              placement="right-start"
-                              gutter={6}
-                              openDelay={0}
-                              value={
-                                <ModelTooltip
-                                  model={item}
-                                  latest={item.latest}
-                                  free={isFree(item.provider.id, item.cost)}
-                                  v2
-                                />
-                              }
-                            >
+                    <Show when={(budgets().get(group) ?? 0) > 0}>
+                      <MenuV2.Group>
+                        <MenuV2.GroupLabel class="sticky top-0 z-10 gap-2 glass-strong px-3">
+                          <ProviderIcon id={group.category} class="size-3.5" />
+                          <span class="min-w-0 truncate">{group.items[0].provider.name}</span>
+                        </MenuV2.GroupLabel>
+                        <MenuV2.RadioGroup value={props.current()}>
+                          <For each={group.items.slice(0, budgets().get(group) ?? 0)}>
+                            {(item) => (
                               <MenuV2.RadioItem
                                 value={modelKey(item)}
                                 data-option-key={modelKey(item)}
                                 data-selected-model={props.current() === modelKey(item) ? true : undefined}
                                 class="scroll-my-6 w-full"
-                                classList={{ "!bg-v2-overlay-simple-overlay-hover": store.active === modelKey(item) }}
-                                onMouseEnter={() => {
-                                  setStore("active", modelKey(item))
+                                classList={{
+                                  "!bg-[var(--v2-glass-surface-hover)]":
+                                    store.active === modelKey(item) && props.current() !== modelKey(item),
+                                }}
+                                onMouseEnter={(event: MouseEvent & { currentTarget: HTMLElement }) => {
+                                  const row = event.currentTarget.getBoundingClientRect()
+                                  const menu = contentRef?.getBoundingClientRect()
+                                  setStore({
+                                    active: modelKey(item),
+                                    detail: menu && { key: modelKey(item), top: row.top, left: menu.right + 6 },
+                                  })
                                   setTimeout(() => searchRef?.focus())
                                 }}
                                 onSelect={() => selectModel(item)}
@@ -493,11 +513,11 @@ function ModelSelectorPopoverV2View(props: {
                                   <TagV2 class="shrink-0">{language.t("model.tag.latest")}</TagV2>
                                 </Show>
                               </MenuV2.RadioItem>
-                            </TooltipV2>
-                          )}
-                        </For>
-                      </MenuV2.RadioGroup>
-                    </MenuV2.Group>
+                            )}
+                          </For>
+                        </MenuV2.RadioGroup>
+                      </MenuV2.Group>
+                    </Show>
                   )}
                 </For>
               </Show>
@@ -507,9 +527,9 @@ function ModelSelectorPopoverV2View(props: {
           <div class="flex flex-col p-0.5">
             <MenuV2.Item
               data-option-key={manageKey}
-              classList={{ "!bg-v2-overlay-simple-overlay-hover": store.active === manageKey }}
+              classList={{ "!bg-[var(--v2-glass-surface-hover)]": store.active === manageKey }}
               onMouseEnter={() => {
-                setStore("active", manageKey)
+                setStore({ active: manageKey, detail: undefined })
                 setTimeout(() => searchRef?.focus())
               }}
               onSelect={manage}
@@ -520,6 +540,29 @@ function ModelSelectorPopoverV2View(props: {
           </div>
         </MenuV2.Content>
       </MenuV2.Portal>
+      {/* One shared detail panel instead of a tooltip per row keeps opening the menu cheap. */}
+      <Show when={store.open && store.detail}>
+        {(detail) => (
+          <Show when={models().find((item) => modelKey(item) === detail().key)}>
+            {(item) => (
+              <Portal>
+                <div
+                  data-component="tooltip-v2"
+                  class="pointer-events-none fixed z-[70]"
+                  style={{ top: `${Math.min(detail().top, window.innerHeight - 240)}px`, left: `${detail().left}px` }}
+                >
+                  <ModelTooltip
+                    model={item()}
+                    latest={item().latest}
+                    free={isFree(item().provider.id, item().cost)}
+                    v2
+                  />
+                </div>
+              </Portal>
+            )}
+          </Show>
+        )}
+      </Show>
     </MenuV2>
   )
 }

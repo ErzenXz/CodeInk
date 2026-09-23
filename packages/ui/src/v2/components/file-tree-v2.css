@@ -16,7 +16,7 @@
   padding-inline-end: 8px;
   overflow: visible;
   border: none;
-  border-radius: 6px;
+  border-radius: var(--radius-md);
   background-color: transparent;
   color: var(--v2-text-text-muted);
   text-align: start;

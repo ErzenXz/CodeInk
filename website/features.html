@@ -1,0 +1,363 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0a0a0b" media="(prefers-color-scheme: dark)" />
+    <title>Features — CodeInk</title>
+    <meta
+      name="description"
+      content="Follow, steer and review your coding agent’s work in one window: grouped steps, permissions, Fast mode, usage limits and more."
+    />
+    <meta name="author" content="Erzen Krasniqi" />
+    <link rel="canonical" href="https://codeink-desktop.vercel.app/features.html" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="CodeInk" />
+    <meta property="og:url" content="https://codeink-desktop.vercel.app/features.html" />
+    <meta property="og:title" content="Features — CodeInk" />
+    <meta
+      property="og:description"
+      content="Follow, steer and review your coding agent’s work in one window: grouped steps, permissions, Fast mode, usage limits and more."
+    />
+    <meta property="og:image" content="https://codeink-desktop.vercel.app/og.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="icon" href="icon-128.png" />
+    <link rel="apple-touch-icon" href="apple-touch-icon.png" />
+    <link rel="stylesheet" href="style.css" />
+    <script>
+      // Apply a saved theme before first paint so the page never flashes the other one.
+      try {
+        const theme = localStorage.getItem("codeink-site-theme")
+        if (theme === "light" || theme === "dark") document.documentElement.dataset.theme = theme
+      } catch {}
+      document.documentElement.classList.add("js")
+    </script>
+    <script type="module" src="site.js"></script>
+  </head>
+  <body>
+    <a class="skip" href="#main">Skip to content</a>
+    <header class="site-header">
+      <div class="wrap header-inner">
+        <a class="brand" href="index.html" aria-label="CodeInk home">
+          <img src="icon-128.png" width="26" height="26" alt="" />
+          <span>CodeInk</span>
+        </a>
+        <nav class="nav" aria-label="Main">
+          <a href="features.html" aria-current="page">Features</a>
+          <a href="agents.html">Agents</a>
+          <a href="faq.html">FAQ</a>
+          <a href="https://github.com/ErzenXz/CodeInk">GitHub</a>
+          <a class="nav-cta" href="download.html">Download</a>
+        </nav>
+        <details class="menu">
+          <summary aria-label="Menu"><span></span></summary>
+          <nav class="menu-panel" aria-label="Main">
+            <a href="index.html">Home</a>
+            <a href="features.html" aria-current="page">Features</a>
+            <a href="agents.html">Agents</a>
+            <a href="faq.html">FAQ</a>
+            <a href="download.html">Download</a>
+            <a href="https://github.com/ErzenXz/CodeInk">GitHub</a>
+          </nav>
+        </details>
+      </div>
+    </header>
+
+    <main id="main">
+      <section class="page-hero">
+        <div class="wrap">
+          <p class="eyebrow">Features</p>
+          <h1 class="display">One window<br />for every agent.</h1>
+          <p class="lead">Everything you need to follow, steer and review an agent’s work, and nothing you don’t.</p>
+        </div>
+      </section>
+
+      <section class="section-tight">
+        <div class="wrap">
+          <article class="spotlight">
+            <div class="spotlight-copy reveal">
+              <div>
+                <p class="eyebrow">New chat</p>
+                <h2 class="title">Start anywhere.</h2>
+              </div>
+              <p class="lead">
+                Pick a project, an agent and a model. A chat only appears in your sidebar once you send the first
+                message.
+              </p>
+            </div>
+            <figure class="shot reveal">
+              <div class="shot-frame">
+                <img
+                  class="shot-light"
+                  src="screenshots/new-chat-light.webp"
+                  width="2560"
+                  height="1600"
+                  alt="The new chat screen with the CodeInk logo, a composer and the project picker."
+                  loading="lazy"
+                  decoding="async"
+                />
+                <img
+                  class="shot-dark"
+                  src="screenshots/new-chat-dark.webp"
+                  width="2560"
+                  height="1600"
+                  alt="The new chat screen with the CodeInk logo, a composer and the project picker."
+                  loading="lazy"
+                  decoding="async"
+                />
+              </div>
+            </figure>
+          </article>
+          <article class="spotlight">
+            <div class="spotlight-copy reveal">
+              <div>
+                <p class="eyebrow">Models</p>
+                <h2 class="title">Models from the source.</h2>
+              </div>
+              <p class="lead">
+                CodeInk lists the models each agent reports, so you choose per chat instead of per install. Reasoning
+                levels come along too.
+              </p>
+            </div>
+            <figure class="shot reveal shot-detail">
+              <div class="shot-frame">
+                <img
+                  class="shot-light"
+                  src="screenshots/models-crop-light.webp"
+                  width="1640"
+                  height="820"
+                  alt="The model picker listing the models Codex reports."
+                  loading="lazy"
+                  decoding="async"
+                />
+                <img
+                  class="shot-dark"
+                  src="screenshots/models-crop-dark.webp"
+                  width="1640"
+                  height="820"
+                  alt="The model picker listing the models Codex reports."
+                  loading="lazy"
+                  decoding="async"
+                />
+              </div>
+            </figure>
+          </article>
+          <article class="spotlight">
+            <div class="spotlight-copy reveal">
+              <div>
+                <p class="eyebrow">Timeline</p>
+                <h2 class="title">The answer stays in view.</h2>
+              </div>
+              <p class="lead">
+                Finished turns fold their steps under Worked for, with the time it took. The final answer sits right
+                below.
+              </p>
+            </div>
+            <figure class="shot reveal">
+              <div class="shot-frame">
+                <img
+                  class="shot-light"
+                  src="screenshots/chat-light.webp"
+                  width="2560"
+                  height="1600"
+                  alt="A finished chat with a collapsed Worked for line above the answer."
+                  loading="lazy"
+                  decoding="async"
+                />
+                <img
+                  class="shot-dark"
+                  src="screenshots/chat-dark.webp"
+                  width="2560"
+                  height="1600"
+                  alt="A finished chat with a collapsed Worked for line above the answer."
+                  loading="lazy"
+                  decoding="async"
+                />
+              </div>
+            </figure>
+          </article>
+          <article class="spotlight">
+            <div class="spotlight-copy reveal">
+              <div>
+                <p class="eyebrow">Steps</p>
+                <h2 class="title">Every step, when you want it.</h2>
+              </div>
+              <p class="lead">
+                Reads, searches, edits and commands group into short summaries like “Edited 3 files, ran a command”.
+                Expand any of them for diffs and output.
+              </p>
+            </div>
+            <figure class="shot reveal">
+              <div class="shot-frame">
+                <img
+                  class="shot-light"
+                  src="screenshots/chat-steps-light.webp"
+                  width="2560"
+                  height="1600"
+                  alt="Grouped steps inside an expanded Worked for section."
+                  loading="lazy"
+                  decoding="async"
+                />
+                <img
+                  class="shot-dark"
+                  src="screenshots/chat-steps-dark.webp"
+                  width="2560"
+                  height="1600"
+                  alt="Grouped steps inside an expanded Worked for section."
+                  loading="lazy"
+                  decoding="async"
+                />
+              </div>
+            </figure>
+          </article>
+          <article class="spotlight">
+            <div class="spotlight-copy reveal">
+              <div>
+                <p class="eyebrow">Access</p>
+                <h2 class="title">Permissions that match the task.</h2>
+              </div>
+              <p class="lead">
+                Ask for approval, Auto review, Plan only or Full access, set per agent and applied to the next message.
+                Fast mode appears only for models that support it.
+              </p>
+            </div>
+            <figure class="shot reveal shot-detail">
+              <div class="shot-frame">
+                <img
+                  class="shot-light"
+                  src="screenshots/access-crop-light.webp"
+                  width="1640"
+                  height="920"
+                  alt="The access menu with four permission levels and Fast mode."
+                  loading="lazy"
+                  decoding="async"
+                />
+                <img
+                  class="shot-dark"
+                  src="screenshots/access-crop-dark.webp"
+                  width="1640"
+                  height="920"
+                  alt="The access menu with four permission levels and Fast mode."
+                  loading="lazy"
+                  decoding="async"
+                />
+              </div>
+            </figure>
+          </article>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="wrap">
+          <div class="reveal" style="margin-bottom: 48px">
+            <p class="eyebrow">And more</p>
+            <h2 class="title">Small things, done carefully.</h2>
+          </div>
+          <ul class="points reveal">
+            <li>
+              <h3>Instructions</h3>
+              <p>Edit each agent’s own instruction file, such as AGENTS.md or CLAUDE.md, from Settings.</p>
+            </li>
+            <li>
+              <h3>Usage and limits</h3>
+              <p>See how much of your plan is left for Codex and Claude Code, and when it resets.</p>
+            </li>
+            <li>
+              <h3>Skills and plugins</h3>
+              <p>Browse what every agent has installed, in one place.</p>
+            </li>
+            <li>
+              <h3>Changes and review</h3>
+              <p>Review what the agent changed in your project, right next to the chat.</p>
+            </li>
+            <li>
+              <h3>Built-in terminal</h3>
+              <p>Run your own commands in the same window as the agent.</p>
+            </li>
+            <li>
+              <h3>Sidebar or tabs</h3>
+              <p>Keep sessions in a sidebar, in tabs, or combine projects with tabs.</p>
+            </li>
+            <li>
+              <h3>Select anything</h3>
+              <p>Copy text across messages, commands and file paths.</p>
+            </li>
+            <li>
+              <h3>Light and dark</h3>
+              <p>Follows your system, or pick one in Settings.</p>
+            </li>
+            <li>
+              <h3>Local first</h3>
+              <p>Sessions stay on your computer. Nothing to sign up for.</p>
+            </li>
+          </ul>
+        </div>
+      </section>
+
+      <hr class="rule" />
+      <section class="closing center">
+        <div class="wrap reveal">
+          <h2 class="title">See it with your own agent.</h2>
+          <p class="lead">Download CodeInk and connect the CLI you already use.</p>
+          <div class="actions">
+            <a class="button button-primary" href="download.html" data-download-label>Download CodeInk</a>
+            <a class="button" href="https://github.com/ErzenXz/CodeInk">View on GitHub</a>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="wrap">
+        <div class="footer-grid">
+          <div>
+            <a class="brand" href="index.html"
+              ><img src="icon-128.png" width="22" height="22" alt="" /><span>CodeInk</span></a
+            >
+            <p>
+              A desktop workspace for the coding agents you already use. Free, open source and an independent fork of
+              OpenCode.
+            </p>
+          </div>
+          <nav class="footer-col" aria-label="Product">
+            <h2>Product</h2>
+            <ul>
+              <li><a href="features.html">Features</a></li>
+              <li><a href="agents.html">Agents</a></li>
+              <li><a href="download.html">Download</a></li>
+            </ul>
+          </nav>
+          <nav class="footer-col" aria-label="Help">
+            <h2>Help</h2>
+            <ul>
+              <li><a href="faq.html">FAQ</a></li>
+              <li><a href="https://github.com/ErzenXz/CodeInk/releases">Releases</a></li>
+              <li><a href="https://github.com/ErzenXz/CodeInk/issues">Report an issue</a></li>
+            </ul>
+          </nav>
+          <nav class="footer-col" aria-label="Project">
+            <h2>Project</h2>
+            <ul>
+              <li><a href="https://github.com/ErzenXz/CodeInk">Source on GitHub</a></li>
+              <li><a href="https://github.com/ErzenXz/CodeInk/blob/main/LICENSE">MIT license</a></li>
+              <li><a href="https://github.com/ErzenXz/CodeInk/blob/main/UPSTREAM.md">Upstream</a></li>
+            </ul>
+          </nav>
+        </div>
+        <div class="footer-bottom">
+          <span
+            >Made by <a class="link" href="https://github.com/ErzenXz">Erzen Krasniqi</a>. Agent names and marks belong
+            to their owners.</span
+          >
+          <div class="theme-switch" role="group" aria-label="Theme">
+            <button type="button" data-theme-choice="system" aria-pressed="true">System</button>
+            <button type="button" data-theme-choice="light" aria-pressed="false">Light</button>
+            <button type="button" data-theme-choice="dark" aria-pressed="false">Dark</button>
+          </div>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

@@ -1,4 +1,4 @@
-import type { Agent, AgentEvent, Answer } from "../../shared/types"
+import type { Agent, AgentEvent, AgentRules, Answer } from "../../shared/types"
 
 export type AdapterOptions = {
   agent: Agent
@@ -8,10 +8,14 @@ export type AdapterOptions = {
   model: string
   variant?: string
   env: NodeJS.ProcessEnv
+  /** Current access and speed rules; read at launch and, where the agent allows it, on every turn. */
+  rules: () => AgentRules
   emit: (event: AgentEvent) => void
 }
 export type Adapter = {
   configure?(model: string, variant?: string): void
+  /** Applies changed rules to the running agent; returns false when it must restart to take effect. */
+  setRules?(rules: AgentRules): boolean
   prompt(text: string): Promise<void>
   stop(): Promise<void>
   answer(id: string, answer: Answer): Promise<void>

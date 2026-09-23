@@ -129,3 +129,22 @@
     animation-delay: 3s;
   }
 }
+
+/* Frosted surfaces backed by the v2 glass tokens (see v2/styles/theme.css). */
+@utility glass {
+  background-color: var(--v2-glass-surface);
+  -webkit-backdrop-filter: var(--v2-glass-filter);
+  backdrop-filter: var(--v2-glass-filter);
+}
+
+@utility glass-strong {
+  background-color: var(--v2-glass-surface-strong);
+  -webkit-backdrop-filter: var(--v2-glass-filter);
+  backdrop-filter: var(--v2-glass-filter);
+}
+
+@utility glass-subtle {
+  background-color: var(--v2-glass-surface-subtle);
+  -webkit-backdrop-filter: var(--v2-glass-filter-subtle);
+  backdrop-filter: var(--v2-glass-filter-subtle);
+}

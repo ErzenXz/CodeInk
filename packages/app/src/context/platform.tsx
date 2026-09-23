@@ -37,10 +37,94 @@ export type LocalAgentConnection = {
   executable?: string
 }
 
+export type AgentExtension = {
+  id: string
+  agentID: string
+  kind: "skill" | "plugin" | "mcp"
+  name: string
+  description?: string
+  source?: string
+  version?: string
+  path?: string
+  enabled?: boolean
+  toggleable: boolean
+  status?: string
+  tools?: number
+}
+
+export type AgentExtensionReport = { agentID: string; name: string; extensions: AgentExtension[]; error?: string }
+
+export type AgentLimitWindow = {
+  id: string
+  kind: "session" | "weekly" | "other"
+  usedPercent: number
+  resetsAt?: number
+  label?: string
+  warning?: boolean
+}
+
+export type AgentUsageReport = {
+  agentID: string
+  name: string
+  installed: boolean
+  plan?: string
+  windows: AgentLimitWindow[]
+  source?: "live" | "cache"
+  fetchedAt?: number
+  error?: string
+  totals: {
+    sessions: number
+    messages: number
+    input: number
+    output: number
+    cacheRead: number
+    cacheWrite: number
+    cost?: number
+    lastUsed?: number
+  }
+}
+
+export type AgentAccess = "ask" | "edits" | "auto" | "plan" | "full"
+export type AgentRulesReport = {
+  agentID: string
+  name: string
+  access: AgentAccess
+  fast: boolean
+  accessOptions: AgentAccess[]
+  fastModels: string[]
+  autoModels: string[]
+}
+
+export type AgentInstructions = {
+  agentID: string
+  name: string
+  installed: boolean
+  path: string
+  content: string
+  exists: boolean
+}
+
 type PlatformBase = {
   localAgents?: {
     list(): Promise<LocalAgentConnection[]>
     save(agent: LocalAgentConnection): Promise<LocalAgentConnection[]>
+  }
+  /** Skills, plugins, MCP servers, plan usage, and global instructions of locally installed agents. */
+  agentWorkspace?: {
+    extensions(refresh?: boolean): Promise<AgentExtensionReport[]>
+    setExtensionEnabled(input: {
+      agentID: string
+      kind: AgentExtension["kind"]
+      id: string
+      path?: string
+      enabled: boolean
+    }): Promise<void>
+    usage(refresh?: boolean): Promise<AgentUsageReport[]>
+    /** Per-agent access level and fast mode, applied to the agent's next turn. */
+    rules(): Promise<AgentRulesReport[]>
+    setRules(agentID: string, rules: { access: AgentAccess; fast: boolean }): Promise<AgentRulesReport[]>
+    instructions(): Promise<AgentInstructions[]>
+    saveInstructions(agentID: string, content: string): Promise<void>
   }
   /** App version */
   version?: string

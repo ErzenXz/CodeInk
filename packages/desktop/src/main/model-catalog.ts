@@ -54,6 +54,18 @@ export class ModelCatalog {
     }
   }
 
+  /** Discovered model capabilities for an agent, merged across the projects it was listed for. */
+  features(agentID: string) {
+    const models = [...this.entries.values()]
+      .filter((entry) => entry.agentID === agentID)
+      .flatMap((entry) => entry.models)
+    return {
+      fast: [...new Set(models.filter((model) => model.fast).map((model) => model.id))],
+      auto: [...new Set(models.filter((model) => model.autoReview).map((model) => model.id))],
+      default: models.find((model) => model.default)?.id,
+    }
+  }
+
   invalidate(agentID?: string) {
     for (const [key, entry] of this.entries) {
       if (agentID && entry.agentID !== agentID) continue

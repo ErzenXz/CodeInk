@@ -9,7 +9,7 @@
   width: 280px;
   height: 28px;
   border: 0;
-  border-radius: 6px;
+  border-radius: var(--radius-md);
   outline: 1px solid transparent;
   outline-offset: 0;
   background:
@@ -35,7 +35,7 @@
 
 [data-component="text-input-v2"]:where(:focus-within):not([data-disabled], [data-invalid]) {
   outline-color: var(--v2-border-border-focus);
-  box-shadow: none;
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--v2-border-border-focus) 20%, transparent);
 }
 
 [data-component="text-input-v2"]:where([data-invalid]):not([data-disabled]) {
@@ -125,7 +125,7 @@
   padding: 2px;
   gap: 3px;
   border: 0;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   background: transparent;
   color: var(--v2-icon-icon-muted);
   cursor: pointer;
@@ -166,7 +166,7 @@
   width: 28px;
   height: 28px;
   padding: 0;
-  border-radius: 6px;
+  border-radius: var(--radius-md);
   margin-inline-end: -8px;
 }
 

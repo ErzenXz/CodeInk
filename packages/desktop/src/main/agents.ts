@@ -1,7 +1,7 @@
 import { access } from "node:fs/promises"
 import { constants } from "node:fs"
 import { delimiter, isAbsolute, join } from "node:path"
-import type { Agent, AgentStatus } from "../shared/types"
+import type { Agent, AgentAccess, AgentStatus } from "../shared/types"
 import { codex } from "./adapters/codex"
 import { claude } from "./adapters/claude"
 import { opencode } from "./adapters/opencode"
@@ -43,6 +43,12 @@ export const defaults: Agent[] = [
     ] satisfies [string, string, string, string[]][]
   ).map(([id, name, command, args]) => ({ id, name, command, args, protocol: "acp" as const })),
 ]
+
+/** Access levels each native protocol can express; other agents keep their own defaults. */
+export const accessOptions: Partial<Record<Agent["protocol"], AgentAccess[]>> = {
+  claude: ["ask", "edits", "auto", "plan", "full"],
+  codex: ["ask", "auto", "plan", "full"],
+}
 
 export async function resolveExecutable(command: string, env: NodeJS.ProcessEnv) {
   const extensions = process.platform === "win32" ? ["", ".exe", ".com", ".cmd", ".bat"] : [""]

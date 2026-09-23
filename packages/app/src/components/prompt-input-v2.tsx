@@ -1,3 +1,4 @@
+import { PromptAccessControl } from "./prompt-access-control"
 import { ImagePreview } from "@codeink/ui/image-preview"
 import { useDialog } from "@codeink/ui/context/dialog"
 import { ProviderIcon } from "@codeink/ui/provider-icon"
@@ -56,6 +57,12 @@ export function PromptInputV2Composer(props: PromptInputV2ComposerProps) {
         borderUnderlay={props.borderUnderlay}
         class={props.class}
         variantControlVisible={!props.controller.model.loading}
+        accessControl={
+          <PromptAccessControl
+            providerID={props.controller.model.selection.current()?.provider?.id}
+            modelID={props.controller.model.selection.current()?.id}
+          />
+        }
         attachKeybind={command.keybindParts("file.attach")}
         attachShortcut={command.keybind("file.attach")}
         modelControl={

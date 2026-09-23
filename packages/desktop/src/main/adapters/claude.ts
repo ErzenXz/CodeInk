@@ -4,8 +4,11 @@ import { AgentProcess } from "./process"
 import { claudeUsage, count } from "./usage"
 import { toolInfo } from "./tool-info"
 import { array, detail, object, string, type Adapter, type AdapterOptions } from "./types"
+import type { AgentAccess } from "../../shared/types"
 
 export function claude(options: AdapterOptions): Adapter {
+  // Launch-time rules: fast mode and access to bypass mode can only be set when the process starts.
+  const launch = options.rules()
   let messageID: string = randomUUID()
   const streamed = new Set<string>()
   const requests = new Map<string, Record<string, unknown>>()
@@ -28,6 +31,9 @@ export function claude(options: AdapterOptions): Adapter {
       ...(options.remoteID ? ["--resume", options.remoteID] : []),
       ...(options.model ? ["--model", options.model] : []),
       ...(options.variant ? ["--effort", options.variant] : []),
+      "--permission-mode",
+      claudeMode(launch.access),
+      ...(launch.fast ? ["--settings", JSON.stringify({ fastMode: true })] : []),
     ],
     error: (text) => options.emit({ type: "error", text }),
     message: (message) => {
@@ -212,6 +218,23 @@ export function claude(options: AdapterOptions): Adapter {
       })
       requests.delete(id)
     },
+    setRules(rules) {
+      if (rules.fast !== launch.fast) return false
+      // Bypass mode is only reachable in a session launched with it.
+      if (rules.access === "full" && launch.access !== "full") return false
+      void proc
+        .request((id) => ({
+          type: "control_request",
+          request_id: id,
+          request: { subtype: "set_permission_mode", mode: claudeMode(rules.access) },
+        }))
+        .catch((error: Error) => options.emit({ type: "error", text: error.message }))
+      return true
+    },
     dispose: () => proc.dispose(),
   }
+}
+
+function claudeMode(access: AgentAccess) {
+  return { ask: "default", edits: "acceptEdits", auto: "auto", plan: "plan", full: "bypassPermissions" }[access]
 }

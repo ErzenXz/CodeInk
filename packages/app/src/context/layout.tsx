@@ -89,9 +89,13 @@ export type ReviewDiffStyle = "unified" | "split"
 export type ReviewChangeMode = "git" | "branch" | "turn"
 export type ReviewPanelSource = "context-button" | "other"
 
+export const hubPages = ["library", "skills"] as const
+export type HubPage = (typeof hubPages)[number]
+
 export type LayoutRoute =
   | { type: "home" }
   | { type: "settings"; server?: ServerConnection.Key }
+  | { type: "hub"; page: HubPage }
   | { type: "draft"; draftID: string; server?: ServerConnection.Key }
   | { type: "dir-new-sesssion"; dir: string; dirBase64: string; server?: ServerConnection.Key }
   | { type: "session"; sessionId: string; server?: ServerConnection.Key }
@@ -132,6 +136,8 @@ export const currentRoute = (pathname: string, search: string): LayoutRoute => {
   const parts = pathname.split("/").filter(Boolean)
   if (parts.length === 0) return { type: "home" }
   if (parts[0] === "settings") return { type: "settings" }
+  const hub = hubPages.find((page) => page === parts[0])
+  if (hub) return { type: "hub", page: hub }
 
   if (parts[0] === "new-session") {
     const draftID = new URLSearchParams(search).get("draftId")
@@ -170,7 +176,7 @@ export const { use: useLayout, provider: LayoutProvider } = createSimpleContext(
     const location = useLocation()
     const route = createMemo(() => {
       const value = currentRoute(location.pathname, location.search)
-      if (value.type === "home") return value
+      if (value.type === "home" || value.type === "hub") return value
       if (value.server) return value
       if (value.type === "draft") {
         const draft = tabs.store.find((tab): tab is DraftTab => tab.type === "draft" && tab.draftID === value.draftID)

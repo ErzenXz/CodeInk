@@ -5,12 +5,12 @@ import { basename, join, resolve } from "node:path"
 import { realpath, stat } from "node:fs/promises"
 import { execFile } from "node:child_process"
 import { promisify } from "node:util"
-import type { Agent, Session, Usage } from "../shared/types"
+import type { Agent, Session, Usage, AgentRules, AgentRulesReport } from "../shared/types"
 import type { Message, Part } from "@codeink/sdk/v2/client"
 type LegacySession = import("@codeink/sdk/v2/client").Session
 import { WorkspaceStore, agentSchema } from "./agent-store"
 import { Sessions } from "./sessions"
-import { detectAgents } from "./agents"
+import { detectAgents, accessOptions } from "./agents"
 import { listFiles, previewFile } from "./files"
 import { array, object, string } from "./adapters/types"
 import { t } from "../shared/i18n"
@@ -236,7 +236,8 @@ export async function startBridge(
       emit(session.directory, "session.idle", { sessionID: session.id })
     snapshots.set(session.id, next)
   }
-  const sessions = new Sessions(store, env, publish)
+  // The catalog is created below; the callback only runs once a session needs model features.
+  const sessions = new Sessions(store, env, publish, (agentID) => catalog.features(agentID))
   const listAgents = () => detectAgents(store.state.agents, env)
   const saveAgent = async (input: Agent) => {
     const agent = agentSchema.parse(input)
@@ -260,6 +261,28 @@ export async function startBridge(
     }, 80)
   })
   const providers = async (cwd: string) => catalog.list(await listAgents(), cwd)
+  const agentRules = async (): Promise<AgentRulesReport[]> =>
+    (await listAgents()).flatMap((agent) => {
+      const options = accessOptions[agent.protocol]
+      if (!agent.executable || !options) return []
+      const features = catalog.features(agent.id)
+      return [
+        {
+          agentID: agent.id,
+          name: agent.name,
+          ...sessions.rules(agent.id),
+          accessOptions: options,
+          fastModels: features.fast,
+          autoModels: features.auto,
+        },
+      ]
+    })
+  const setAgentRules = async (agentID: string, rules: AgentRules) => {
+    const agent = store.state.agents.find((item) => item.id === agentID)
+    if (!agent || !accessOptions[agent.protocol]?.includes(rules.access)) throw new Error(t("unsupportedFeature"))
+    await sessions.setRules(agentID, rules)
+    return agentRules()
+  }
   const project = async (path: string) => {
     const root = await realpath(path)
     if (!(await stat(root)).isDirectory()) throw new Error(t("invalidProject"))
@@ -634,6 +657,8 @@ export async function startBridge(
   return {
     listAgents,
     saveAgent,
+    agentRules,
+    setAgentRules,
     store,
     sessions,
     server,

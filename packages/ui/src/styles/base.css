@@ -79,6 +79,28 @@ a {
   color: inherit;
   -webkit-text-decoration: inherit;
   text-decoration: inherit;
+  cursor: pointer;
+}
+
+:where(
+  button,
+  summary,
+  select,
+  label[for],
+  [role="button"],
+  [role="tab"],
+  [role="menuitem"],
+  [role="menuitemradio"],
+  [role="menuitemcheckbox"],
+  [role="option"],
+  [role="switch"],
+  [role="checkbox"],
+  [role="radio"]
+) {
+  cursor: pointer;
+}
+
+:where(button:disabled, [aria-disabled="true"], [data-disabled]) {
   cursor: default;
 }
 

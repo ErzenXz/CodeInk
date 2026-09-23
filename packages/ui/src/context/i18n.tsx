@@ -9,6 +9,13 @@ export const UI_PLURAL_KEYS = [
   "ui.messagePart.context.read",
   "ui.messagePart.context.search",
   "ui.messagePart.context.list",
+  "ui.messagePart.group.edit",
+  "ui.messagePart.group.bash",
+  "ui.messagePart.group.read",
+  "ui.messagePart.group.search",
+  "ui.messagePart.group.websearch",
+  "ui.messagePart.group.webfetch",
+  "ui.messagePart.group.tool",
 ] as const
 export type UiI18nPluralKey = (typeof UI_PLURAL_KEYS)[number]
 export type UiPluralCategory = "zero" | "one" | "two" | "few" | "many" | "other"

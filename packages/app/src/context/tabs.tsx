@@ -68,6 +68,8 @@ export const { use: useTabs, provider: TabsProvider } = createSimpleContext({
     const [recent, setRecent, , recentReady] = persisted(Persist.window("tabs.recent"), createStore<RecentTab>({}))
     const [info, setInfo] = persisted(Persist.window("tabs.info"), createStore<Record<string, TabInfo>>({}))
     const [closed, setClosed, , closedReady] = persisted(Persist.window("tabs.closed"), createStore<ClosedTab[]>([]))
+    // Projects layout: the project whose chats fill the tab row (`server\npathKey(worktree)`).
+    const [focus, setFocus] = persisted(Persist.window("tabs.projectFocus"), createStore({ project: "" }))
 
     const params = useParams()
     const navigate = useNavigate()
@@ -438,6 +440,10 @@ export const { use: useTabs, provider: TabsProvider } = createSimpleContext({
       },
       stateValue<T>(tab: Tab, name: string) {
         return memory.get<T>(tabKey(tab), name)
+      },
+      projectFocus: () => focus.project,
+      setProjectFocus(project: string) {
+        if (focus.project !== project) setFocus("project", project)
       },
     }
 

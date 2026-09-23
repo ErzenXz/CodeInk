@@ -71,6 +71,8 @@ import { LegacyHome } from "@/pages/home/legacy-home"
 
 const NewSession = lazy(() => import("@/pages/new-session"))
 const SettingsPage = lazy(() => import("@/components/settings-v2/settings-page"))
+const LibraryPage = lazy(() => import("@/pages/hub/library"))
+const SkillsPage = lazy(() => import("@/pages/hub/skills"))
 
 const SessionRoute = () => {
   const settings = useSettings()
@@ -640,6 +642,8 @@ function Routes(props: { serverScoped?: JSX.Element }) {
       <Show when={settings.general.newLayoutDesigns()}>
         <Route path="/" component={NewHome} />
         <Route path="/settings" component={SettingsPage} />
+        <Route path="/library" component={LibraryPage} />
+        <Route path="/skills" component={SkillsPage} />
         <Route path="/:dir/session/:id" component={NewLayoutLegacySessionRedirect} />
         <Route path="/server/:serverKey/session/:id" component={TargetSessionRoute} />
       </Show>

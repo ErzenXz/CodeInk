@@ -29,16 +29,18 @@
   display: flex;
   flex-direction: column;
   padding: 4px;
-  border: 1px solid var(--v2-border-border-base);
-  border-radius: 6px;
-  background: var(--v2-background-bg-layer-02);
-  box-shadow: var(--v2-elevation-overlay);
+  border: none;
+  border-radius: var(--radius-lg);
+  background: var(--v2-glass-surface);
+  -webkit-backdrop-filter: var(--v2-glass-filter);
+  backdrop-filter: var(--v2-glass-filter);
+  box-shadow: var(--v2-elevation-floating);
 }
 
 .directory-picker-v2-suggestions button {
   overflow: hidden;
   padding: 6px 8px;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   color: var(--v2-text-text-muted);
   font-size: 12px;
   text-align: left;
@@ -60,7 +62,7 @@
   flex: 1;
   overflow: auto;
   border: 1px solid var(--v2-border-border-base);
-  border-radius: 6px;
+  border-radius: var(--radius-md);
   background: transparent;
 }
 
@@ -82,7 +84,7 @@
   --trees-font-family-override: var(--font-family-sans);
   --trees-font-size-override: 12px;
   --trees-item-height: 24px;
-  --trees-border-radius-override: 4px;
+  --trees-border-radius-override: var(--radius-sm);
 }
 
 .directory-picker-v2-state {

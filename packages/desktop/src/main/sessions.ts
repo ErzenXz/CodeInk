@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto"
 import { t } from "../shared/i18n"
-import type { AgentEvent, Answer, SendInput, Session } from "../shared/types"
+import type { AgentEvent, AgentRules, Answer, SendInput, Session } from "../shared/types"
 import type { Adapter } from "./adapters/types"
 import { connectAgent, resolveExecutable } from "./agents"
 import { WorkspaceStore } from "./agent-store"
@@ -9,11 +9,45 @@ export class Sessions {
   private adapters = new Map<string, Adapter>()
   private connections = new Map<string, symbol>()
   private timers = new Map<string, ReturnType<typeof setTimeout>>()
+  /** Sessions whose agent must relaunch before the next turn so changed rules take effect. */
+  private stale = new Set<string>()
   constructor(
     private store: WorkspaceStore,
     private env: NodeJS.ProcessEnv,
     private publish: (session: Session) => void,
+    private features: (agentID: string) => { fast: string[]; auto: string[]; default?: string } = () => ({
+      fast: [],
+      auto: [],
+    }),
   ) {}
+
+  rules(agentID: string): AgentRules {
+    return this.store.state.agentRules?.[agentID] ?? { access: "ask", fast: false }
+  }
+
+  /** Rules as they apply to one session: fast mode only where its model supports it. */
+  private effectiveRules(session: Session): AgentRules {
+    const rules = this.rules(session.agentID)
+    const features = this.features(session.agentID)
+    const model = !session.model || session.model === "default" ? features.default : session.model
+    return { ...rules, fast: rules.fast && !!model && features.fast.includes(model) }
+  }
+
+  async setRules(agentID: string, rules: AgentRules) {
+    this.store.state.agentRules = { ...this.store.state.agentRules, [agentID]: rules }
+    await this.store.save()
+    this.store.state.sessions
+      .filter((session) => session.agentID === agentID)
+      .forEach((session) => {
+        const adapter = this.adapters.get(session.id)
+        if (!adapter || adapter.setRules?.(this.effectiveRules(session))) return
+        // A running turn finishes under the old rules; the agent relaunches (resuming) before the next one.
+        if (session.status === "running") return this.stale.add(session.id)
+        this.connections.delete(session.id)
+        adapter.dispose()
+        this.adapters.delete(session.id)
+      })
+  }
 
   async send(input: SendInput) {
     const agent = this.store.state.agents.find((value) => value.id === input.agentID)
@@ -40,6 +74,11 @@ export class Sessions {
     // Recheck after executable resolution, which yields to concurrent IPC requests.
     if (this.retry(session, input)) return structuredClone(session)
     if (session.status === "running") throw new Error(t("busy"))
+    if (this.stale.delete(session.id)) {
+      this.connections.delete(session.id)
+      this.adapters.get(session.id)?.dispose()
+      this.adapters.delete(session.id)
+    }
     if (session.model !== input.model || session.variant !== input.variant) {
       // Keep native conversation history while reconnecting with the new selection.
       const adapter = this.adapters.get(session.id)
@@ -86,6 +125,7 @@ export class Sessions {
         model: session.model,
         variant: session.variant,
         remoteID: session.remoteID,
+        rules: () => this.effectiveRules(session),
         emit,
       })
     this.adapters.set(session.id, adapter)

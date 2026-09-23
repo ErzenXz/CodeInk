@@ -274,6 +274,9 @@ export const DESKTOP_NATIVE_ENGLISH = {
   "desktop.updater.dialog.upToDate.title": "No Updates",
   "desktop.updater.dialog.ready.message": "Update {{version}} downloaded. Restart now?",
   "desktop.updater.dialog.ready.title": "Update Ready",
+  "desktop.updater.dialog.available.message": "CodeInk {{version}} is available. Open our download page?",
+  "desktop.updater.dialog.available.title": "Update Available",
+  "desktop.updater.dialog.download": "View downloads",
   "desktop.updater.dialog.restart": "Restart",
   "desktop.updater.dialog.later": "Later",
 

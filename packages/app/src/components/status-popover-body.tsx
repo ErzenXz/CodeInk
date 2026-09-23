@@ -172,10 +172,10 @@ export function StatusPopoverServerBody() {
 
 function ServerStatusPopoverView(props: { state: ServerStatusState }) {
   return (
-    <div class="flex items-center gap-1 w-[360px] rounded-xl shadow-[var(--shadow-lg-border-base)]">
+    <div class="flex items-center gap-1 w-[360px] rounded-xl shadow-[var(--v2-elevation-floating)]">
       <Tabs
         aria-label={props.state.ariaLabel}
-        class="tabs bg-background-strong rounded-xl overflow-hidden"
+        class="tabs glass-strong rounded-xl overflow-hidden"
         data-component="tabs"
         data-active="servers"
         defaultValue="servers"
@@ -298,10 +298,10 @@ export function StatusPopoverBody(props: { shown: Accessor<boolean> }) {
   const pluginEmpty = createMemo(() => pluginEmptyMessage(language.t("dialog.plugins.empty"), "opencode.json"))
 
   return (
-    <div class="flex items-center gap-1 w-[360px] rounded-xl shadow-[var(--shadow-lg-border-base)]">
+    <div class="flex items-center gap-1 w-[360px] rounded-xl shadow-[var(--v2-elevation-floating)]">
       <Tabs
         aria-label={language.t("status.popover.ariaLabel")}
-        class="tabs bg-background-strong rounded-xl overflow-hidden"
+        class="tabs glass-strong rounded-xl overflow-hidden"
         data-component="tabs"
         data-active={settings.general.newLayoutDesigns() ? "mcp" : "servers"}
         defaultValue={settings.general.newLayoutDesigns() ? "mcp" : "servers"}

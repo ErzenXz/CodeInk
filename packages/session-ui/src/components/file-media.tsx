@@ -231,7 +231,7 @@ export function FileMedia(props: { media?: FileMediaOptions; fallback: () => JSX
                   <img
                     src={value()}
                     alt={cfg()?.path}
-                    class="max-h-[60vh] max-w-full rounded border border-border-weak-base bg-background-base object-contain"
+                    class="max-h-[60vh] max-w-full rounded-sm border border-border-weak-base bg-background-base object-contain"
                     onLoad={onLoad}
                   />
                 </div>
@@ -261,7 +261,7 @@ export function FileMedia(props: { media?: FileMediaOptions; fallback: () => JSX
                     <img
                       src={value()}
                       alt={cfg()?.path}
-                      class="max-h-[60vh] max-w-full rounded border border-border-weak-base bg-background-base object-contain"
+                      class="max-h-[60vh] max-w-full rounded-sm border border-border-weak-base bg-background-base object-contain"
                       onLoad={onLoad}
                     />
                   </div>
