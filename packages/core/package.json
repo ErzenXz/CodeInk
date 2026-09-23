@@ -2,7 +2,7 @@
   "name": "@codeink/core",
   "private": true,
   "type": "module",
-  "license": "MIT",
+  "license": "GPL-3.0-or-later",
   "description": "Browser utilities retained for the upstream desktop UI; no agent runtime or CLI",
   "exports": {
     "./util/*": "./src/util/*.ts"

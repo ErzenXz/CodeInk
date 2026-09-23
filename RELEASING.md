@@ -27,7 +27,7 @@ The root `package.json` is the base semantic version. CI adds the `Desktop relea
 
 ## Signing
 
-Without signing secrets the pipeline creates unsigned installers, clearly described in the release notes and website. macOS and Windows may display security warnings. Checksums verify download integrity; they are not publisher identity verification. In-app automatic updating stays disabled until signed update delivery is configured and tested.
+macOS releases require an Apple Developer ID Application signature and notarization. The workflow fails before packaging if any required Apple credential is missing, and verifies the app's Developer ID signature, stapled notarization ticket, and Gatekeeper assessment before uploading it. The `v0.1.16` production and `v0.1.15-early-access` macOS assets predate this gate and can show a misleading “damaged” warning; do not recommend them for macOS. The Account Holder must create the Developer ID certificate and accept any pending Apple Developer agreement. Windows installers may still show SmartScreen until Windows signing is configured. Checksums verify download integrity; they are not publisher identity verification. The in-app update check reads CodeInk GitHub releases for its own channel and opens the CodeInk download page when a newer build exists. It does not install updates in place. Older builds with the disabled updater need one manual download.
 
 To enable platform signing, add repository Actions secrets:
 
@@ -35,11 +35,11 @@ To enable platform signing, add repository Actions secrets:
 - `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD`, `APPLE_TEAM_ID`: Apple notarization credentials.
 - `WIN_CSC_LINK`, `WIN_CSC_KEY_PASSWORD`: Windows code-signing certificate and password, where supported by your certificate provider. Hardware/cloud-based signing requires configuring the provider's signing integration instead.
 
-Certificate enrollment, signing credentials, a custom domain, and DNS are account-owner steps; none are stored in source. Never put credentials into the workflow or commit them. The repository token used for releases has only `contents: write` and exists only in the publish job.
+Certificate enrollment and signing credentials are account-owner steps; none are stored in source. Never put credentials into the workflow or commit them. The repository token used for releases has only `contents: write` and exists only in the publish job.
 
 ## Download website
 
-The static site lives in `website/` and deploys automatically through the connected Vercel GitHub integration. `main` updates production; other branches receive preview deployments. It is available at https://codeink-desktop.vercel.app/. The Vercel project is `codeink` in `erzenxzs-projects`, with Root Directory `website`, framework `Other`, no install/build command, and Output Directory `.`. No Vercel token is stored in GitHub Actions. The old account-level GitHub Pages domain is unrelated to this site. Both channel tabs fetch public GitHub Releases; errors provide a direct Releases link rather than a broken download. Website updates do not rebuild desktop installers.
+The static site lives in `website/` and deploys automatically through the connected Vercel GitHub integration. `main` updates production; other branches receive preview deployments. Its canonical URL is https://www.getcode.ink/; `https://getcode.ink/` redirects there. The Vercel project is `codeink` in `erzenxzs-projects`, with Root Directory `website`, framework `Other`, no install/build command, and Output Directory `.`. The former `codeink-desktop.vercel.app` address remains an alias. No Vercel token is stored in GitHub Actions. Both channel tabs fetch public GitHub Releases; errors provide a direct Releases link rather than a broken download. Website updates do not rebuild desktop installers.
 
 ## Before a release
 
@@ -49,6 +49,6 @@ The Context panel reports agent-provided values. Historical sessions from versio
 
 ## License and privacy
 
-The MIT license permits redistribution and modification, with its copyright and permission notices retained. CodeInk credits Erzen Krasniqi for this fork's changes and retains OpenCode's copyright. Packaged applications include the license, upstream provenance, font licenses, agent icon sources, generated dependency license notices, and Electron's own notices. Product and agent trademarks remain with their respective owners.
+The current CodeInk distribution is GPL-3.0-or-later, with the upstream OpenCode MIT notice preserved in `licenses/UPSTREAM-MIT.txt`. Earlier CodeInk MIT releases keep their previously granted permissions. Packaged applications include the GPL text, upstream provenance and MIT notice, font licenses, agent icon sources, generated dependency license notices, and Electron's own notices. Each GitHub release tag exposes the corresponding source archive. Product and agent trademarks remain with their respective owners. See [LICENSE-NOTICE.md](LICENSE-NOTICE.md).
 
 CodeInk has no cloud account of its own. The bridge stores session data locally; the selected agent controls model-provider network traffic. Debug logs are local and can contain project paths and diagnostic data. Review exported logs before attaching them to public issues.

@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "license": "MIT",
+  "license": "GPL-3.0-or-later",
   "author": {
     "name": "Erzen Krasniqi",
     "email": "48888391+ErzenXz@users.noreply.github.com",
@@ -83,7 +83,7 @@
     "@parcel/watcher-win32-x64": "2.5.1"
   },
   "description": "CodeInk desktop workspace for independently installed coding agents.",
-  "homepage": "https://codeink-desktop.vercel.app/",
+  "homepage": "https://www.getcode.ink/",
   "repository": {
     "type": "git",
     "url": "https://github.com/ErzenXz/CodeInk.git"

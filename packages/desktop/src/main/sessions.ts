@@ -8,7 +8,8 @@ import { WorkspaceStore } from "./agent-store"
 export class Sessions {
   private adapters = new Map<string, Adapter>()
   private connections = new Map<string, symbol>()
-  private timers = new Map<string, ReturnType<typeof setTimeout>>()
+  private dirty = new Set<Session>()
+  private flushTimer?: ReturnType<typeof setTimeout>
   /** Sessions whose agent must relaunch before the next turn so changed rules take effect. */
   private stale = new Set<string>()
   constructor(
@@ -184,20 +185,22 @@ export class Sessions {
       })
     }
     session.updatedAt = Date.now()
-    // Coalesce tokens before sending a complete snapshot over IPC and to disk.
-    if (this.timers.has(session.id)) return
-    this.timers.set(
-      session.id,
-      setTimeout(() => {
-        this.timers.delete(session.id)
-        this.publish(session)
-        void this.store.save().catch((error: Error) => {
+    // Coalesce all active agents into one disk snapshot per 50 ms window.
+    this.dirty.add(session)
+    if (this.flushTimer) return
+    this.flushTimer = setTimeout(() => {
+      this.flushTimer = undefined
+      const dirty = [...this.dirty]
+      this.dirty.clear()
+      dirty.forEach(this.publish)
+      void this.store.save().catch((error: Error) => {
+        dirty.forEach((session) => {
           session.status = "error"
           session.messages.push({ id: randomUUID(), role: "error", text: error.message })
           this.publish(session)
         })
-      }, 50),
-    )
+      })
+    }, 50)
   }
 
   private retry(session: Session, input: SendInput) {
@@ -273,8 +276,8 @@ export class Sessions {
     this.connections.clear()
     this.adapters.forEach((adapter) => adapter.dispose())
     this.adapters.clear()
-    this.timers.forEach(clearTimeout)
-    this.timers.clear()
+    if (this.flushTimer) clearTimeout(this.flushTimer)
+    this.dirty.clear()
     await this.store.save()
   }
 }

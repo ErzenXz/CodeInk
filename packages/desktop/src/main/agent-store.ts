@@ -77,6 +77,7 @@ const stateSchema = z.object({
 export class WorkspaceStore {
   state: State = { agents: structuredClone(defaults), projects: [], sessions: [], selectedAgent: "codex" }
   private writing: Promise<void> = Promise.resolve()
+  private scheduled?: Promise<void>
   constructor(private path: string) {}
   async load() {
     const source = await readFile(this.path, "utf8").catch((error: NodeJS.ErrnoException) => {
@@ -104,15 +105,20 @@ export class WorkspaceStore {
     }
   }
   save() {
-    const source = JSON.stringify(this.state)
-    const next = this.writing
-      .catch(() => {})
-      .then(async () => {
-        await mkdir(dirname(this.path), { recursive: true })
-        await writeFile(this.path + ".tmp", source, { mode: 0o600 })
-        await rename(this.path + ".tmp", this.path)
-      })
-    this.writing = next
-    return next
+    if (this.scheduled) return this.scheduled
+    this.scheduled = Promise.resolve().then(() => {
+      this.scheduled = undefined
+      const source = JSON.stringify(this.state)
+      const next = this.writing
+        .catch(() => {})
+        .then(async () => {
+          await mkdir(dirname(this.path), { recursive: true })
+          await writeFile(this.path + ".tmp", source, { mode: 0o600 })
+          await rename(this.path + ".tmp", this.path)
+        })
+      this.writing = next
+      return next
+    })
+    return this.scheduled
   }
 }

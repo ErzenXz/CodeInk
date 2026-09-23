@@ -23,7 +23,9 @@ export default {
     icon: "resources/icons/icon.icns",
     category: "public.app-category.developer-tools",
     target: ["dmg", "zip"],
-    notarize: Boolean(process.env.APPLE_ID && process.env.APPLE_APP_SPECIFIC_PASSWORD && process.env.APPLE_TEAM_ID),
+    forceCodeSigning: true,
+    hardenedRuntime: true,
+    notarize: true,
   },
   nsis: {
     oneClick: false,

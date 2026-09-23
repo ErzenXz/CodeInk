@@ -66,7 +66,7 @@
   "devDependencies": {
     "prettier": "3.6.2"
   },
-  "license": "MIT",
+  "license": "GPL-3.0-or-later",
   "prettier": {
     "semi": false,
     "printWidth": 120
@@ -87,7 +87,7 @@
     "email": "48888391+ErzenXz@users.noreply.github.com",
     "url": "https://github.com/ErzenXz"
   },
-  "homepage": "https://codeink-desktop.vercel.app/",
+  "homepage": "https://www.getcode.ink/",
   "repository": {
     "type": "git",
     "url": "https://github.com/ErzenXz/CodeInk.git"

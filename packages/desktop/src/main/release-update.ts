@@ -3,7 +3,7 @@ import type { CHANNEL } from "./constants"
 type Channel = typeof CHANNEL
 const releasesURL = "https://api.github.com/repos/ErzenXz/CodeInk/releases?per_page=100"
 export const downloadURL = (channel: Channel) =>
-  `https://codeink-desktop.vercel.app/download.html${channel === "beta" ? "#early-access" : ""}`
+  `https://www.getcode.ink/download.html${channel === "beta" ? "#early-access" : ""}`
 
 export function selectLatestRelease(value: unknown, channel: Channel) {
   if (!Array.isArray(value)) throw new Error("Invalid CodeInk release response")

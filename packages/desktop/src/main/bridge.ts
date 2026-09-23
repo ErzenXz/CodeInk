@@ -21,6 +21,7 @@ import { savedTool, toolInfo } from "./adapters/tool-info"
 const projectID = (directory: string) => createHash("sha256").update(directory).digest("hex").slice(0, 40)
 const tokens = { input: 0, output: 0, reasoning: 0, cache: { read: 0, write: 0 } }
 const toolCache = new WeakMap<object, { text: string; info: ReturnType<typeof savedTool> }>()
+const partIDs = new WeakMap<Session["messages"][number], { index: number; id: string; value: string }>()
 function sessionCost(session: Session) {
   if (session.reportedCost !== undefined) return session.reportedCost
   const users = session.messages.filter((message) => message.role === "user")
@@ -57,7 +58,13 @@ export function legacyMessages(session: Session): { info: Message; parts: Part[]
   session.messages.forEach((message, index) => {
     const createdAt = message.createdAt ?? session.createdAt ?? session.updatedAt
     const completedAt = message.completedAt ?? createdAt
-    const partID = `prt_${index.toString().padStart(12, "0")}${createHash("sha256").update(message.id).digest("hex").slice(0, 12)}`
+    const cachedPart = partIDs.get(message)
+    const partID =
+      cachedPart?.index === index && cachedPart.id === message.id
+        ? cachedPart.value
+        : `prt_${index.toString().padStart(12, "0")}${createHash("sha256").update(message.id).digest("hex").slice(0, 12)}`
+    if (cachedPart?.index !== index || cachedPart.id !== message.id)
+      partIDs.set(message, { index, id: message.id, value: partID })
     if (message.role === "user") {
       if (current?.info.role === "assistant") {
         current.info.time.completed ??= createdAt

@@ -67,6 +67,61 @@ test("session lifecycle persists remote ID and deduplicated text; concurrent sen
   expect(store.state.sessions).toEqual([])
 })
 
+test("multiple agent sessions complete concurrently and retain separate histories", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "codeink-concurrent-"))
+  const path = join(directory, "workspace.json")
+  const store = new WorkspaceStore(path)
+  store.state.agents = [
+    {
+      id: "codex",
+      name: "Codex",
+      protocol: "codex",
+      command: process.execPath,
+      args: [join(import.meta.dirname, "fixtures/agent.ts"), "codex"],
+    },
+  ]
+  const sessions = new Sessions(store, process.env, () => {})
+  cleanup.push(async () => {
+    await sessions.dispose()
+    await rm(directory, { recursive: true, force: true })
+  })
+
+  const started = await Promise.all(
+    Array.from({ length: 8 }, (_, index) =>
+      sessions.send({ agentID: "codex", directory, model: "", text: `agent ${index}` }),
+    ),
+  )
+  await eventually(() => started.every((session) => sessions.get(session.id).approvals.length > 0))
+  expect(started.every((session) => sessions.get(session.id).status === "running")).toBe(true)
+
+  await Promise.all(started.map((session) => sessions.answer(session.id, "900", { allow: true })))
+  await eventually(() => started.every((session) => sessions.get(session.id).status === "idle"))
+  await sessions.dispose()
+
+  const restored = new WorkspaceStore(path)
+  await restored.load()
+  expect(restored.state.sessions).toHaveLength(8)
+  expect(restored.state.sessions.map((session) => session.messages[0].text).sort()).toEqual(
+    Array.from({ length: 8 }, (_, index) => `agent ${index}`).sort(),
+  )
+  expect(restored.state.sessions.every((session) => session.messages.some((message) => message.role === "assistant"))).toBe(true)
+})
+
+test("overlapping workspace saves keep the latest state", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "codeink-save-"))
+  cleanup.push(() => rm(directory, { recursive: true, force: true }))
+  const path = join(directory, "workspace.json")
+  const store = new WorkspaceStore(path)
+  const pending = Array.from({ length: 24 }, () => store.save())
+  await Promise.resolve()
+  store.state.selectedAgent = "pi"
+  await Promise.all([...pending, store.save()])
+
+  const restored = new WorkspaceStore(path)
+  await restored.load()
+  expect(restored.state.selectedAgent).toBe("pi")
+})
+
 test("agent process failure becomes a visible session error", async () => {
   const directory = await mkdtemp(join(tmpdir(), "codeink-crash-"))
   const store = new WorkspaceStore(join(directory, "workspace.json"))

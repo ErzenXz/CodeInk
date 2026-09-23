@@ -88,6 +88,8 @@ async function load(channel) {
     }
     slots.forEach((slot) => slot.replaceChildren())
     assets.forEach(([platform, suffix, label]) => {
+      // Older macOS assets predate the signed-and-notarized release gate.
+      if (platform === "mac" && !hasSignedMacBuild(release.tag_name, channel)) return
       const asset = (release.assets ?? []).find((asset) => normalize(asset.name).endsWith(suffix.toLowerCase()))
       if (!isReleaseDownload(asset?.browser_download_url)) return
       const link = document.createElement("a")
@@ -107,7 +109,14 @@ async function load(channel) {
       document.querySelector(`[data-platform="${platform}"]`).append(link)
     })
     slots.forEach((slot) => {
-      if (!slot.children.length) slot.append(message("Not included in this release."))
+      if (!slot.children.length)
+        slot.append(
+          message(
+            slot.dataset.platform === "mac" && !hasSignedMacBuild(release.tag_name, channel)
+              ? "This release predates Apple signing. A signed macOS build is coming."
+              : "Not included in this release.",
+          ),
+        )
     })
   } catch {
     if (request !== controller) return
@@ -167,6 +176,14 @@ function normalize(name) {
 
 function isReleaseDownload(url) {
   return typeof url === "string" && url.startsWith(`${releasesPage}/download/`)
+}
+
+function hasSignedMacBuild(tag, channel) {
+  const version = /^v(\d+)\.(\d+)\.(\d+)(?:-early-access)?$/.exec(tag)
+  if (!version) return false
+  const [major, minor, patch] = version.slice(1).map(Number)
+  if (major !== 0 || minor !== 1) return true
+  return patch > (channel === "early-access" ? 15 : 16)
 }
 
 function size(bytes) {

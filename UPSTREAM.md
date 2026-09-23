@@ -7,7 +7,7 @@
 - CodeInk branches: `main` (Production), `development` (Early Access)
 - Git remote: `upstream`
 
-The exact source revision is recorded above and the original license is retained. The public CodeInk repository starts with a desktop-only snapshot; the full upstream history remains available in the upstream repository. CodeInk is an independent fork.
+The exact source revision is recorded above. The imported OpenCode material retains its original MIT notice in [licenses/UPSTREAM-MIT.txt](licenses/UPSTREAM-MIT.txt) and `packages/ui/LICENSE`. The current combined CodeInk distribution is offered under GPL-3.0-or-later; see [LICENSE-NOTICE.md](LICENSE-NOTICE.md). The public CodeInk repository starts with a desktop-only snapshot; the full upstream history remains available in the upstream repository. CodeInk is an independent fork.
 
 ## Retained desktop sources
 
@@ -27,11 +27,4 @@ The application bundle includes Electron, the original web UI, native terminal s
 
 ## UI and branding
 
-The desktop keeps the upstream layout, composer, timeline, file/review panels, and theme palettes. CodeInk replaces the original product name and logos in the existing components. See [BRAND.md](BRAND.md) for the generated icon and regeneration instructions. Original license and source attribution are preserved.
-
-The original application stylesheet and session-component implementation remain unchanged:
-
-```sh
-git diff --exit-code fe3f3a41f79ad292cc3c7c629567385a20ec5130 -- \
-  packages/app/src/index.css packages/session-ui
-```
+The desktop began with the upstream layout, composer, timeline, file/review panels, and theme palettes. CodeInk has since changed parts of that UI and replaced the original product name and logos. See [BRAND.md](BRAND.md) for the icon and regeneration instructions. Upstream copyright, license notices, and source attribution are preserved.
