@@ -32,7 +32,7 @@ macOS releases require an Apple Developer ID Application signature and notarizat
 To enable platform signing, add repository Actions secrets:
 
 - `CSC_LINK`, `CSC_KEY_PASSWORD`: base64 Apple Developer ID Application certificate (`.p12`) and password.
-- `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD`, `APPLE_TEAM_ID`: Apple notarization credentials.
+- `APPLE_API_KEY_BASE64`, `APPLE_API_KEY_ID`, `APPLE_API_ISSUER`, `APPLE_TEAM_ID`: a dedicated App Store Connect team API key with the Developer role, encoded as a one-line base64 secret, plus its key ID, issuer ID, and team ID. The workflow writes the key to its temporary runner directory for notarization.
 - `WIN_CSC_LINK`, `WIN_CSC_KEY_PASSWORD`: Windows code-signing certificate and password, where supported by your certificate provider. Hardware/cloud-based signing requires configuring the provider's signing integration instead.
 
 Certificate enrollment and signing credentials are account-owner steps; none are stored in source. Never put credentials into the workflow or commit them. The repository token used for releases has only `contents: write` and exists only in the publish job.
