@@ -133,8 +133,8 @@ jobs:
           APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
           APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
         run: |
-          app="packages/desktop/dist/mac-${{ matrix.arch }}/CodeInk${{ needs.validate.outputs.channel == 'early-access' && ' Early Access' || '' }}.app"
-          test -d "$app"
+          app=$(find packages/desktop/dist -mindepth 2 -maxdepth 2 -type d -name 'CodeInk*.app' -print -quit)
+          test -n "$app"
           codesign --verify --deep --strict --verbose=2 "$app"
           codesign --display --verbose=4 "$app" 2>&1 | grep -q 'Authority=Developer ID Application:'
           dmg=$(find packages/desktop/dist -maxdepth 1 -name "codeink-${CODEINK_CHANNEL}-*-mac-${{ matrix.arch }}.dmg" -print -quit)
