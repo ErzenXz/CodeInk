@@ -51,7 +51,6 @@ jobs:
     timeout-minutes: 40
     env:
       CODEINK_CHANNEL: ${{ needs.validate.outputs.channel }}
-      CSC_IDENTITY_AUTO_DISCOVERY: "false"
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2

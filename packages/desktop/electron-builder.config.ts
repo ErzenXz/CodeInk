@@ -25,6 +25,8 @@ export default {
     target: ["dmg", "zip"],
     forceCodeSigning: true,
     hardenedRuntime: true,
+    entitlements: "resources/entitlements.mac.plist",
+    entitlementsInherit: "resources/entitlements.mac.plist",
     notarize: true,
   },
   nsis: {
