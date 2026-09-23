@@ -4,7 +4,7 @@ import { createResizeObserver } from "@solid-primitives/resize-observer"
 import { DragDropProvider, PointerSensor } from "@dnd-kit/solid"
 import { isSortable, useSortable } from "@dnd-kit/solid/sortable"
 import { Accessibility, AutoScroller, Feedback, PointerActivationConstraints } from "@dnd-kit/dom"
-import { RestrictToHorizontalAxis } from "@dnd-kit/abstract/modifiers"
+import { RestrictToHorizontalAxis, RestrictToVerticalAxis } from "@dnd-kit/abstract/modifiers"
 import { RestrictToElement } from "@dnd-kit/dom/modifiers"
 import { arrayMove } from "@dnd-kit/helpers"
 import { tabHref, tabKey, type SessionTab, type Tab } from "@/context/tabs"
@@ -15,11 +15,11 @@ import { useLanguage } from "@/context/language"
 import { useCommand } from "@/context/command"
 import { useTabs } from "@/context/tabs"
 import { createTabPromptState } from "@/context/prompt"
-import { base64Encode } from "@opencode-ai/core/util/encode"
+import { base64Encode } from "@codeink/core/util/encode"
 import { showToast } from "@/utils/toast"
 import { canStartTabDrag, isTabCloseTarget } from "./titlebar-tab-gesture"
 import { adjacentTabKey, mergeVisibleTabOrder } from "./titlebar-tab-order"
-import type { Session } from "@opencode-ai/sdk/v2"
+import type { Session } from "@codeink/sdk/v2"
 
 function SessionTabSlot(props: {
   tab: SessionTab
@@ -27,6 +27,7 @@ function SessionTabSlot(props: {
   index: () => number
   active: () => boolean
   forceTruncate: boolean
+  vertical: boolean
   session: () => Session | undefined
   fallbackTitle?: string
   onRename: (title: string) => Promise<void>
@@ -49,7 +50,9 @@ function SessionTabSlot(props: {
       data-titlebar-tab-slot
       data-tab-key={props.id}
       data-active={props.active()}
-      class="relative flex w-56 min-w-7 max-w-56 flex-shrink"
+      class={
+        props.vertical ? "relative flex w-full min-w-0 shrink-0" : "relative flex w-56 min-w-7 max-w-56 flex-shrink"
+      }
     >
       <TabNavItem
         ref={(el) => {
@@ -76,6 +79,7 @@ function SessionTabEntry(props: {
   index: () => number
   active: () => boolean
   forceTruncate: boolean
+  vertical: boolean
   serverCtx: () => ServerCtx | undefined
   onVisibleChange: (visible: boolean) => void
   onNavigate: (element: HTMLDivElement) => void
@@ -157,6 +161,7 @@ function SessionTabEntry(props: {
         index={props.index}
         active={props.active}
         forceTruncate={props.forceTruncate}
+        vertical={props.vertical}
         session={session}
         fallbackTitle={persisted()?.title ?? (missingSession() ? language.t("session.tab.unknown") : undefined)}
         onRename={rename}
@@ -173,6 +178,7 @@ function DraftTabSlot(props: {
   index: () => number
   active: () => boolean
   title: string
+  vertical: boolean
   onNavigate: (element: HTMLDivElement) => void
   onClose: () => void
 }) {
@@ -192,7 +198,9 @@ function DraftTabSlot(props: {
       data-titlebar-tab-slot
       data-tab-key={props.id}
       data-active={props.active()}
-      class="relative flex w-56 min-w-7 max-w-56 flex-shrink"
+      class={
+        props.vertical ? "relative flex w-full min-w-0 shrink-0" : "relative flex w-56 min-w-7 max-w-56 flex-shrink"
+      }
     >
       <DraftTabItem
         ref={(el) => {
@@ -212,7 +220,15 @@ function DraftTabSlot(props: {
 export function TitlebarTabStrip(props: {
   tabs: Tab[]
   currentTab: () => Tab | undefined
+  settingsTab?: {
+    open: () => boolean
+    active: () => boolean
+    href: () => string
+    onNavigate: () => void
+    onClose: () => void
+  }
   forceTruncate: boolean
+  vertical?: boolean
   onNavigate: (tab: Tab, el?: HTMLDivElement) => void
   onClose: (tab: Tab) => void
   onReorder: (keys: string[]) => void
@@ -226,7 +242,7 @@ export function TitlebarTabStrip(props: {
   let resizeFrame: number | undefined
   const [visibility, setVisibility] = createStore<Record<string, boolean>>({})
   const visibleTabs = createMemo(() => props.tabs.filter((tab) => tab.type === "draft" || visibility[tabKey(tab)]))
-  const visibleTabIds = () => visibleTabs().map(tabKey)
+  const visibleTabIds = () => [...visibleTabs().map(tabKey), ...(props.settingsTab?.open() ? ["settings"] : [])]
 
   command.register("titlebar-tab-cycle", () => [
     {
@@ -249,14 +265,22 @@ export function TitlebarTabStrip(props: {
 
   function selectAdjacentTab(offset: -1 | 1) {
     const current = props.currentTab()
-    const key = adjacentTabKey(visibleTabIds(), current ? tabKey(current) : undefined, offset)
+    const key = adjacentTabKey(
+      visibleTabIds(),
+      props.settingsTab?.active() ? "settings" : current ? tabKey(current) : undefined,
+      offset,
+    )
+    if (key === "settings") {
+      props.settingsTab?.onNavigate()
+      return
+    }
     const next = props.tabs.find((tab) => tabKey(tab) === key)
     if (next) props.onNavigate(next)
   }
 
   function refreshOverflow() {
     if (!scrollRef) return
-    props.onOverflowChange(scrollRef.scrollWidth > scrollRef.clientWidth)
+    props.onOverflowChange(props.vertical ? false : scrollRef.scrollWidth > scrollRef.clientWidth)
   }
 
   createResizeObserver(
@@ -285,10 +309,18 @@ export function TitlebarTabStrip(props: {
   })
 
   return (
-    <div data-slot="titlebar-tabs" class="relative min-w-0">
+    <div
+      data-slot="titlebar-tabs"
+      data-orientation={props.vertical ? "vertical" : "horizontal"}
+      class={props.vertical ? "relative min-h-0 min-w-0 h-full" : "relative min-w-0"}
+    >
       <div
         data-slot="titlebar-tabs-scroll"
-        class="flex min-w-0 flex-row items-center gap-1.5 overflow-x-auto no-scrollbar [app-region:no-drag]"
+        class={
+          props.vertical
+            ? "flex h-full min-h-0 min-w-0 flex-col overflow-y-auto no-scrollbar [app-region:no-drag]"
+            : "flex min-w-0 flex-row items-center gap-1.5 overflow-x-auto no-scrollbar [app-region:no-drag]"
+        }
         ref={scrollRef}
       >
         <DragDropProvider
@@ -301,10 +333,16 @@ export function TitlebarTabStrip(props: {
                 (event.target instanceof Element && !!event.target.closest('[contenteditable="true"]')),
             }),
           ]}
-          modifiers={[RestrictToHorizontalAxis, RestrictToElement.configure({ element: () => listRef })]}
+          modifiers={[
+            props.vertical ? RestrictToVerticalAxis : RestrictToHorizontalAxis,
+            RestrictToElement.configure({ element: () => listRef }),
+          ]}
           plugins={(defaults) => [
             ...defaults.filter((plugin) => plugin !== Accessibility),
-            AutoScroller.configure({ acceleration: 8, threshold: { x: 0.05, y: 0 } }),
+            AutoScroller.configure({
+              acceleration: 8,
+              threshold: props.vertical ? { x: 0, y: 0.05 } : { x: 0.05, y: 0 },
+            }),
             Feedback.configure({ dropAnimation: null }),
           ]}
           onDragStart={(event) => {
@@ -316,7 +354,7 @@ export function TitlebarTabStrip(props: {
             props.onNavigate(tab, tabEl ?? undefined)
           }}
           onDragEnd={(event) => {
-            const current = visibleTabIds()
+            const current = visibleTabs().map(tabKey)
             const source = event.operation.source
             if (event.canceled || !isSortable(source)) return
 
@@ -332,7 +370,15 @@ export function TitlebarTabStrip(props: {
             }
           }}
         >
-          <div data-titlebar-tab-list class="flex w-full min-w-0 flex-row items-center" ref={listRef}>
+          <div
+            data-titlebar-tab-list
+            class={
+              props.vertical
+                ? "flex w-full min-w-0 flex-col items-stretch"
+                : "flex w-full min-w-0 flex-row items-center"
+            }
+            ref={listRef}
+          >
             <For each={props.tabs}>
               {(tab) => {
                 const id = tabKey(tab)
@@ -353,6 +399,7 @@ export function TitlebarTabStrip(props: {
                       index={visibleIndex}
                       active={() => props.currentTab() === tab}
                       forceTruncate={props.forceTruncate}
+                      vertical={!!props.vertical}
                       serverCtx={serverCtx}
                       onVisibleChange={(visible) => setVisibility(id, visible)}
                       onNavigate={(element) => {
@@ -371,6 +418,7 @@ export function TitlebarTabStrip(props: {
                     index={visibleIndex}
                     active={() => props.currentTab() === tab}
                     title={language.t("command.session.new")}
+                    vertical={!!props.vertical}
                     onNavigate={(element) => {
                       ref = element
                       props.onNavigate(tab, element)
@@ -380,19 +428,44 @@ export function TitlebarTabStrip(props: {
                 )
               }}
             </For>
+            <Show when={props.settingsTab?.open() ? props.settingsTab : undefined}>
+              {(settingsTab) => (
+                <div
+                  data-titlebar-tab-slot
+                  data-tab-key="settings"
+                  data-active={settingsTab().active()}
+                  class={
+                    props.vertical
+                      ? "relative flex w-full min-w-0 shrink-0"
+                      : "relative flex w-56 min-w-7 max-w-56 flex-shrink"
+                  }
+                >
+                  <DraftTabItem
+                    href={settingsTab().href()}
+                    title={language.t("sidebar.settings")}
+                    iconName="settings-gear"
+                    active={settingsTab().active()}
+                    onNavigate={settingsTab().onNavigate}
+                    onClose={settingsTab().onClose}
+                  />
+                </div>
+              )}
+            </Show>
           </div>
         </DragDropProvider>
       </div>
-      <div
-        data-slot="titlebar-tabs-fade-left"
-        aria-hidden="true"
-        class="pointer-events-none absolute inset-y-0 left-0 z-10 w-6 bg-[linear-gradient(to_right,var(--v2-background-bg-deep),transparent)]"
-      />
-      <div
-        data-slot="titlebar-tabs-fade-right"
-        aria-hidden="true"
-        class="pointer-events-none absolute inset-y-0 right-0 z-10 w-6 bg-[linear-gradient(to_left,var(--v2-background-bg-deep),transparent)]"
-      />
+      <Show when={!props.vertical}>
+        <div
+          data-slot="titlebar-tabs-fade-left"
+          aria-hidden="true"
+          class="pointer-events-none absolute inset-y-0 left-0 z-10 w-6 bg-[linear-gradient(to_right,var(--v2-background-bg-deep),transparent)]"
+        />
+        <div
+          data-slot="titlebar-tabs-fade-right"
+          aria-hidden="true"
+          class="pointer-events-none absolute inset-y-0 right-0 z-10 w-6 bg-[linear-gradient(to_left,var(--v2-background-bg-deep),transparent)]"
+        />
+      </Show>
     </div>
   )
 }

@@ -1,7 +1,12 @@
-@import "@opencode-ai/ui/styles/tailwind";
-@import "@opencode-ai/session-ui/styles";
-@import "@opencode-ai/ui/v2/styles/tailwind.css";
+@import "@codeink/ui/styles/tailwind";
+@import "@codeink/session-ui/styles";
+@import "@codeink/ui/v2/styles/tailwind.css";
 @import "tw-animate-css";
+
+body[data-new-layout] ::selection {
+  background: color-mix(in srgb, var(--v2-background-bg-accent) 30%, transparent);
+  color: var(--v2-text-text-base);
+}
 
 @font-face {
   font-family: "JetBrainsMono Nerd Font Mono";

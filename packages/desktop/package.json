@@ -41,9 +41,9 @@
   },
   "devDependencies": {
     "@lydell/node-pty": "catalog:",
-    "@opencode-ai/app": "workspace:*",
-    "@opencode-ai/sdk": "workspace:*",
-    "@opencode-ai/ui": "workspace:*",
+    "@codeink/app": "workspace:*",
+    "@codeink/sdk": "workspace:*",
+    "@codeink/ui": "workspace:*",
     "@sentry/solid": "catalog:",
     "@sentry/vite-plugin": "catalog:",
     "@solid-primitives/i18n": "2.2.1",

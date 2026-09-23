@@ -1,11 +1,11 @@
 {
-  "name": "@opencode-ai/ui",
+  "name": "@codeink/ui",
   "version": "1.18.32",
   "type": "module",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/anomalyco/opencode.git",
+    "url": "git+https://github.com/ErzenXz/CodeInk.git",
     "directory": "packages/ui"
   },
   "publishConfig": {
@@ -61,7 +61,7 @@
     "test": "bun test src --only-failures",
     "dev": "vite",
     "generate:tailwind": "bun run script/tailwind.ts",
-    "generate:v2-oc2": "bun run script/build-oc2-v2-overrides.ts"
+    "generate:codeink-theme": "bun run script/build-codeink-v2-overrides.ts"
   },
   "devDependencies": {
     "@solidjs/meta": "catalog:",

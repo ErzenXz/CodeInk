@@ -11,20 +11,14 @@ export const dict = {
   "desktop.updater.checkFailed.title": "Güncelleme kontrolü başarısız oldu",
   "desktop.updater.checkFailed.message": "Güncellemeler kontrol edilemedi",
   "desktop.updater.none.title": "Güncelleme yok",
-  "desktop.updater.none.message": "OpenCode'un en son sürümünü zaten kullanıyorsunuz",
+  "desktop.updater.none.message": "CodeInk'un en son sürümünü zaten kullanıyorsunuz",
   "desktop.updater.downloadFailed.title": "Güncelleme başarısız oldu",
   "desktop.updater.downloadFailed.message": "Güncelleme indirilemedi",
   "desktop.updater.downloaded.title": "Güncelleme indirildi",
   "desktop.updater.downloaded.prompt":
-    "OpenCode'un {{version}} sürümü indirildi. Şimdi yükleyip yeniden başlatmak ister misiniz?",
+    "CodeInk'un {{version}} sürümü indirildi. Şimdi yükleyip yeniden başlatmak ister misiniz?",
   "desktop.updater.installFailed.title": "Güncelleme başarısız oldu",
   "desktop.updater.installFailed.message": "Güncelleme yüklenemedi",
-
-  "desktop.cli.installed.title": "CLI yüklendi",
-  "desktop.cli.installed.message":
-    "CLI {{path}} konumuna yüklendi\n\n'opencode' komutunu kullanmak için terminalinizi yeniden başlatın.",
-  "desktop.cli.failed.title": "Yükleme başarısız oldu",
-  "desktop.cli.failed.message": "CLI yüklenemedi: {{error}}",
 
   "desktop.error.dev.rootNotFound":
     "Kök eleman bulunamadı. index.html dosyanıza eklemeyi unuttunuz mu? Ya da id özelliği yanlış mı yazıldı?",

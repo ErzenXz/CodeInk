@@ -9,18 +9,14 @@ export const dict: Record<string, string> = {
   "desktop.updater.checkFailed.title": "යාවත්කාලීන පරීක්ෂාව අසාර්ථක විය",
   "desktop.updater.checkFailed.message": "යාවත්කාලීන සඳහා පරීක්ෂා කිරීමට අසමත් විය",
   "desktop.updater.none.title": "යාවත්කාලීනයක් නොමැත",
-  "desktop.updater.none.message": "ඔබ දැනටමත් OpenCode හි නවතම අනුවාදය භාවිතා කරයි",
+  "desktop.updater.none.message": "ඔබ දැනටමත් CodeInk හි නවතම අනුවාදය භාවිතා කරයි",
   "desktop.updater.downloadFailed.title": "යාවත්කාලීන කිරීම අසාර්ථක විය",
   "desktop.updater.downloadFailed.message": "යාවත්කාලීන බාගැනීම අසාර්ථක විය",
   "desktop.updater.downloaded.title": "යාවත්කාලීනය බාගත කර ඇත",
   "desktop.updater.downloaded.prompt":
-    "OpenCode හි {{version}} අනුවාදය බාගෙන ඇත, ඔබ එය ස්ථාපනය කර නැවත දියත් කිරීමට කැමතිද?",
+    "CodeInk හි {{version}} අනුවාදය බාගෙන ඇත, ඔබ එය ස්ථාපනය කර නැවත දියත් කිරීමට කැමතිද?",
   "desktop.updater.installFailed.title": "යාවත්කාලීන කිරීම අසාර්ථක විය",
   "desktop.updater.installFailed.message": "යාවත්කාලීන ස්ථාපනය කිරීමට අසමත් විය",
-  "desktop.cli.installed.title": "CLI ස්ථාපනය කර ඇත",
-  "desktop.cli.installed.message": "CLI {{path}}\n\n'opencode' විධානය භාවිතා කිරීමට ඔබගේ ටර්මිනලය නැවත ආරම්භ කරන්න.",
-  "desktop.cli.failed.title": "ස්ථාපනය අසාර්ථක විය",
-  "desktop.cli.failed.message": "CLI ස්ථාපනය කිරීමට අසමත් විය: {{error}}",
 
   "desktop.error.dev.rootNotFound":
     "මූල මූලද්රව්යය හමු නොවීය. ඔබට එය ඔබගේ index.html වෙත එක් කිරීමට අමතකද? එසේත් නැතිනම් හැඳුනුම්පත වැරදි ලෙස සටහන් වී තිබේද?",

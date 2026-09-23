@@ -1,12 +1,12 @@
 import "@/index.css"
 import * as Sentry from "@sentry/solid"
-import { I18nProvider } from "@opencode-ai/ui/context"
-import { DialogProvider } from "@opencode-ai/ui/context/dialog"
-import { FileComponentProvider } from "@opencode-ai/ui/context/file"
-import { File } from "@opencode-ai/session-ui/file"
-import { Font } from "@opencode-ai/ui/font"
-import { Splash } from "@opencode-ai/ui/logo"
-import { ThemeProvider } from "@opencode-ai/ui/theme/context"
+import { I18nProvider } from "@codeink/ui/context"
+import { DialogProvider } from "@codeink/ui/context/dialog"
+import { FileComponentProvider } from "@codeink/ui/context/file"
+import { File } from "@codeink/session-ui/file"
+import { Font } from "@codeink/ui/font"
+import { Splash } from "@codeink/ui/logo"
+import { ThemeProvider } from "@codeink/ui/theme/context"
 import { MetaProvider } from "@solidjs/meta"
 import {
   type BaseRouterProps,
@@ -20,7 +20,7 @@ import {
 } from "@solidjs/router"
 import { QueryClient, QueryClientProvider } from "@tanstack/solid-query"
 import { Effect } from "effect"
-import { base64Encode } from "@opencode-ai/core/util/encode"
+import { base64Encode } from "@codeink/core/util/encode"
 import {
   type Component,
   createEffect,
@@ -70,6 +70,7 @@ import { NewHome } from "@/pages/home"
 import { LegacyHome } from "@/pages/home/legacy-home"
 
 const NewSession = lazy(() => import("@/pages/new-session"))
+const SettingsPage = lazy(() => import("@/components/settings-v2/settings-page"))
 
 const SessionRoute = () => {
   const settings = useSettings()
@@ -268,7 +269,7 @@ function LayoutCompatibility(props: ParentProps) {
 
 declare global {
   interface Window {
-    __OPENCODE__?: {
+    __CODEINK__?: {
       deepLinks?: string[]
     }
     api?: {
@@ -626,6 +627,7 @@ function Routes(props: { serverScoped?: JSX.Element }) {
           {
             <>
               <Route path="/" component={LegacyHome} />
+              <Route path="/settings" component={SettingsPage} />
               <Route path="/server/:serverKey/session/:id" component={LegacyTargetSessionRoute} />
             </>
           }
@@ -637,6 +639,7 @@ function Routes(props: { serverScoped?: JSX.Element }) {
       </Route>
       <Show when={settings.general.newLayoutDesigns()}>
         <Route path="/" component={NewHome} />
+        <Route path="/settings" component={SettingsPage} />
         <Route path="/:dir/session/:id" component={NewLayoutLegacySessionRedirect} />
         <Route path="/server/:serverKey/session/:id" component={TargetSessionRoute} />
       </Show>

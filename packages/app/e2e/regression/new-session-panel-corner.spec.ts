@@ -29,8 +29,8 @@ test("matches the rounded panel corners to the dark new-session background", asy
   await page.addInitScript(
     ({ directory, draftID, server }) => {
       localStorage.setItem("settings.v3", JSON.stringify({ general: { newLayoutDesigns: true } }))
-      localStorage.setItem("opencode-theme-id", "oc-2")
-      localStorage.setItem("opencode-color-scheme", "dark")
+      localStorage.setItem("codeink-theme-id", "codeink")
+      localStorage.setItem("codeink-color-scheme", "dark")
       localStorage.setItem(
         "opencode.global.dat:server",
         JSON.stringify({

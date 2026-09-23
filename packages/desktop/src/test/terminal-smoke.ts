@@ -4,7 +4,7 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { WebSocket } from "ws"
 import { startBridge } from "../main/bridge"
-import { createOpencodeClient } from "@opencode-ai/sdk/v2/client"
+import { createOpencodeClient } from "@codeink/sdk/v2/client"
 
 const cleanup: (() => Promise<void>)[] = []
 try {

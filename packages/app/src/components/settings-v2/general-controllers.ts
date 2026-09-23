@@ -1,6 +1,6 @@
 import { createMemo, createResource, onMount, type Accessor } from "solid-js"
-import type { ColorScheme } from "@opencode-ai/ui/theme/context"
-import { useTheme } from "@opencode-ai/ui/theme/context"
+import type { ColorScheme } from "@codeink/ui/theme/context"
+import { useTheme } from "@codeink/ui/theme/context"
 import { usePermission } from "@/context/permission"
 import { useServerSDK } from "@/context/server-sdk"
 import { useServerSync } from "@/context/server-sync"
@@ -55,7 +55,10 @@ export function createShellSettingsController() {
   const [shells] = createResource(
     async () => {
       const sdk = serverSdk()
-      if ((await sdk.protocol) === "v1") return (await sdk.client.pty.shells()).data ?? []
+      if ((await sdk.protocol) === "v1") {
+        const result = (await sdk.client.pty.shells()).data
+        return Array.isArray(result) ? result : []
+      }
       return [] as ShellOption[]
     },
     { initialValue: [] as ShellOption[] },

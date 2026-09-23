@@ -1,14 +1,13 @@
 import { Component, Show, createMemo, createResource, onMount, type JSX } from "solid-js"
-import { Button } from "@opencode-ai/ui/button"
-import { Icon } from "@opencode-ai/ui/icon"
-import { Select } from "@opencode-ai/ui/select"
-import { Switch } from "@opencode-ai/ui/switch"
-import { TextField } from "@opencode-ai/ui/text-field"
-import { Tooltip } from "@opencode-ai/ui/tooltip"
-import { Tag } from "@opencode-ai/ui/v2/badge-v2"
-import { useTheme, type ColorScheme } from "@opencode-ai/ui/theme/context"
-import { useDialog } from "@opencode-ai/ui/context/dialog"
-import { useParams } from "@solidjs/router"
+import { Button } from "@codeink/ui/button"
+import { Icon } from "@codeink/ui/icon"
+import { Select } from "@codeink/ui/select"
+import { Switch } from "@codeink/ui/switch"
+import { TextField } from "@codeink/ui/text-field"
+import { Tooltip } from "@codeink/ui/tooltip"
+import { Tag } from "@codeink/ui/v2/badge-v2"
+import { useTheme, type ColorScheme } from "@codeink/ui/theme/context"
+import { useNavigate, useParams } from "@solidjs/router"
 import { useLanguage } from "@/context/language"
 import { usePermission } from "@/context/permission"
 import { usePlatform, type DisplayBackend } from "@/context/platform"
@@ -87,7 +86,7 @@ export const SettingsGeneral: Component = () => {
   const language = useLanguage()
   const permission = usePermission()
   const platform = usePlatform()
-  const dialog = useDialog()
+  const navigate = useNavigate()
   const params = useParams()
   const settings = useSettings()
 
@@ -269,10 +268,7 @@ export const SettingsGeneral: Component = () => {
               checked={settings.general.newLayoutDesigns()}
               onChange={(checked) => {
                 settings.general.setNewLayoutDesigns(checked)
-                if (!checked) return
-                void import("@/components/settings-v2").then((module) => {
-                  void dialog.show(() => <module.DialogSettings />)
-                })
+                navigate("/settings")
               }}
             />
           </div>

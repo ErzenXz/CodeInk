@@ -1,6 +1,5 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://opencode.ai/desktop-theme.json",
   "title": "CodeInk Desktop Theme",
   "description": "A theme definition for the CodeInk desktop application",
   "type": "object",

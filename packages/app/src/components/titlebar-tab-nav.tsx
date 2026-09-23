@@ -3,15 +3,15 @@ import { createStore } from "solid-js/store"
 import { makeEventListener } from "@solid-primitives/event-listener"
 import { createResizeObserver } from "@solid-primitives/resize-observer"
 import { createMutation } from "@tanstack/solid-query"
-import { IconButtonV2 } from "@opencode-ai/ui/v2/icon-button-v2"
-import { Icon as IconV2 } from "@opencode-ai/ui/v2/icon"
-import { MenuV2 } from "@opencode-ai/ui/v2/menu-v2"
+import { IconButtonV2 } from "@codeink/ui/v2/icon-button-v2"
+import { Icon as IconV2 } from "@codeink/ui/v2/icon"
+import { MenuV2 } from "@codeink/ui/v2/menu-v2"
 import { useGlobal } from "@/context/global"
 import { useLanguage } from "@/context/language"
 import { ServerConnection, serverName } from "@/context/server"
 import { displayName, projectForSession } from "@/pages/layout/helpers"
 import { SessionTabAvatar } from "@/pages/layout/session-tab-avatar"
-import type { Session } from "@opencode-ai/sdk/v2"
+import type { Session } from "@codeink/sdk/v2"
 import { canOpenTabRename, forwardTabRef } from "./titlebar-tab-gesture"
 import { TabPreviewPopover } from "./titlebar-tab-popover"
 import "./titlebar-tab-nav.css"
@@ -347,6 +347,7 @@ export function DraftTabItem(props: {
   ref?: Ref<HTMLDivElement>
   href: string
   title: string
+  iconName?: "edit" | "settings-gear"
   active?: boolean
   onNavigate: () => void
   onClose: () => void
@@ -406,7 +407,7 @@ export function DraftTabItem(props: {
         class="flex h-full min-w-0 flex-1 flex-row items-center gap-1.5 text-[13px] font-medium text-v2-text-text-faint group-data-[active='true']:text-v2-text-text-base [-webkit-user-drag:none]"
       >
         <span class="flex size-4 shrink-0 items-center justify-center">
-          <IconV2 name="edit" />
+          <IconV2 name={props.iconName ?? "edit"} />
         </span>
         <span
           data-titlebar-tab-title

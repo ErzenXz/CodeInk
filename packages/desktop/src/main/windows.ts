@@ -1,7 +1,7 @@
 import windowState from "electron-window-state"
-import { resolveThemeVariant } from "@opencode-ai/ui/theme/resolve"
-import type { DesktopTheme } from "@opencode-ai/ui/theme/types"
-import oc2ThemeJson from "../../../ui/src/theme/themes/oc-2.json"
+import { resolveThemeVariant } from "@codeink/ui/theme/resolve"
+import type { DesktopTheme } from "@codeink/ui/theme/types"
+import codeinkThemeJson from "../../../ui/src/theme/themes/codeink.json"
 import { randomUUID } from "node:crypto"
 import { rmSync } from "node:fs"
 import { app, BrowserWindow, dialog, net, nativeImage, nativeTheme, protocol, shell } from "electron"
@@ -19,15 +19,15 @@ import { resolveExternalURL, resolveLocalFilePath } from "./external-url"
 
 const root = dirname(fileURLToPath(import.meta.url))
 const rendererRoot = join(root, "../renderer")
-const rendererProtocol = "oc"
+const rendererProtocol = "codeink"
 const rendererHost = "renderer"
 const clipboardWritePermission = "clipboard-sanitized-write"
 const notificationPermission = "notifications"
 const rendererPermissions = new Set([clipboardWritePermission, notificationPermission])
-const oc2Theme = oc2ThemeJson as DesktopTheme
-const oc2Background = {
-  light: resolveThemeVariant(oc2Theme.light, false)["background-base"],
-  dark: resolveThemeVariant(oc2Theme.dark, true)["background-base"],
+const codeinkTheme = codeinkThemeJson as DesktopTheme
+const codeinkBackground = {
+  light: resolveThemeVariant(codeinkTheme.light, false)["background-base"],
+  dark: resolveThemeVariant(codeinkTheme.dark, true)["background-base"],
 }
 const documentPolicyHeader = "Document-Policy"
 const jsCallStacksDocumentPolicy = "include-js-call-stacks-in-crash-reports"
@@ -99,7 +99,7 @@ function tone() {
 }
 
 function defaultBackgroundColor() {
-  return oc2Background[tone()]
+  return codeinkBackground[tone()]
 }
 
 function overlay(theme: Partial<TitlebarTheme> = {}, zoom = 1) {

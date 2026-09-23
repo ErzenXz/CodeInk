@@ -21,7 +21,7 @@ function BanIcon() {
   )
 }
 
-/** duo-progress-25: faint track ring + ~25% solid arc (Figma OpenCode DS) */
+/** duo-progress-25: faint track ring + ~25% solid arc (CodeInk design system) */
 function LoaderIcon() {
   const r = 5.9
   return (

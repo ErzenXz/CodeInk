@@ -1,9 +1,9 @@
 import { For, Show } from "solid-js"
-import { MenuV2 } from "@opencode-ai/ui/v2/menu-v2"
-import { TooltipV2 } from "@opencode-ai/ui/v2/tooltip-v2"
-import { Icon } from "@opencode-ai/ui/icon"
-import { Icon as IconV2 } from "@opencode-ai/ui/v2/icon"
-import { getFilename } from "@opencode-ai/core/util/path"
+import { MenuV2 } from "@codeink/ui/v2/menu-v2"
+import { TooltipV2 } from "@codeink/ui/v2/tooltip-v2"
+import { Icon } from "@codeink/ui/icon"
+import { Icon as IconV2 } from "@codeink/ui/v2/icon"
+import { getFilename } from "@codeink/core/util/path"
 import { useLanguage } from "@/context/language"
 
 export function PromptWorkspaceSelector(props: {

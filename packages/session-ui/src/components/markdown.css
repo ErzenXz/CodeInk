@@ -306,6 +306,53 @@
   unicode-bidi: plaintext;
 }
 
+@keyframes markdown-stream-enter {
+  from {
+    opacity: 0.45;
+    transform: translateY(3px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes markdown-stream-caret {
+  0%,
+  100% {
+    opacity: 0.32;
+  }
+  50% {
+    opacity: 0.9;
+  }
+}
+
+[data-component="markdown"][data-animate-streaming="true"] {
+  > [data-markdown-entering] > * {
+    animation: markdown-stream-enter 180ms ease-out both;
+  }
+
+  > [data-markdown-block]:last-child :is(p, li, h1, h2, h3, h4, h5, h6):last-child::after {
+    content: "";
+    display: inline-block;
+    width: 2px;
+    height: 0.8em;
+    margin-inline-start: 3px;
+    border-radius: 2px;
+    background: var(--v2-text-text-base);
+    animation: markdown-stream-caret 1s ease-in-out infinite;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-component="markdown"][data-animate-streaming="true"] > [data-markdown-entering] > *,
+  [data-component="markdown"][data-animate-streaming="true"]
+    > [data-markdown-block]:last-child
+    :is(p, li, h1, h2, h3, h4, h5, h6):last-child::after {
+    animation: none;
+  }
+}
+
 body[data-new-layout] [data-component="markdown"] {
   [data-slot="markdown-copy-button"]::after {
     box-sizing: border-box;

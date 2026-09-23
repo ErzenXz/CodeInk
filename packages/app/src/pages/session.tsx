@@ -1,6 +1,6 @@
-import type { FilePart, Project, UserMessage, VcsFileDiff } from "@opencode-ai/sdk/v2"
-import { getFilename } from "@opencode-ai/core/util/path"
-import { useDialog } from "@opencode-ai/ui/context/dialog"
+import type { FilePart, Project, UserMessage, VcsFileDiff } from "@codeink/sdk/v2"
+import { getFilename } from "@codeink/core/util/path"
+import { useDialog } from "@codeink/ui/context/dialog"
 import { createQuery, skipToken, useMutation, useQueryClient } from "@tanstack/solid-query"
 import {
   batch,
@@ -26,18 +26,18 @@ import { debounce } from "@solid-primitives/scheduled"
 import { useLocal } from "@/context/local"
 import { FileProvider, selectionFromLines, useFile, type FileSelection, type SelectedLineRange } from "@/context/file"
 import { createStore } from "solid-js/store"
-import type { SessionReviewLineComment } from "@opencode-ai/session-ui/session-review"
-import { ResizeHandle } from "@opencode-ai/ui/resize-handle"
-import { Select } from "@opencode-ai/ui/select"
-import { SelectV2 } from "@opencode-ai/ui/v2/select-v2"
-import { isScrollKeyTarget, scrollKey, scrollKeyOwner } from "@opencode-ai/ui/scroll-view"
-import { Tabs } from "@opencode-ai/ui/tabs"
-import { ButtonV2 } from "@opencode-ai/ui/v2/button-v2"
-import { createAutoScroll } from "@opencode-ai/ui/hooks"
-import { previewSelectedLines } from "@opencode-ai/session-ui/pierre/selection-bridge"
-import { Button } from "@opencode-ai/ui/button"
+import type { SessionReviewLineComment } from "@codeink/session-ui/session-review"
+import { ResizeHandle } from "@codeink/ui/resize-handle"
+import { Select } from "@codeink/ui/select"
+import { SelectV2 } from "@codeink/ui/v2/select-v2"
+import { isScrollKeyTarget, scrollKey, scrollKeyOwner } from "@codeink/ui/scroll-view"
+import { Tabs } from "@codeink/ui/tabs"
+import { ButtonV2 } from "@codeink/ui/v2/button-v2"
+import { createAutoScroll } from "@codeink/ui/hooks"
+import { previewSelectedLines } from "@codeink/session-ui/pierre/selection-bridge"
+import { Button } from "@codeink/ui/button"
 import { showToast } from "@/utils/toast"
-import { base64Encode, checksum } from "@opencode-ai/core/util/encode"
+import { base64Encode, checksum } from "@codeink/core/util/encode"
 import { useLocation, useNavigate, useParams, useSearchParams } from "@solidjs/router"
 import { NewSessionView, SessionHeader } from "@/components/session"
 import { ErrorPage } from "@/pages/error"
@@ -83,9 +83,9 @@ import {
 } from "@/pages/session/session-panel-width"
 import { SessionSidePanel } from "@/pages/session/session-side-panel"
 import { sessionPanelLayout } from "@/pages/session/session-panel-layout"
-import { SessionReviewEmptyChangesV2 } from "@opencode-ai/session-ui/v2/session-review-empty-changes-v2"
-import { SessionReviewEmptyNoGitV2 } from "@opencode-ai/session-ui/v2/session-review-empty-no-git-v2"
-import { SessionReviewV2SidebarToggle } from "@opencode-ai/session-ui/v2/session-review-v2"
+import { SessionReviewEmptyChangesV2 } from "@codeink/session-ui/v2/session-review-empty-changes-v2"
+import { SessionReviewEmptyNoGitV2 } from "@codeink/session-ui/v2/session-review-empty-no-git-v2"
+import { SessionReviewV2SidebarToggle } from "@codeink/session-ui/v2/session-review-v2"
 import { ReviewPanelV2 } from "@/pages/session/v2/review-panel-v2"
 import { createReviewPanelV2State } from "@/pages/session/v2/review-panel-v2-state"
 import { reviewDiffDirectory, reviewDiffNeedsLoad, reviewRootDirectory } from "@/pages/session/v2/review-diff-kinds"
@@ -181,12 +181,14 @@ export function SessionRouteErrorBoundary(
   props: ParentProps<{ sessionID?: string; serverKey?: ServerConnection.Key; padded?: boolean }>,
 ) {
   const settings = useSettings()
+  const wide = createMediaQuery("(min-width: 1024px)")
+  const flat = () => settings.general.sessionTabPosition() === "sidebar" && wide()
   return (
     <ErrorBoundary
       fallback={(error) =>
         settings.general.newLayoutDesigns() ? (
-          <SessionRouteFrame padded={props.padded}>
-            <SessionPanelFrame newLayout raised={!!props.sessionID}>
+          <SessionRouteFrame padded={props.padded && !flat()}>
+            <SessionPanelFrame newLayout raised={!!props.sessionID} flat={flat()}>
               <SessionErrorFallback error={error} sessionID={props.sessionID} serverKey={props.serverKey} />
             </SessionPanelFrame>
           </SessionRouteFrame>
@@ -334,15 +336,17 @@ function SessionRouteFrame(props: ParentProps<{ padded?: boolean }>) {
   )
 }
 
-function SessionPanelFrame(props: ParentProps<{ newLayout: boolean; raised?: boolean }>) {
+function SessionPanelFrame(props: ParentProps<{ newLayout: boolean; raised?: boolean; flat?: boolean }>) {
   return (
     <div
+      data-slot="session-panel-frame"
       classList={{
         "flex-1 min-h-0 flex flex-col": true,
         "bg-v2-background-bg-base": props.newLayout,
         "bg-background-stronger": !props.newLayout,
-        "rounded-[10px] overflow-hidden": props.newLayout,
-        "shadow-[var(--v2-elevation-raised)]": props.newLayout && props.raised,
+        "overflow-hidden": props.newLayout,
+        "rounded-[10px]": props.newLayout && !props.flat,
+        "shadow-[var(--v2-elevation-raised)]": props.newLayout && props.raised && !props.flat,
       }}
     >
       {props.children}
@@ -446,6 +450,9 @@ export default function Page() {
   )
 
   const isDesktop = createMediaQuery("(min-width: 768px)")
+  const wide = createMediaQuery("(min-width: 1024px)")
+  const flatSidebar = () =>
+    settings.general.newLayoutDesigns() && settings.general.sessionTabPosition() === "sidebar" && wide()
   const size = createSizing()
   const desktopReviewOpen = createMemo(() => isDesktop() && view().reviewPanel.opened())
   const desktopV2ReviewOpen = createMemo(() => newSessionDesign() && desktopReviewOpen() && !!params.id)
@@ -2253,7 +2260,7 @@ export default function Page() {
         ref={panelRow}
         class="flex-1 min-h-0 flex flex-col md:flex-row"
         classList={{
-          "gap-2 p-2": settings.general.newLayoutDesigns(),
+          "gap-2 p-2": settings.general.newLayoutDesigns() && !flatSidebar(),
         }}
       >
         <Show when={!isDesktop() && !!params.id && !settings.general.newLayoutDesigns()}>{mobileTabs()}</Show>
@@ -2271,7 +2278,7 @@ export default function Page() {
           {settings.general.newLayoutDesigns() ? (
             <Show when={sessionPanelKey()} keyed>
               {(_) => (
-                <SessionPanelFrame newLayout raised={!!params.id}>
+                <SessionPanelFrame newLayout raised={!!params.id} flat={flatSidebar()}>
                   <ErrorBoundary fallback={sessionErrorFallback}>{sessionPanelContent()}</ErrorBoundary>
                 </SessionPanelFrame>
               )}

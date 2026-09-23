@@ -1,10 +1,10 @@
 import { Component, Show, createMemo, createResource } from "solid-js"
+import { useNavigate } from "@solidjs/router"
 import { createMediaQuery } from "@solid-primitives/media"
-import { ButtonV2 } from "@opencode-ai/ui/v2/button-v2"
-import { SelectV2 } from "@opencode-ai/ui/v2/select-v2"
-import { Switch } from "@opencode-ai/ui/v2/switch-v2"
-import { TextInputV2 } from "@opencode-ai/ui/v2/text-input-v2"
-import { useDialog } from "@opencode-ai/ui/context/dialog"
+import { ButtonV2 } from "@codeink/ui/v2/button-v2"
+import { SelectV2 } from "@codeink/ui/v2/select-v2"
+import { Switch } from "@codeink/ui/v2/switch-v2"
+import { TextInputV2 } from "@codeink/ui/v2/text-input-v2"
 import { useLanguage } from "@/context/language"
 import { usePlatform } from "@/context/platform"
 import { useUpdaterAction } from "../updater-action"
@@ -28,6 +28,7 @@ import {
 import "./settings-v2.css"
 
 const schemeOptions: ("system" | "light" | "dark")[] = ["system", "light", "dark"]
+const sessionTabOptions: ("top" | "sidebar")[] = ["top", "sidebar"]
 const fontSettings = {
   ui: {
     action: "settings-ui-font",
@@ -121,10 +122,30 @@ const ShellSetting: Component<{ controller: ShellSettingsController }> = (props)
 
 const AppearanceSection: Component<{ controller: AppearanceSettingsController }> = (props) => {
   const language = useLanguage()
+  const settings = useSettings()
   return (
     <div class="settings-v2-section">
-      <h3 class="settings-v2-section-title">{language.t("settings.general.section.appearance")}</h3>
       <SettingsListV2>
+        <SettingsRowV2
+          title={language.t("settings.general.row.sessionTabs.title")}
+          description={language.t("settings.general.row.sessionTabs.description")}
+        >
+          <SelectV2
+            appearance="inline"
+            data-action="settings-session-tabs"
+            options={sessionTabOptions}
+            current={sessionTabOptions.find((option) => option === settings.general.sessionTabPosition())}
+            placement="bottom-end"
+            gutter={6}
+            label={(option) =>
+              language.t(
+                option === "top" ? "settings.general.row.sessionTabs.top" : "settings.general.row.sessionTabs.sidebar",
+              )
+            }
+            onSelect={(option) => option && settings.general.setSessionTabPosition(option)}
+          />
+        </SettingsRowV2>
+
         <SettingsRowV2
           title={language.t("settings.general.row.colorScheme.title")}
           description={language.t("settings.general.row.colorScheme.description")}
@@ -206,10 +227,8 @@ const FontSetting: Component<{
 }
 
 const SoundsSection: Component<{ controller: SoundSettingsController }> = (props) => {
-  const language = useLanguage()
   return (
     <div class="settings-v2-section">
-      <h3 class="settings-v2-section-title">{language.t("settings.general.section.sounds")}</h3>
       <SettingsListV2>
         <SoundSetting kind="agent" channel={props.controller.agent} />
         <SoundSetting kind="permissions" channel={props.controller.permissions} />
@@ -273,10 +292,11 @@ const LanguageSetting = () => {
 
 export const SettingsGeneralV2: Component<{
   sessionID?: string
+  section: "general" | "appearance" | "notifications" | "sounds" | "updates"
 }> = (props) => {
   const language = useLanguage()
   const platform = usePlatform()
-  const dialog = useDialog()
+  const navigate = useNavigate()
   const settings = useSettings()
   const mobile = createMediaQuery("(max-width: 767px)")
   const updater = useUpdaterAction()
@@ -285,6 +305,13 @@ export const SettingsGeneralV2: Component<{
   const appearance = createAppearanceSettingsController()
   const sounds = createSoundSettingsController()
   const desktop = createMemo(() => platform.platform === "desktop")
+  const title = {
+    general: "settings.tab.general",
+    appearance: "settings.general.section.appearance",
+    notifications: "settings.general.section.notifications",
+    sounds: "settings.general.section.sounds",
+    updates: "settings.general.section.updates",
+  } as const
 
   const [pinchZoom, { mutate: setPinchZoom }] = createResource(
     () => desktop() && "getPinchZoomEnabled" in platform,
@@ -307,10 +334,7 @@ export const SettingsGeneralV2: Component<{
       checked={settings.general.newLayoutDesigns()}
       onChange={(checked) => {
         settings.general.setNewLayoutDesigns(checked)
-        if (checked) return
-        void import("@/components/dialog-settings").then((module) => {
-          void dialog.show(() => <module.DialogSettings />)
-        })
+        navigate("/settings")
       }}
     />
   )
@@ -369,7 +393,7 @@ export const SettingsGeneralV2: Component<{
           </div>
         </SettingsRowV2>
 
-        <Show when={mobile() && import.meta.env.VITE_OPENCODE_CHANNEL !== "prod"}>
+        <Show when={mobile() && import.meta.env.VITE_CODEINK_CHANNEL !== "prod"}>
           <SettingsRowV2
             title={language.t("settings.general.row.mobileTitlebarBottom.title")}
             description={language.t("settings.general.row.mobileTitlebarBottom.description")}
@@ -444,8 +468,6 @@ export const SettingsGeneralV2: Component<{
 
   const NotificationsSection = () => (
     <div class="settings-v2-section">
-      <h3 class="settings-v2-section-title">{language.t("settings.general.section.notifications")}</h3>
-
       <SettingsListV2>
         <SettingsRowV2
           title={language.t("settings.general.notifications.agent.title")}
@@ -488,8 +510,6 @@ export const SettingsGeneralV2: Component<{
 
   const UpdatesSection = () => (
     <div class="settings-v2-section">
-      <h3 class="settings-v2-section-title">{language.t("settings.general.section.updates")}</h3>
-
       <SettingsListV2>
         <SettingsRowV2
           title={language.t("settings.general.row.releaseNotes.title")}
@@ -538,33 +558,33 @@ export const SettingsGeneralV2: Component<{
   return (
     <>
       <div class="settings-v2-tab-header">
-        <h2 class="settings-v2-tab-title">{language.t("settings.tab.general")}</h2>
+        <h2 class="settings-v2-tab-title">{language.t(title[props.section])}</h2>
       </div>
 
       <div class="settings-v2-tab-body">
-        <Show when={settings.general.layoutTransitionAvailable()}>
-          <InterfaceSection />
+        <Show when={props.section === "general"}>
+          <Show when={settings.general.layoutTransitionAvailable()}>
+            <InterfaceSection />
+          </Show>
+          <Show when={settings.general.newInterfaceNoticeVisible()}>
+            <InterfaceNoticeSection />
+          </Show>
+          <GeneralSection />
+          <AdvancedSection />
         </Show>
-
-        <Show when={settings.general.newInterfaceNoticeVisible()}>
-          <InterfaceNoticeSection />
+        <Show when={props.section === "appearance"}>
+          <AppearanceSection controller={appearance} />
+          <DisplaySection />
         </Show>
-
-        <GeneralSection />
-
-        <AppearanceSection controller={appearance} />
-
-        <NotificationsSection />
-
-        <SoundsSection controller={sounds} />
-
-        <Show when={desktop()}>
+        <Show when={props.section === "notifications"}>
+          <NotificationsSection />
+        </Show>
+        <Show when={props.section === "sounds"}>
+          <SoundsSection controller={sounds} />
+        </Show>
+        <Show when={props.section === "updates" && desktop()}>
           <UpdatesSection />
         </Show>
-
-        <DisplaySection />
-
-        <AdvancedSection />
       </div>
     </>
   )

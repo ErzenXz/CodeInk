@@ -9,19 +9,14 @@ export const dict = {
   "desktop.updater.checkFailed.title": "Controllo degli aggiornamenti non riuscito",
   "desktop.updater.checkFailed.message": "Impossibile controllare gli aggiornamenti",
   "desktop.updater.none.title": "Nessun aggiornamento disponibile",
-  "desktop.updater.none.message": "Stai già utilizzando l'ultima versione di OpenCode",
+  "desktop.updater.none.message": "Stai già utilizzando l'ultima versione di CodeInk",
   "desktop.updater.downloadFailed.title": "Aggiornamento non riuscito",
   "desktop.updater.downloadFailed.message": "Impossibile scaricare l'aggiornamento",
   "desktop.updater.downloaded.title": "Aggiornamento scaricato",
   "desktop.updater.downloaded.prompt":
-    "La versione {{version}} di OpenCode è stata scaricata. Vuoi installarla e riavviare l'app?",
+    "La versione {{version}} di CodeInk è stata scaricata. Vuoi installarla e riavviare l'app?",
   "desktop.updater.installFailed.title": "Aggiornamento non riuscito",
   "desktop.updater.installFailed.message": "Impossibile installare l'aggiornamento",
-  "desktop.cli.installed.title": "CLI installata",
-  "desktop.cli.installed.message":
-    "CLI installata in {{path}}\n\nRiavvia il terminale per utilizzare il comando 'opencode'.",
-  "desktop.cli.failed.title": "Installazione non riuscita",
-  "desktop.cli.failed.message": "Impossibile installare la CLI: {{error}}",
 
   "desktop.error.dev.rootNotFound":
     "Elemento radice non trovato. Hai dimenticato di aggiungerlo al tuo index.html? O forse l'attributo id è stato scritto in modo errato?",

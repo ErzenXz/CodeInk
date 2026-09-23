@@ -1,13 +1,6 @@
-import type {
-  Config,
-  OpencodeClient,
-  Path,
-  Project,
-  ProviderAuthResponse,
-  SessionStatus,
-} from "@opencode-ai/sdk/v2/client"
+import type { Config, OpencodeClient, Path, Project, ProviderAuthResponse, SessionStatus } from "@codeink/sdk/v2/client"
 import { showToast } from "@/utils/toast"
-import { getFilename } from "@opencode-ai/core/util/path"
+import { getFilename } from "@codeink/core/util/path"
 import { type Accessor, batch, createMemo, getOwner, onCleanup, onMount, untrack } from "solid-js"
 import { createStore, produce, reconcile } from "solid-js/store"
 import { useLanguage } from "@/context/language"
@@ -38,12 +31,12 @@ import { createRefreshQueue } from "./global-sync/queue"
 import { directoryKey } from "./global-sync/utils"
 import { PathKey } from "@/utils/path-key"
 import { createDirSyncContext } from "./directory-sync"
-import { createSimpleContext } from "@opencode-ai/ui/context"
-import { NormalizedProviderListResponse } from "@opencode-ai/session-ui/context"
+import { createSimpleContext } from "@codeink/ui/context"
+import { NormalizedProviderListResponse } from "@codeink/session-ui/context"
 import { createRefCountMap } from "@/utils/refcount"
 import { useGlobal } from "./global"
 import { ServerConnection, useServer } from "./server"
-import { retry } from "@opencode-ai/core/util/retry"
+import { retry } from "@codeink/core/util/retry"
 import type { ServerScope } from "@/utils/server-scope"
 import { createHomeSessionIndexCache } from "./global-sync/home-session-index"
 import { persisted } from "@/utils/persist"

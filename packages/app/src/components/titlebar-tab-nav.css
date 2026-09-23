@@ -63,6 +63,10 @@
   display: none;
 }
 
+[data-slot="titlebar-tabs"][data-orientation="vertical"] [data-titlebar-tab-slot]::before {
+  display: none;
+}
+
 [data-titlebar-tab-slot]:not([data-active="true"]):has([data-titlebar-tab]:hover)::before,
 [data-titlebar-tab-slot]:not([data-active="true"]):has([data-titlebar-tab]:hover) + [data-titlebar-tab-slot]::before {
   display: none;

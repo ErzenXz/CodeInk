@@ -12,20 +12,22 @@ import {
 } from "solid-js"
 import { createStore } from "solid-js/store"
 import { useLocation, useNavigate, useParams } from "@solidjs/router"
-import { IconButton } from "@opencode-ai/ui/icon-button"
-import { Icon } from "@opencode-ai/ui/icon"
-import { Button } from "@opencode-ai/ui/button"
-import { Tooltip, TooltipKeybind } from "@opencode-ai/ui/tooltip"
-import { IconButtonV2 } from "@opencode-ai/ui/v2/icon-button-v2"
-import { Icon as IconV2 } from "@opencode-ai/ui/v2/icon"
-import { KeybindV2 } from "@opencode-ai/ui/v2/keybind-v2"
-import { TooltipV2 } from "@opencode-ai/ui/v2/tooltip-v2"
+import { IconButton } from "@codeink/ui/icon-button"
+import { Icon } from "@codeink/ui/icon"
+import { Button } from "@codeink/ui/button"
+import { Tooltip, TooltipKeybind } from "@codeink/ui/tooltip"
+import { IconButtonV2 } from "@codeink/ui/v2/icon-button-v2"
+import { Icon as IconV2 } from "@codeink/ui/v2/icon"
+import { KeybindV2 } from "@codeink/ui/v2/keybind-v2"
+import { TooltipV2 } from "@codeink/ui/v2/tooltip-v2"
 
 import { LayoutRoute, useLayout } from "@/context/layout"
 import { usePlatform } from "@/context/platform"
 import { useCommand } from "@/context/command"
 import { useLanguage } from "@/context/language"
 import { useSettings } from "@/context/settings"
+import { settingsHref } from "@/components/settings-dialog"
+import { useDirectoryPicker } from "@/components/directory-picker"
 import { WindowsAppMenu } from "./windows-app-menu"
 import { applyPath, backPath, forwardPath } from "./titlebar-history"
 import { TitlebarTabStrip } from "@/components/titlebar-tab-strip"
@@ -71,8 +73,11 @@ export function Titlebar(props: { update?: TitlebarUpdate; debugTools?: { visibl
   const navigate = useNavigate()
   const location = useLocation()
   const params = useParams()
+  const pickDirectory = useDirectoryPicker()
   const useV2Titlebar = createMemo(() => settings.general.newLayoutDesigns())
   const mobile = createMediaQuery("(max-width: 767px)")
+  const wide = createMediaQuery("(min-width: 1024px)")
+  const sidebarTabs = createMemo(() => useV2Titlebar() && wide() && settings.general.sessionTabPosition() === "sidebar")
   const bottom = createMemo(() => useV2Titlebar() && mobile() && settings.general.mobileTitlebarPosition() === "bottom")
 
   const mac = createMemo(() => platform.platform === "desktop" && platform.os === "macos")
@@ -98,6 +103,15 @@ export function Titlebar(props: { update?: TitlebarUpdate; debugTools?: { visibl
   })
 
   const path = () => `${location.pathname}${location.search}${location.hash}`
+  const [settingsPageTab, setSettingsPageTab] = createStore({ open: false, href: "/settings", previous: "/" })
+  createEffect(() => {
+    const current = path()
+    if (layout.route().type === "settings") {
+      setSettingsPageTab({ open: true, href: current })
+      return
+    }
+    setSettingsPageTab("previous", current)
+  })
   const creating = createMemo(() => {
     const route = layout.route()
     if (route.type === "draft" || route.type === "dir-new-sesssion") return true
@@ -149,6 +163,20 @@ export function Titlebar(props: { update?: TitlebarUpdate; debugTools?: { visibl
     if (!next) return
     setHistory(next.state)
     navigate(next.to)
+  }
+
+  const closeSettings = () => {
+    const active = layout.route().type === "settings"
+    setSettingsPageTab("open", false)
+    if (active) navigate(settingsPageTab.previous)
+  }
+
+  const toggleSettings = () => {
+    if (layout.route().type === "settings") {
+      closeSettings()
+      return
+    }
+    navigate(settingsHref(layout.route()))
   }
 
   command.register(() => [
@@ -307,7 +335,24 @@ export function Titlebar(props: { update?: TitlebarUpdate; debugTools?: { visibl
                 const project = global.ensureServerCtx(conn).projects.list()[0]
                 return project ? [{ server: ServerConnection.key(conn), project }] : []
               })[0]
-              if (!fallback) return
+              if (!fallback) {
+                navigate("/")
+                const conn = server.current ?? global.servers.list()[0]
+                if (!conn) return
+                pickDirectory({
+                  server: conn,
+                  title: language.t("command.project.open"),
+                  onSelect: (result) => {
+                    const directory = Array.isArray(result) ? result[0] : result
+                    if (!directory) return
+                    const ctx = global.ensureServerCtx(conn)
+                    ctx.projects.open(directory)
+                    ctx.projects.touch(directory)
+                    void tabs.newDraft({ server: ServerConnection.key(conn), directory })
+                  },
+                })
+                return
+              }
 
               tabs.newDraft({ server: fallback.server, directory: fallback.project.worktree }, "")
             }
@@ -357,6 +402,31 @@ export function Titlebar(props: { update?: TitlebarUpdate; debugTools?: { visibl
             })
 
             const [tabsAreOverflowing, setTabsAreOverflowing] = createSignal(false)
+            const tabStrip = (vertical: boolean) => (
+              <TitlebarTabStrip
+                tabs={tabsStore}
+                currentTab={currentTab}
+                settingsTab={{
+                  open: () => settingsPageTab.open,
+                  active: () => layout.route().type === "settings",
+                  href: () => settingsPageTab.href,
+                  onNavigate: () => navigate(settingsPageTab.href),
+                  onClose: closeSettings,
+                }}
+                vertical={vertical}
+                forceTruncate={!vertical && tabsAreOverflowing()}
+                onOverflowChange={setTabsAreOverflowing}
+                onNavigate={(tab, el) => {
+                  tabs.select(tab)
+                  el?.scrollIntoView({ behavior: "instant", block: "nearest", inline: "nearest" })
+                }}
+                onClose={(tab) => {
+                  const index = tabsStore.findIndex((item) => tabKey(item) === tabKey(tab))
+                  if (index !== -1) tabsStoreActions.closeTab(index)
+                }}
+                onReorder={(keys) => tabsStoreActions.reorder(keys)}
+              />
+            )
 
             return (
               <div
@@ -395,21 +465,7 @@ export function Titlebar(props: { update?: TitlebarUpdate; debugTools?: { visibl
                   />
                 </TooltipV2>
 
-                <TitlebarTabStrip
-                  tabs={tabsStore}
-                  currentTab={currentTab}
-                  forceTruncate={tabsAreOverflowing()}
-                  onOverflowChange={setTabsAreOverflowing}
-                  onNavigate={(tab, el) => {
-                    tabs.select(tab)
-                    el?.scrollIntoView({ behavior: "instant" })
-                  }}
-                  onClose={(tab) => {
-                    const index = tabsStore.findIndex((item) => tabKey(item) === tabKey(tab))
-                    if (index !== -1) tabsStoreActions.closeTab(index)
-                  }}
-                  onReorder={(keys) => tabsStoreActions.reorder(keys)}
-                />
+                <Show when={!sidebarTabs()}>{tabStrip(false)}</Show>
                 <TooltipV2
                   placement="bottom"
                   value={
@@ -430,6 +486,21 @@ export function Titlebar(props: { update?: TitlebarUpdate; debugTools?: { visibl
                   />
                 </TooltipV2>
                 <div class="flex-1" />
+                <Show when={!sidebarTabs()}>
+                  <TooltipV2 placement="bottom" value={language.t("sidebar.settings")}>
+                    <IconButtonV2
+                      type="button"
+                      variant="ghost-muted"
+                      size="large"
+                      class="!w-9 shrink-0"
+                      icon={<IconV2 name="settings-gear" />}
+                      state={layout.route().type === "settings" ? "pressed" : undefined}
+                      onClick={toggleSettings}
+                      aria-label={language.t("sidebar.settings")}
+                      aria-pressed={layout.route().type === "settings"}
+                    />
+                  </TooltipV2>
+                </Show>
                 <TitlebarV2Right state={v2RightState()} />
               </div>
             )
@@ -580,6 +651,20 @@ export function Titlebar(props: { update?: TitlebarUpdate; debugTools?: { visibl
               }}
               data-tauri-drag-region
             >
+              <TooltipKeybind
+                placement="bottom"
+                title={language.t("sidebar.settings")}
+                keybind={command.keybind("settings.open")}
+              >
+                <IconButton
+                  icon="settings-gear"
+                  variant="ghost"
+                  class="titlebar-icon"
+                  onClick={toggleSettings}
+                  aria-label={language.t("sidebar.settings")}
+                  aria-pressed={layout.route().type === "settings"}
+                />
+              </TooltipKeybind>
               <div id="opencode-titlebar-right" class="flex items-center gap-1 shrink-0 justify-end" />
               <Show when={windows()}>
                 <div class="shrink-0" style={{ width: windowsControlsWidth() }} />
@@ -647,28 +732,25 @@ function TitlebarUpdateIconButton(props: { state: TitlebarUpdatePillState }) {
 
 function ChannelIndicator(props: { debugTools?: { visible: boolean; toggle: () => void } }) {
   const language = useLanguage()
-  const channel = import.meta.env.VITE_OPENCODE_CHANNEL
+  const channel = import.meta.env.VITE_CODEINK_CHANNEL
+  if (channel === "prod") return null
   if (channel === "dev" && props.debugTools) {
     return (
       <button
         type="button"
-        class="bg-icon-interactive-base text-[#FFF] font-medium px-2 rounded-sm uppercase font-mono cursor-pointer"
+        class="bg-[#B54708] text-white font-medium px-2 rounded-sm uppercase font-mono cursor-pointer"
         onClick={props.debugTools.toggle}
         aria-label="Toggle debug tools"
         aria-pressed={props.debugTools.visible}
       >
-        DEV
+        {language.t("codeink.channel.earlyAccess")}
       </button>
     )
   }
 
   return (
-    <>
-      {["beta", "dev"].includes(channel) && (
-        <div class="bg-icon-interactive-base text-[#FFF] font-medium px-2 rounded-sm uppercase font-mono">
-          {channel === "beta" ? language.t("codeink.channel.earlyAccess") : channel.toUpperCase()}
-        </div>
-      )}
-    </>
+    <div class="bg-[#B54708] text-white font-medium px-2 rounded-sm uppercase font-mono">
+      {language.t("codeink.channel.earlyAccess")}
+    </div>
   )
 }

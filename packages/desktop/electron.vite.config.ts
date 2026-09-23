@@ -1,11 +1,11 @@
 import { defineConfig } from "electron-vite"
-import appPlugin from "@opencode-ai/app/vite"
+import appPlugin from "@codeink/app/vite"
 const nodePtyPackage = `@lydell/node-pty-${process.platform}-${process.arch}`
 
 export default defineConfig({
   main: {
     define: {
-      "import.meta.env.OPENCODE_CHANNEL": JSON.stringify(
+      "import.meta.env.CODEINK_CHANNEL": JSON.stringify(
         process.env.CODEINK_CHANNEL === "early-access"
           ? "beta"
           : process.env.CODEINK_CHANNEL === "dev"

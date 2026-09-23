@@ -1,4 +1,4 @@
-import type { Provider } from "@opencode-ai/sdk/v2/client"
+import type { Provider } from "@codeink/sdk/v2/client"
 import type { AgentStatus } from "../shared/types"
 import { t } from "../shared/i18n"
 import { discoverModels, type AgentModel } from "./adapters/model-discovery"

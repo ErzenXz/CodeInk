@@ -6,8 +6,8 @@ import { realpath, stat } from "node:fs/promises"
 import { execFile } from "node:child_process"
 import { promisify } from "node:util"
 import type { Agent, Session, Usage } from "../shared/types"
-import type { Message, Part } from "@opencode-ai/sdk/v2/client"
-type LegacySession = import("@opencode-ai/sdk/v2/client").Session
+import type { Message, Part } from "@codeink/sdk/v2/client"
+type LegacySession = import("@codeink/sdk/v2/client").Session
 import { WorkspaceStore, agentSchema } from "./agent-store"
 import { Sessions } from "./sessions"
 import { detectAgents } from "./agents"
@@ -300,7 +300,7 @@ export async function startBridge(
   const server = createServer((request, response) => {
     void (async () => {
       const origin = request.headers.origin
-      if (origin && (origin === "oc://renderer" || /^http:\/\/(localhost|127\.0\.0\.1):\d+$/.test(origin)))
+      if (origin && (origin === "codeink://renderer" || /^http:\/\/(localhost|127\.0\.0\.1):\d+$/.test(origin)))
         response.setHeader("Access-Control-Allow-Origin", origin)
       response.setHeader(
         "Access-Control-Allow-Headers",

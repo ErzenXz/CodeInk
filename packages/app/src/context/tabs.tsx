@@ -1,5 +1,5 @@
-import type { Session } from "@opencode-ai/sdk/v2/client"
-import { createSimpleContext } from "@opencode-ai/ui/context"
+import type { Session } from "@codeink/sdk/v2/client"
+import { createSimpleContext } from "@codeink/ui/context"
 import { createStore, produce } from "solid-js/store"
 import { Persist, persisted, removePersisted, draftPersistedKeys } from "@/utils/persist"
 import { ServerConnection, useServer } from "./server"
@@ -11,8 +11,9 @@ import { SessionTabsRemovedDetail } from "@/components/titlebar-session-events"
 import { sessionHref } from "@/utils/session-route"
 import { createTabMemory } from "./tab-memory"
 import { nextTabAfterClose, pushClosedTab, removeClosedTabs, takeClosedTab, type ClosedTab } from "./closed-tabs"
-import { createDraftPromptSession, type PromptModel } from "./prompt-state"
+import { createDraftPromptSession, type PromptModel, type PromptSession } from "./prompt-state"
 import { migrateTabs } from "./tab-migration"
+import { pathKey } from "@/utils/path-key"
 
 export type SessionTab = {
   type: "session"
@@ -74,6 +75,7 @@ export const { use: useTabs, provider: TabsProvider } = createSimpleContext({
     const memory = createTabMemory(getOwner())
 
     const closing = new Set<string>()
+    const creating = new Map<string, Promise<DraftTab>>()
     let recentWrite = 0
     let recentValue: string | undefined
 
@@ -207,18 +209,77 @@ export const { use: useTabs, provider: TabsProvider } = createSimpleContext({
         return tab
       },
       async newDraft(draft: Omit<DraftTab, "type" | "draftID">, prompt?: string, model?: PromptModel) {
-        const draftID = uuid()
-        const tab = { type: "draft" as const, draftID, ...draft }
-        memory.ensure(tabKey(tab), "prompt", () => createDraftPromptSession(draftID, { prompt, model }))
-        await startTransition(() => {
-          setStore(
-            produce((tabs) => {
-              tabs.push(tab)
-            }),
-          )
-          navigate(draftHref(draftID))
-        })
-        return tab
+        const scope = `${draft.server}\n${pathKey(draft.directory)}`
+        const pending = !prompt ? creating.get(scope) : undefined
+        if (pending) {
+          const tab = await pending
+          navigateTab(tab)
+          return tab
+        }
+
+        const task = (async () => {
+          if (!prompt) {
+            const candidates = store
+              .filter(
+                (tab): tab is DraftTab =>
+                  tab.type === "draft" &&
+                  tab.server === draft.server &&
+                  pathKey(tab.directory) === pathKey(draft.directory),
+              )
+              .toReversed()
+            const active = location.pathname === "/new-session" ? location.query.draftId : undefined
+            const ordered = active
+              ? [
+                  ...candidates.filter((tab) => tab.draftID === active),
+                  ...candidates.filter((tab) => tab.draftID !== active),
+                ]
+              : candidates
+            const blank = (
+              await Promise.all(
+                ordered.map(async (tab) => {
+                  const state = memory.ensure<PromptSession>(tabKey(tab), "prompt", () =>
+                    createDraftPromptSession(tab.draftID),
+                  )
+                  await state.ready.promise?.catch(() => undefined)
+                  return state.ready() && !state.dirty() && state.context.items().length === 0 ? tab : undefined
+                }),
+              )
+            ).filter((tab): tab is DraftTab => !!tab)
+            const existing = blank[0]
+            if (existing) {
+              const redundant = new Set(blank.slice(1).map((tab) => tab.draftID))
+              if (redundant.size) {
+                setStore((tabs) => tabs.filter((tab) => tab.type !== "draft" || !redundant.has(tab.draftID)))
+                blank.slice(1).forEach((tab) => {
+                  memory.remove(tabKey(tab))
+                  removeInfo(tabKey(tab))
+                  removeDraftPersisted(tab.draftID)
+                })
+              }
+              navigateTab(existing)
+              return existing
+            }
+          }
+
+          const draftID = uuid()
+          const tab = { type: "draft" as const, draftID, ...draft }
+          memory.ensure(tabKey(tab), "prompt", () => createDraftPromptSession(draftID, { prompt, model }))
+          await startTransition(() => {
+            setStore(
+              produce((tabs) => {
+                tabs.push(tab)
+              }),
+            )
+            navigate(draftHref(draftID))
+          })
+          return tab
+        })()
+        if (!prompt) creating.set(scope, task)
+        try {
+          return await task
+        } finally {
+          if (creating.get(scope) === task) creating.delete(scope)
+        }
       },
       updateDraft(draftID: string, draft: Partial<Omit<DraftTab, "type" | "draftID">>) {
         void startTransition(() => {

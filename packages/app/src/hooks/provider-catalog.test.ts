@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test"
-import type { NormalizedProviderListResponse } from "@opencode-ai/session-ui/context"
+import type { NormalizedProviderListResponse } from "@codeink/session-ui/context"
 import { resolveDefaultModel, selectProviderCatalog } from "./provider-catalog"
 
 const catalog = (id: string): NormalizedProviderListResponse => ({

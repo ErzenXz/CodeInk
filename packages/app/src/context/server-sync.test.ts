@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import type { OpencodeClient } from "@opencode-ai/sdk/v2/client"
+import type { OpencodeClient } from "@codeink/sdk/v2/client"
 import type {
   McpListInput,
   McpResourceCatalogInput,

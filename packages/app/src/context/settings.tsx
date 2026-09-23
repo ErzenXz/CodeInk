@@ -1,6 +1,6 @@
 import { createStore, reconcile } from "solid-js/store"
 import { batch, createEffect, createMemo, createSignal, onCleanup } from "solid-js"
-import { createSimpleContext } from "@opencode-ai/ui/context"
+import { createSimpleContext } from "@codeink/ui/context"
 import { persisted } from "@/utils/persist"
 import { usePlatform } from "@/context/platform"
 
@@ -34,6 +34,9 @@ export interface Settings {
     editToolPartsExpanded: boolean
     showCustomAgents: boolean
     mobileTitlebarPosition: "top" | "bottom"
+    sessionTabPosition: "top" | "sidebar"
+    sidebarView: "all" | "activity"
+    sidebarGroupBy: "project" | "workspace" | "status" | "server" | "recent" | "type" | "none"
     newLayoutDesigns?: boolean
     layoutTransitionEligible?: boolean
     agentVisibilityInitialized?: boolean
@@ -57,7 +60,7 @@ export interface Settings {
 export const monoDefault = "System Mono"
 export const sansDefault = "System Sans"
 export const terminalDefault = "JetBrainsMono Nerd Font Mono"
-const legacyNewLayoutDesignsDefault = import.meta.env.VITE_OPENCODE_CHANNEL !== "prod"
+const legacyNewLayoutDesignsDefault = import.meta.env.VITE_CODEINK_CHANNEL !== "prod"
 export const newLayoutDesignsDefault = true
 // Existing users can switch layouts until local midnight on this date. Set new Date(YYYY, M-1, D) to show.
 export const oldInterfaceSunset = new Date(2026, 8, 14)
@@ -195,6 +198,9 @@ const defaultSettings: Settings = {
     editToolPartsExpanded: false,
     showCustomAgents: false,
     mobileTitlebarPosition: "top",
+    sessionTabPosition: "sidebar",
+    sidebarView: "all",
+    sidebarGroupBy: "project",
   },
   appearance: {
     fontSize: 14,
@@ -427,6 +433,21 @@ export const { use: useSettings, provider: SettingsProvider } = createSimpleCont
         ),
         setMobileTitlebarPosition(value: "top" | "bottom") {
           setStore("general", "mobileTitlebarPosition", value)
+        },
+        sessionTabPosition: withFallback(
+          () => store.general?.sessionTabPosition,
+          defaultSettings.general.sessionTabPosition,
+        ),
+        setSessionTabPosition(value: "top" | "sidebar") {
+          setStore("general", "sessionTabPosition", value)
+        },
+        sidebarView: withFallback(() => store.general?.sidebarView, defaultSettings.general.sidebarView),
+        setSidebarView(value: "all" | "activity") {
+          setStore("general", "sidebarView", value)
+        },
+        sidebarGroupBy: withFallback(() => store.general?.sidebarGroupBy, defaultSettings.general.sidebarGroupBy),
+        setSidebarGroupBy(value: Settings["general"]["sidebarGroupBy"]) {
+          setStore("general", "sidebarGroupBy", value)
         },
         newLayoutDesigns,
         setNewLayoutDesigns(value: boolean) {

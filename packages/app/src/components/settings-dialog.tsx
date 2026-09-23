@@ -1,33 +1,29 @@
-import { useParams } from "@solidjs/router"
-import { onCleanup } from "solid-js"
+import { useNavigate } from "@solidjs/router"
 import { useCommand } from "@/context/command"
 import { useLanguage } from "@/context/language"
-import { useDialog } from "@opencode-ai/ui/context/dialog"
+import { type LayoutRoute, useLayout } from "@/context/layout"
 
-export function useSettingsDialog(defaultValue?: string) {
-  const dialog = useDialog()
-  const params = useParams<{ id?: string }>()
-  let run = 0
-  let dead = false
+export function settingsHref(route: LayoutRoute, defaultValue?: string) {
+  const search = new URLSearchParams()
+  if (defaultValue) search.set("tab", defaultValue)
+  if (route.type === "session") search.set("session", route.sessionId)
+  if (route.type === "draft") search.set("draft", route.draftID)
+  return `/settings${search.size ? `?${search}` : ""}`
+}
 
-  onCleanup(() => {
-    dead = true
-  })
+export function useSettingsPage(defaultValue?: string) {
+  const navigate = useNavigate()
+  const layout = useLayout()
 
   return () => {
-    const current = ++run
-    const sessionID = params.id
-    void import("@/components/settings-v2").then((module) => {
-      if (dead || run !== current) return
-      void dialog.show(() => <module.DialogSettings sessionID={sessionID} defaultValue={defaultValue} />)
-    })
+    navigate(settingsHref(layout.route(), defaultValue))
   }
 }
 
 export function useSettingsCommand() {
   const command = useCommand()
   const language = useLanguage()
-  const show = useSettingsDialog()
+  const show = useSettingsPage()
 
   command.register("settings", () => [
     {

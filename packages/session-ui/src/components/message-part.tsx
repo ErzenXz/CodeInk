@@ -30,34 +30,34 @@ import {
   Todo,
   QuestionAnswer,
   QuestionInfo,
-} from "@opencode-ai/sdk/v2"
+} from "@codeink/sdk/v2"
 import { useData } from "../context"
-import { useFileComponent } from "@opencode-ai/ui/context/file"
-import { useDialog } from "@opencode-ai/ui/context/dialog"
-import { type UiI18n, useI18n } from "@opencode-ai/ui/context/i18n"
+import { useFileComponent } from "@codeink/ui/context/file"
+import { useDialog } from "@codeink/ui/context/dialog"
+import { type UiI18n, useI18n } from "@codeink/ui/context/i18n"
 import { BasicTool, GenericTool } from "./basic-tool"
-import { Accordion } from "@opencode-ai/ui/accordion"
-import { StickyAccordionHeader } from "@opencode-ai/ui/sticky-accordion-header"
-import { Collapsible } from "@opencode-ai/ui/collapsible"
-import { FileIcon } from "@opencode-ai/ui/file-icon"
-import { Icon } from "@opencode-ai/ui/icon"
+import { Accordion } from "@codeink/ui/accordion"
+import { StickyAccordionHeader } from "@codeink/ui/sticky-accordion-header"
+import { Collapsible } from "@codeink/ui/collapsible"
+import { FileIcon } from "@codeink/ui/file-icon"
+import { Icon } from "@codeink/ui/icon"
 import { ToolErrorCard } from "./tool-error-card"
-import { Checkbox } from "@opencode-ai/ui/checkbox"
-import { DiffChanges } from "@opencode-ai/ui/diff-changes"
+import { Checkbox } from "@codeink/ui/checkbox"
+import { DiffChanges } from "@codeink/ui/diff-changes"
 import { Markdown } from "./markdown"
-import { ImagePreview } from "@opencode-ai/ui/image-preview"
-import { getDirectory as _getDirectory, getFilename } from "@opencode-ai/core/util/path"
+import { ImagePreview } from "@codeink/ui/image-preview"
+import { getDirectory as _getDirectory, getFilename } from "@codeink/core/util/path"
 import { AttachmentCardV2 } from "../v2/components/attachment-card-v2"
 import { CommentCardV2 } from "../v2/components/comment-card-v2"
-import { checksum } from "@opencode-ai/core/util/encode"
-import { Tooltip } from "@opencode-ai/ui/tooltip"
-import { IconButton } from "@opencode-ai/ui/icon-button"
-import { Icon as IconV2 } from "@opencode-ai/ui/v2/icon"
-import { IconButtonV2 } from "@opencode-ai/ui/v2/icon-button-v2"
-import { ButtonV2 } from "@opencode-ai/ui/v2/button-v2"
-import { TooltipV2 } from "@opencode-ai/ui/v2/tooltip-v2"
-import { Spinner } from "@opencode-ai/ui/spinner"
-import { TextShimmer } from "@opencode-ai/ui/text-shimmer"
+import { checksum } from "@codeink/core/util/encode"
+import { Tooltip } from "@codeink/ui/tooltip"
+import { IconButton } from "@codeink/ui/icon-button"
+import { Icon as IconV2 } from "@codeink/ui/v2/icon"
+import { IconButtonV2 } from "@codeink/ui/v2/icon-button-v2"
+import { ButtonV2 } from "@codeink/ui/v2/button-v2"
+import { TooltipV2 } from "@codeink/ui/v2/tooltip-v2"
+import { Spinner } from "@codeink/ui/spinner"
+import { TextShimmer } from "@codeink/ui/text-shimmer"
 import { AnimatedCountList } from "./tool-count-summary"
 import { ToolStatusTitle } from "./tool-status-title"
 import { patchFiles } from "./apply-patch-file"
@@ -333,7 +333,7 @@ function createPacedValue(getValue: () => string, live?: () => boolean) {
   return value
 }
 
-function PacedMarkdown(props: { text: string; cacheKey: string; streaming: boolean }) {
+function PacedMarkdown(props: { text: string; cacheKey: string; streaming: boolean; animate?: boolean }) {
   const value = createPacedValue(
     () => props.text,
     () => props.streaming,
@@ -341,7 +341,12 @@ function PacedMarkdown(props: { text: string; cacheKey: string; streaming: boole
 
   return (
     <Show when={value()}>
-      <Markdown text={value()} cacheKey={props.cacheKey} streaming={props.streaming} />
+      <Markdown
+        text={value()}
+        cacheKey={props.cacheKey}
+        streaming={props.streaming}
+        data-animate-streaming={props.streaming && props.animate ? "true" : undefined}
+      />
     </Show>
   )
 }
@@ -364,7 +369,7 @@ function getDirectory(path: string | undefined) {
   return relativizeProjectPath(_getDirectory(path), data.directory)
 }
 
-import type { IconProps } from "@opencode-ai/ui/icon"
+import type { IconProps } from "@codeink/ui/icon"
 import { normalize, resolveFileDiff } from "./session-diff"
 
 export type ToolInfo = {
@@ -1732,7 +1737,7 @@ PART_MAPPING["text"] = function TextPartDisplay(props) {
     <Show when={text()}>
       <div data-component="text-part" data-timeline-part-id={part().id}>
         <div data-slot="text-part-body">
-          <PacedMarkdown text={text()} cacheKey={part().id} streaming={streaming()} />
+          <PacedMarkdown text={text()} cacheKey={part().id} streaming={streaming()} animate={isLastTextPart()} />
         </div>
         <Show when={showCopy()}>
           <div data-slot="text-part-copy-wrapper" data-interrupted={interrupted() ? "" : undefined}>

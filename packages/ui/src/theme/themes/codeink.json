@@ -1,7 +1,7 @@
 {
-  "$schema": "https://opencode.ai/desktop-theme.json",
+  "$schema": "../desktop-theme.schema.json",
   "name": "CodeInk",
-  "id": "oc-2",
+  "id": "codeink",
   "light": {
     "palette": {
       "neutral": "#f7f7f7",

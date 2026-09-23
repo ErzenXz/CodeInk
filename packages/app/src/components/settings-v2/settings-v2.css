@@ -1,5 +1,49 @@
-@import "@opencode-ai/ui/v2/text-input-v2.css";
-@import "@opencode-ai/ui/v2/button-v2.css";
+@import "@codeink/ui/v2/text-input-v2.css";
+@import "@codeink/ui/v2/button-v2.css";
+
+.settings-v2-page {
+  display: flex;
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  background: var(--v2-background-bg-base);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.settings-v2-page
+  .settings-v2[data-component="tabs-v2"][data-variant="settings"][data-orientation="vertical"]
+  [data-slot="tabs-v2-list"] {
+  padding-top: 40px;
+}
+
+.settings-v2-page [data-slot="tabs-v2-content"] {
+  min-width: 0;
+}
+
+.settings-v2-page .settings-v2-tab-header,
+.settings-v2-page .settings-v2-tab-body {
+  width: 100%;
+  max-width: 960px;
+  margin-inline: auto;
+}
+
+@media (max-width: 639px) {
+  .settings-v2-page
+    .settings-v2[data-component="tabs-v2"][data-variant="settings"][data-orientation="vertical"]
+    [data-slot="tabs-v2-list"] {
+    padding-top: 24px;
+  }
+
+  .settings-v2-page .settings-v2-tab-header {
+    padding: 24px 20px 20px;
+  }
+
+  .settings-v2-page .settings-v2-tab-body {
+    padding: 0 20px 24px;
+  }
+}
 
 [data-component="tabs-v2"][data-variant="settings"] {
   height: 100%;
