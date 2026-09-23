@@ -5,8 +5,10 @@ const {
   RELEASE_CHANNEL: channel,
   RELEASE_VERSION: version,
   GH_REPO: repo,
-  GITHUB_SHA: commit,
+  RELEASE_COMMIT: releaseCommit,
+  GITHUB_SHA: workflowCommit,
 } = process.env
+const commit = releaseCommit ?? workflowCommit
 if (!tag || !version || !repo || !commit || !["production", "early-access"].includes(channel ?? ""))
   throw new Error("Missing release metadata")
 // electron-builder uses native package architecture names for Linux targets.

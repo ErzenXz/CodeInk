@@ -9,7 +9,7 @@ CodeInk is maintained by Erzen Krasniqi. App source, installers, releases, and t
 | `main` | Production | CodeInk | Normal GitHub Release; marked latest |
 | `development` | Early Access | CodeInk Early Access | GitHub prerelease |
 
-Push code to either branch to run tests, type checking, native platform builds, and release publishing. A failed check or platform build prevents publication. The website always reads the most recent published release for each channel. Documentation-only changes skip desktop packaging. Use **Actions → Desktop releases → Run workflow** on the desired branch to build manually.
+Push code to either branch to run tests, type checking, and native platform builds. The build workflow saves signed macOS installers and their Apple submission IDs. **Finalize desktop releases** checks Apple's status when a build completes and hourly afterward; it staples and verifies both macOS packages before publishing the complete release. A failed check, build, or notarization prevents publication. The website always reads the most recent published release for each channel. Documentation-only changes skip desktop packaging. Use **Actions → Desktop releases → Run workflow** on the desired branch to build manually.
 
 Production and Early Access have separate app IDs and data folders and can be installed together. Development runs use CodeInk Dev. Your installed agent's own credentials and native sessions remain under that agent's control. No coding agent is bundled.
 
@@ -19,7 +19,7 @@ Production and Early Access have separate app IDs and data folders and can be in
 - Windows: x64 NSIS installer; native Windows runner.
 - Linux: native x64 and ARM64 runners; `.AppImage` and `.deb`.
 
-Windows ARM64 is not currently shipped. GitHub-hosted matrix jobs use the lockfile and Bun 1.3.14. Main, preload, and renderer bundles are rebuilt on each platform so native terminal dependencies match the installer. Artifacts are uploaded privately within Actions until all jobs pass; then the complete release is published with `SHA256SUMS.txt` and `manifest.json`. No partial channel release is advertised.
+Windows ARM64 is not currently shipped. GitHub-hosted matrix jobs use the lockfile and Bun 1.3.14. Main, preload, and renderer bundles are rebuilt on each platform so native terminal dependencies match the installer. Signed macOS artifacts and Apple submission IDs are retained privately in Actions for 14 days while notarization is pending. The finalization workflow publishes only after both Apple submissions are accepted and the app and DMG pass signature, stapler, and Gatekeeper checks. The complete release includes `SHA256SUMS.txt` and `manifest.json`. No partial channel release is advertised.
 
 ## Versions
 
@@ -27,7 +27,7 @@ The root `package.json` is the base semantic version. CI adds the `Desktop relea
 
 ## Signing
 
-macOS releases require an Apple Developer ID Application signature and notarization. The workflow fails before packaging if any required Apple credential is missing, and verifies the app's Developer ID signature, stapled notarization ticket, and Gatekeeper assessment before uploading it. The `v0.1.16` production and `v0.1.15-early-access` macOS assets predate this gate and can show a misleading “damaged” warning; do not recommend them for macOS. The Account Holder must create the Developer ID certificate and accept any pending Apple Developer agreement. Windows installers may still show SmartScreen until Windows signing is configured. Checksums verify download integrity; they are not publisher identity verification. The in-app update check reads CodeInk GitHub releases for its own channel and opens the CodeInk download page when a newer build exists. It does not install updates in place. Older builds with the disabled updater need one manual download.
+macOS releases require an Apple Developer ID Application signature and notarization. The build workflow fails before packaging if any required Apple credential is missing. It verifies the Developer ID signature, submits each signed DMG without waiting on Apple's queue, and retains the packages. The finalization workflow verifies the stapled notarization tickets and Gatekeeper assessment before publication. The `v0.1.16` production and `v0.1.15-early-access` macOS assets predate this gate and can show a misleading “damaged” warning; do not recommend them for macOS. The Account Holder must create the Developer ID certificate and accept any pending Apple Developer agreement. Windows installers may still show SmartScreen until Windows signing is configured. Checksums verify download integrity; they are not publisher identity verification. The in-app update check reads CodeInk GitHub releases for its own channel and opens the CodeInk download page when a newer build exists. It does not install updates in place. Older builds with the disabled updater need one manual download.
 
 To enable platform signing, add repository Actions secrets:
 
@@ -35,7 +35,7 @@ To enable platform signing, add repository Actions secrets:
 - `APPLE_API_KEY_BASE64`, `APPLE_API_KEY_ID`, `APPLE_API_ISSUER`, `APPLE_TEAM_ID`: a dedicated App Store Connect team API key with the Developer role, encoded as a one-line base64 secret, plus its key ID, issuer ID, and team ID. The workflow writes the key to its temporary runner directory for notarization.
 - `WIN_CSC_LINK`, `WIN_CSC_KEY_PASSWORD`: Windows code-signing certificate and password, where supported by your certificate provider. Hardware/cloud-based signing requires configuring the provider's signing integration instead.
 
-Certificate enrollment and signing credentials are account-owner steps; none are stored in source. Never put credentials into the workflow or commit them. The repository token used for releases has only `contents: write` and exists only in the publish job.
+Certificate enrollment and signing credentials are account-owner steps; none are stored in source. Never put credentials into the workflow or commit them. The finalization workflow's repository token has `actions: read` to retrieve the matching build artifacts and `contents: write` to publish the release.
 When exporting a `.p12` with OpenSSL 3, use PKCS#12 algorithms accepted by macOS Keychain (for example `openssl pkcs12 -export -legacy -certpbe PBE-SHA1-3DES -keypbe PBE-SHA1-3DES -macalg sha1`) and test importing it in a temporary keychain. The workflow installs Apple's public Developer ID G2 intermediate certificate before packaging.
 
 ## Download website

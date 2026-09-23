@@ -27,7 +27,9 @@ export default {
     hardenedRuntime: true,
     entitlements: "resources/entitlements.mac.plist",
     entitlementsInherit: "resources/entitlements.mac.plist",
-    notarize: true,
+    // Apple can hold a submission longer than a GitHub job. The release
+    // workflow submits the signed DMG and finishes after Apple accepts it.
+    notarize: false,
   },
   nsis: {
     oneClick: false,
