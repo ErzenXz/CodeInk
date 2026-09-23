@@ -36,6 +36,7 @@ To enable platform signing, add repository Actions secrets:
 - `WIN_CSC_LINK`, `WIN_CSC_KEY_PASSWORD`: Windows code-signing certificate and password, where supported by your certificate provider. Hardware/cloud-based signing requires configuring the provider's signing integration instead.
 
 Certificate enrollment and signing credentials are account-owner steps; none are stored in source. Never put credentials into the workflow or commit them. The repository token used for releases has only `contents: write` and exists only in the publish job.
+When exporting a `.p12` with OpenSSL 3, use PKCS#12 algorithms accepted by macOS Keychain (for example `openssl pkcs12 -export -legacy -certpbe PBE-SHA1-3DES -keypbe PBE-SHA1-3DES -macalg sha1`) and test importing it in a temporary keychain. The workflow installs Apple's public Developer ID G2 intermediate certificate before packaging.
 
 ## Download website
 

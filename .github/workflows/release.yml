@@ -98,6 +98,8 @@ jobs:
           printf '%s' "$APPLE_API_KEY_BASE64" | base64 -D > "$key"
           chmod 600 "$key"
           echo "APPLE_API_KEY=$key" >> "$GITHUB_ENV"
+          curl -fsSL https://www.apple.com/certificateauthority/DeveloperIDG2CA.cer -o "$RUNNER_TEMP/DeveloperIDG2CA.cer"
+          security import "$RUNNER_TEMP/DeveloperIDG2CA.cer" -k "$HOME/Library/Keychains/login.keychain-db"
       - name: Package installers
         run: bun scripts/package.ts --${{ matrix.platform }} --${{ matrix.arch }}
         env:
