@@ -136,9 +136,11 @@ async function load(channel) {
       retry.type = "button"
       retry.className = "retry"
       retry.textContent = "Try again"
-      retry.addEventListener("click", () =>
-        load(tabs.find((tab) => tab.getAttribute("aria-selected") === "true").dataset.channel),
-      )
+      retry.addEventListener("click", () => {
+        // The button is about to be replaced, so keep focus in the panel rather than dropping it to the page.
+        panel.focus()
+        load(tabs.find((tab) => tab.getAttribute("aria-selected") === "true").dataset.channel)
+      })
       slot.replaceChildren(link, retry)
     })
   } finally {
@@ -165,6 +167,7 @@ tabs.forEach((tab, index) => {
 })
 
 load(location.hash === "#early-access" ? "early-access" : "production")
+window.addEventListener("hashchange", () => load(location.hash === "#early-access" ? "early-access" : "production"))
 
 // Match electron-builder's native Linux arch names too, as the release script does.
 function normalize(name) {

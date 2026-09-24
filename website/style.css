@@ -148,6 +148,11 @@ code,
   margin-inline: auto;
 }
 
+/* Screenshot glows reach past the gutter; clip them instead of letting the page scroll sideways. */
+main {
+  overflow-x: clip;
+}
+
 .skip {
   position: absolute;
   left: -9999px;
@@ -312,8 +317,18 @@ code,
     font-size: 15px;
   }
 
+  .menu-panel a {
+    color: var(--muted);
+  }
+
   .menu-panel a:hover {
     background: var(--surface);
+    color: var(--text);
+  }
+
+  .menu-panel a[aria-current="page"] {
+    color: var(--text);
+    font-weight: 500;
   }
 }
 
@@ -457,10 +472,18 @@ h3 {
 .product-hunt-badge {
   display: inline-block;
   margin-top: 24px;
+  border-radius: 10px;
+  transition: opacity 0.15s;
+}
+
+.product-hunt-badge:hover {
+  opacity: 0.86;
 }
 
 .product-hunt-badge img {
   display: block;
+  width: 250px;
+  height: 54px;
 }
 
 .page-hero {
@@ -714,6 +737,7 @@ h3 {
   display: grid;
   grid-template-columns: 22px minmax(0, 1fr);
   align-items: center;
+  align-content: center;
   gap: 4px 14px;
   padding: 20px 0;
   border-bottom: 1px solid var(--line);
@@ -735,10 +759,9 @@ h3 {
   letter-spacing: -0.01em;
 }
 
+/* Wrap long launch commands instead of truncating them; they are the part people copy. */
 .roster code {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
   color: var(--faint);
   font-size: 13px;
 }
@@ -837,6 +860,10 @@ h3 {
   transition:
     background-color 0.15s,
     color 0.15s;
+}
+
+.channels button:hover {
+  color: var(--text);
 }
 
 .channels button[aria-selected="true"] {
@@ -1017,6 +1044,21 @@ h3 {
   .platforms {
     grid-template-columns: 1fr;
   }
+
+  /* Stacked cards: lead with the detected system and drop the empty tag rows. */
+  .platform.is-current {
+    order: -1;
+  }
+
+  .platform:not(.is-current) .platform-tag {
+    display: none;
+  }
+}
+
+/* The release list and channel tabs need JavaScript; without it only the noscript link shows. */
+:root:not(.js) .channels,
+:root:not(.js) #release-panel {
+  display: none;
 }
 
 /* FAQ and install notes */
@@ -1073,6 +1115,16 @@ h3 {
 
 .faq details p + p {
   margin-top: 12px;
+}
+
+@media (max-width: 560px) {
+  .faq summary {
+    font-size: 17px;
+  }
+
+  .faq details > div {
+    padding-right: 0;
+  }
 }
 
 .faq-group + .faq-group {
@@ -1167,6 +1219,11 @@ h3 {
   font: inherit;
   font-size: 13px;
   cursor: pointer;
+  transition: color 0.15s;
+}
+
+.theme-switch button:hover {
+  color: var(--text);
 }
 
 .theme-switch button[aria-pressed="true"] {
@@ -1198,6 +1255,18 @@ h3 {
   .js .reveal.is-visible {
     opacity: 1;
     transform: none;
+  }
+
+  /* The hero screenshot is above the fold, so it rises in with CSS instead of waiting for site.js. */
+  .hero-shot {
+    animation: rise 0.7s cubic-bezier(0.2, 0.7, 0.2, 1);
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
   }
 }
 
