@@ -114,7 +114,7 @@ if (protocol === "opencode") {
       for await (const chunk of request) chunks.push(Buffer.from(chunk))
       const body = JSON.parse(Buffer.concat(chunks).toString())
       record({ path: url.pathname, body, protocol })
-      if (!body.parts?.[0]?.text) {
+      if (!body.parts?.length) {
         response.writeHead(400).end()
         return
       }
@@ -151,16 +151,19 @@ if (protocol === "opencode") {
           state: { status: "running", input: { command: "ls -la" }, title: "List files" },
         },
       })
-      emit("permission.asked", {
-        id: "permission",
-        sessionID: "native-session",
-        permission: "write",
-        patterns: ["example.ts"],
-      })
+      emit(process.env.CODEINK_FIXTURE_QUESTION ? "question.asked" : "permission.asked",
+        process.env.CODEINK_FIXTURE_QUESTION
+          ? { id: "question", sessionID: "native-session", questions: [{ question: "Which option?", options: [{ label: "First" }, { label: "Second" }], multiple: false }] }
+          : { id: "permission", sessionID: "native-session", permission: "write", patterns: ["example.ts"] })
       response.writeHead(204).end()
       return
     }
-    if (url.pathname === "/permission/permission/reply" || url.pathname.endsWith("/abort")) {
+    if (url.pathname === "/permission/permission/reply" || url.pathname === "/question/question/reply" || url.pathname.endsWith("/abort")) {
+      if (url.pathname === "/question/question/reply") {
+        const chunks: Buffer[] = []
+        for await (const chunk of request) chunks.push(Buffer.from(chunk))
+        record({ path: url.pathname, body: JSON.parse(Buffer.concat(chunks).toString()), protocol })
+      }
       emit("message.part.updated", {
         part: {
           id: `tool-${count}`,
@@ -361,9 +364,13 @@ if (protocol === "opencode") {
           })
           send({
             id: 900,
-            method: "item/commandExecution/requestApproval",
-            params: { threadId: "native-session", command: "echo test", itemId: "command" },
+            method: process.env.CODEINK_FIXTURE_QUESTION ? "item/tool/requestUserInput" : "item/commandExecution/requestApproval",
+            params: process.env.CODEINK_FIXTURE_QUESTION
+              ? { threadId: "native-session", turnId: `turn-${count}`, itemId: "question", isBlocking: true, questions: [{ id: "choice", header: "Choice", question: "Which option?", options: [{ label: "First", description: "" }, { label: "Second", description: "" }] }] }
+              : { threadId: "native-session", command: "echo test", itemId: "command" },
           })
+          if (process.env.CODEINK_FIXTURE_QUESTION_ASYNC)
+            send({ method: "turn/completed", params: { threadId: "native-session", turn: { id: `turn-${count}`, status: "completed" } } })
           return
         }
         if (message.id === 900 || message.method === "turn/interrupt") {
@@ -472,7 +479,9 @@ if (protocol === "opencode") {
           send({
             type: "control_request",
             request_id: "permission",
-            request: { subtype: "can_use_tool", tool_name: "Write", input: { file_path: "example.ts" } },
+            request: process.env.CODEINK_FIXTURE_QUESTION
+              ? { subtype: "can_use_tool", tool_name: "AskUserQuestion", input: { questions: [{ question: "Which option?", options: [{ label: "First" }, { label: "Second" }], multiSelect: false }] } }
+              : { subtype: "can_use_tool", tool_name: "Write", input: { file_path: "example.ts" } },
           })
           return
         }
@@ -568,7 +577,9 @@ if (protocol === "opencode") {
               },
             },
           })
-          send({ type: "extension_ui_request", id: "permission", method: "confirm", title: "Approve fixture" })
+          send(process.env.CODEINK_FIXTURE_QUESTION
+            ? { type: "extension_ui_request", id: "permission", method: "select", title: "Which option?", options: ["First", "Second"] }
+            : { type: "extension_ui_request", id: "permission", method: "confirm", title: "Approve fixture" })
           return
         }
         if (message.type === "extension_ui_response" || message.type === "abort") {

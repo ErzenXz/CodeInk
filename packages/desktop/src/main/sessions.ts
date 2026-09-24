@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto"
 import { t } from "../shared/i18n"
-import type { AgentEvent, AgentRules, Answer, SendInput, Session } from "../shared/types"
+import type { AgentEvent, AgentRules, Answer, Message, SendInput, Session } from "../shared/types"
 import type { Adapter } from "./adapters/types"
 import { connectAgent, resolveExecutable } from "./agents"
 import { WorkspaceStore } from "./agent-store"
@@ -9,6 +9,8 @@ export class Sessions {
   private adapters = new Map<string, Adapter>()
   private connections = new Map<string, symbol>()
   private dirty = new Set<Session>()
+  private messageIndexes = new WeakMap<Session, Map<string, Message>>()
+  private currentUsers = new WeakMap<Session, Message>()
   private flushTimer?: ReturnType<typeof setTimeout>
   /** Sessions whose agent must relaunch before the next turn so changed rules take effect. */
   private stale = new Set<string>()
@@ -99,14 +101,19 @@ export class Sessions {
     session.model = input.model
     session.variant = input.variant
     if (!existing) this.store.state.sessions.unshift(session)
-    session.messages.push({
+    const message: Message = {
       id: input.messageID ?? `msg_${Date.now().toString(16)}${randomUUID().replaceAll("-", "")}`,
       role: "user",
       text: input.text,
+      attachments: input.attachments?.map(({ id, filename, mime }) => ({ id, filename, mime })),
       model: session.model,
       variant: session.variant,
+      mode: this.rules(agent.id).access === "plan" ? "plan" : "build",
       createdAt: Date.now(),
-    })
+    }
+    session.messages.push(message)
+    this.messageIndexes.set(session, new Map())
+    this.currentUsers.set(session, message)
     session.status = "running"
     session.updatedAt = Date.now()
     await this.store.save()
@@ -131,15 +138,16 @@ export class Sessions {
       })
     this.adapters.set(session.id, adapter)
     // IPC returns the admitted session immediately; process events stream separately.
-    void adapter.prompt(input.text).catch((error: Error) => emit({ type: "error", text: error.message }))
+    void adapter.prompt(input.handoffContext ? `${input.handoffContext}\n\nCurrent request:\n${input.text}` : input.text, input.attachments)
+      .catch((error: Error) => emit({ type: "error", text: error.message }))
     return structuredClone(session)
   }
 
   private receive(session: Session, event: AgentEvent) {
     if (!this.store.state.sessions.includes(session)) return
+    const user = this.currentUsers.get(session) ?? session.messages.findLast((message) => message.role === "user")
     if (event.type === "session") session.remoteID = event.id
     if (event.type === "usage") {
-      const user = session.messages.findLast((message) => message.role === "user")
       if (user) {
         user.usage = {
           ...user.usage,
@@ -150,17 +158,21 @@ export class Sessions {
       if (event.sessionCost !== undefined) session.reportedCost = event.sessionCost
     }
     if (event.type === "text" || event.type === "tool") {
-      const id = `${session.messages.findLast((item) => item.role === "user")?.id}:${event.id}`
-      const message = session.messages.find((item) => item.id === id)
-      if (!message)
-        session.messages.push({
+      const id = `${user?.id}:${event.id}`
+      const index = this.messageIndexes.get(session) ?? new Map<string, Message>()
+      this.messageIndexes.set(session, index)
+      const message = index.get(id)
+      if (!message) {
+        const created: Message = {
           id,
           createdAt: Date.now(),
           role: event.type === "tool" ? "tool" : "assistant",
           text: event.text,
           ...(event.type === "tool" ? { tool: event.tool } : {}),
-        })
-      else {
+        }
+        session.messages.push(created)
+        index.set(id, created)
+      } else {
         message.text = event.type === "tool" || event.replace ? event.text : message.text + event.text
         if (event.type === "tool" && event.tool) message.tool = { ...message.tool, ...event.tool }
       }
@@ -178,7 +190,7 @@ export class Sessions {
     }
     if (event.type === "done") {
       if (session.status === "running") session.status = "idle"
-      session.approvals = []
+      session.approvals = session.approvals.filter((approval) => approval.questions)
       session.messages.slice(session.messages.findLastIndex((item) => item.role === "user") + 1).forEach((message) => {
         message.completedAt = Date.now()
         if (message.tool?.status === "running") message.tool.status = "completed"
@@ -210,6 +222,8 @@ export class Sessions {
     if (
       message.role !== "user" ||
       message.text !== input.text ||
+      JSON.stringify(message.attachments ?? []) !==
+        JSON.stringify(input.attachments?.map(({ id, filename, mime }) => ({ id, filename, mime })) ?? []) ||
       (message.model ?? session.model) !== input.model ||
       message.variant !== input.variant ||
       session.agentID !== input.agentID ||

@@ -8,6 +8,7 @@ import { array, detail, object, string, type Adapter, type AdapterOptions } from
 export function codex(options: AdapterOptions): Adapter {
   let thread = options.remoteID
   let turn = ""
+  let selectedModel = options.model
   let ready: Promise<void> | undefined
   const requests = new Map<string, Record<string, unknown>>()
   const proc = new AgentProcess({
@@ -77,7 +78,6 @@ export function codex(options: AdapterOptions): Adapter {
         options.emit({ type: "error", text: string(object(params.error).message) || t("failed") })
       if (message.method === "turn/completed") {
         turn = ""
-        requests.clear()
         const completed = object(params.turn)
         if (completed.status === "failed")
           options.emit({ type: "error", text: string(object(completed.error).message) || t("failed") })
@@ -100,25 +100,31 @@ export function codex(options: AdapterOptions): Adapter {
       sandbox: access.sandbox,
     })
     if (response.model) options.emit({ type: "usage", id: "model", usage: { model: string(response.model) } })
+    selectedModel ||= string(response.model)
     thread = string(object(response.thread).id)
     if (!thread) throw new Error(t("malformedProtocol"))
     options.emit({ type: "session", id: thread })
   }
   return {
-    async prompt(text) {
+    async prompt(text, attachments = []) {
       await (ready ??= initialize())
       const rules = options.rules()
       const access = codexAccess(rules)
+      const promptText = [text, ...attachments.filter((item) => !item.mime.startsWith("image/")).map((item) => `@${item.path}`)].filter(Boolean).join("\n")
       // Codex takes access and speed per turn, so rule changes apply without restarting the thread.
       const response = await rpc("turn/start", {
         threadId: thread,
-        input: [{ type: "text", text }],
+        input: [
+          ...(promptText ? [{ type: "text", text: promptText }] : []),
+          ...attachments.filter((item) => item.mime.startsWith("image/")).map((item) => ({ type: "localImage", path: item.path })),
+        ],
         ...(options.model ? { model: options.model } : {}),
         ...(options.variant ? { effort: options.variant } : {}),
         approvalPolicy: access.approvalPolicy,
         approvalsReviewer: access.approvalsReviewer,
         sandboxPolicy: access.sandboxPolicy,
         serviceTierForTurn: rules.fast ? "priority" : "default",
+        ...(selectedModel ? { collaborationMode: { mode: rules.access === "plan" ? "plan" : "default", settings: { model: selectedModel, reasoning_effort: options.variant ?? null, developer_instructions: null } } } : {}),
       })
       turn = string(object(response.turn).id)
     },

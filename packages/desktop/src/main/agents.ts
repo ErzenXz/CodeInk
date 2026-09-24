@@ -48,6 +48,7 @@ export const defaults: Agent[] = [
 export const accessOptions: Partial<Record<Agent["protocol"], AgentAccess[]>> = {
   claude: ["ask", "edits", "auto", "plan", "full"],
   codex: ["ask", "auto", "plan", "full"],
+  opencode: ["ask", "plan"],
 }
 
 export async function resolveExecutable(command: string, env: NodeJS.ProcessEnv) {

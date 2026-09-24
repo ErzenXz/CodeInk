@@ -25,14 +25,18 @@ export type Message = {
   id: string
   role: "user" | "assistant" | "tool" | "error"
   text: string
+  attachments?: Attachment[]
   createdAt?: number
   completedAt?: number
   model?: string
   variant?: string
+  mode?: "build" | "plan"
   tool?: ToolInfo
   usage?: Usage
   costs?: Record<string, number>
 }
+export type Attachment = { id: string; filename: string; mime: string }
+export type PromptAttachment = Attachment & { path: string }
 export type Question = { id: string; text: string; options?: string[]; multiple?: boolean }
 export type Approval = { id: string; title: string; detail: string; questions?: Question[] }
 export type Session = {
@@ -89,6 +93,8 @@ export type SendInput = {
   model: string
   variant?: string
   text: string
+  handoffContext?: string
+  attachments?: PromptAttachment[]
 }
 
 export type AgentExtension = {

@@ -135,6 +135,7 @@ beforeAll(async () => {
   mock.module("@codeink/ui/toast", () => ({
     Toast: { Region: () => null },
     showToast: () => 0,
+    toaster: { dismiss: () => undefined },
   }))
 
   mock.module("@codeink/core/util/encode", () => ({
@@ -564,6 +565,70 @@ describe("prompt submit worktree selection", () => {
         model: { providerID: "draft-provider", modelID: "draft-model", variant: "draft-variant" },
       },
     })
+  })
+
+  test("switches local agents into a new session with bounded handoff context", async () => {
+    params = { id: "old-session" }
+    const model = {
+      current: () => ({ id: "codex-model", provider: { id: "local-codex" } }),
+      variant: { current: () => undefined },
+    } as unknown as ModelSelection
+    const submit = createPromptSubmit({
+      prompt,
+      info: () => ({ id: "old-session", directory: "/repo/main", model: { providerID: "local-claude" } }),
+      imageAttachments: () => [],
+      commentCount: () => 0,
+      autoAccept: () => false,
+      mode: () => "normal",
+      working: () => false,
+      editor: () => undefined,
+      queueScroll: () => undefined,
+      promptLength: (value) => value.reduce((sum, part) => sum + ("content" in part ? part.content.length : 0), 0),
+      addToHistory: () => undefined,
+      resetHistoryNavigation: () => undefined,
+      setMode: () => undefined,
+      setPopover: () => undefined,
+      model,
+    })
+
+    await submit.handleSubmit({ preventDefault: () => undefined } as unknown as Event)
+    await Bun.sleep(0)
+
+    expect(sessionCreateInputs).toEqual([{
+      agent: "agent",
+      model: { id: "codex-model", providerID: "local-codex", variant: undefined },
+      location: { directory: "/repo/main" },
+    }])
+    expect(promptInputs[0]).toMatchObject({
+      sessionID: "session-1",
+      text: "ls",
+      system: "codeink-handoff:old-session",
+    })
+  })
+
+  test("keeps model changes within the same local agent in the current session", async () => {
+    params = { id: "current-session" }
+    const model = {
+      current: () => ({ id: "next-model", provider: { id: "local-codex" } }),
+      variant: { current: () => undefined },
+    } as unknown as ModelSelection
+    const submit = createPromptSubmit({
+      prompt,
+      info: () => ({ id: "current-session", directory: "/repo/main", model: { providerID: "local-codex" } }),
+      imageAttachments: () => [], commentCount: () => 0, autoAccept: () => false,
+      mode: () => "normal", working: () => false, editor: () => undefined,
+      queueScroll: () => undefined,
+      promptLength: (value) => value.reduce((sum, part) => sum + ("content" in part ? part.content.length : 0), 0),
+      addToHistory: () => undefined, resetHistoryNavigation: () => undefined,
+      setMode: () => undefined, setPopover: () => undefined, model,
+    })
+
+    await submit.handleSubmit({ preventDefault: () => undefined } as unknown as Event)
+    await Bun.sleep(0)
+
+    expect(createdSessions).toEqual([])
+    expect(promptInputs[0]).toMatchObject({ sessionID: "current-session", text: "ls" })
+    expect((promptInputs[0] as { system?: string }).system).toBeUndefined()
   })
 
   test("seeds new sessions before optimistic prompts are added", async () => {

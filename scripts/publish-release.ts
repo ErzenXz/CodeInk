@@ -42,9 +42,12 @@ const assets = await Promise.all(
 await Bun.write("release/SHA256SUMS.txt", assets.map((file) => `${file.sha256}  ${file.name}`).join("\n") + "\n")
 await Bun.write("release/manifest.json", JSON.stringify({ version, channel, commit, assets }, null, 2))
 const title = `CodeInk ${channel === "early-access" ? "Early Access " : ""}${version}`
+const message = Bun.spawnSync(["git", "log", "-1", "--format=%B", commit], { stdout: "pipe", stderr: "pipe" })
+if (message.exitCode !== 0) throw new Error("Could not read release commit message")
+const highlights = /(?:^|\n)Release notes:\n([\s\S]*)/.exec(new TextDecoder().decode(message.stdout))?.[1]?.trim()
 await Bun.write(
   "release/notes.md",
-  `${title}\n\nBuilt from ${commit}. Install your coding agents separately and sign in using their CLIs.\n\nDownloads: macOS (Apple Silicon and Intel), Windows (x64), Linux (x64 and ARM64; AppImage and Debian). SHA-256 checksums are attached. Source code is available from this release tag.\n\nmacOS apps are signed with a Developer ID certificate and notarized by Apple. Windows may show SmartScreen until Windows signing is configured.\n\n${channel === "early-access" ? "Early Access installs separately from production and uses a separate data folder. It contains changes from development." : "Production channel, built from main."}\n\nCreated by Erzen Krasniqi. CodeInk is GPL-3.0-or-later; the incorporated OpenCode code retains its MIT notice in the app and source repository.\n`,
+  `${title}\n\n${highlights ? `${highlights}\n\n` : ""}Download for macOS (Apple Silicon or Intel), Windows (x64), or Linux (x64 or ARM64). Checksums are attached. Install and sign in to your coding agents separately.\n\nmacOS builds are signed and notarized by Apple. Windows may show SmartScreen until Windows signing is configured.\n\n${channel === "early-access" ? "Early Access installs beside Production and keeps its own session data." : "This is the Production build."}\n\nBuilt from ${commit}. CodeInk is GPL-3.0-or-later; the incorporated OpenCode code retains its MIT notice.\n`,
 )
 async function gh(args: string[], allowFailure = false) {
   const result = Bun.spawn(["gh", ...args], { stdout: "pipe", stderr: "inherit" })

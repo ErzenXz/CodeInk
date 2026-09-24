@@ -1,5 +1,5 @@
 import { afterEach, expect, test } from "bun:test"
-import { mkdtemp, readFile, rm } from "node:fs/promises"
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { connectAgent, defaults } from "../main/agents"
@@ -51,6 +51,8 @@ for (const legacy of [false, true]) {
 test("ACP streams real tool details, forwards model/effort, maps approvals once and resumes without replay duplication", async () => {
   const directory = await mkdtemp(join(tmpdir(), "codeink-acp-turn-"))
   const log = join(directory, "requests.jsonl")
+  const image = join(directory, "image.png")
+  await writeFile(image, await readFile(join(import.meta.dirname, "../../icons/codeink/32x32.png")))
   const events: AgentEvent[] = []
   const make = (remoteID?: string) =>
     connectAgent({
@@ -68,7 +70,7 @@ test("ACP streams real tool details, forwards model/effort, maps approvals once 
     adapter.dispose()
     await rm(directory, { recursive: true, force: true })
   })
-  await adapter.prompt("hello")
+  await adapter.prompt("hello", [{ id: crypto.randomUUID(), filename: "image.png", mime: "image/png", path: image }])
   await eventually(() => events.some((e) => e.type === "approval"))
   expect(events.some((e) => e.type === "error")).toBe(false)
   expect(events.find((e) => e.type === "tool")).toMatchObject({
@@ -88,7 +90,7 @@ test("ACP streams real tool details, forwards model/effort, maps approvals once 
   })
   adapter.configure?.("acp-one", "low")
   events.length = 0
-  await adapter.prompt("continue")
+  await adapter.prompt("", [{ id: crypto.randomUUID(), filename: "image.png", mime: "image/png", path: image }])
   await eventually(() => events.some((e) => e.type === "approval"))
   await adapter.answer("900", { allow: false })
   await eventually(() => events.some((e) => e.type === "done"))
@@ -105,6 +107,8 @@ test("ACP streams real tool details, forwards model/effort, maps approvals once 
     .split("\n")
     .map((s) => object(JSON.parse(s)))
   expect(records.filter((r) => r.method === "session/new")).toHaveLength(1)
+  expect((object(records.find((r) => r.method === "session/prompt")?.params).prompt as unknown[])[1]).toMatchObject({ type: "image", mimeType: "image/png", data: (await readFile(image)).toString("base64") })
+  expect((object(records.filter((r) => r.method === "session/prompt")[1]?.params).prompt as unknown[])[0]).toMatchObject({ type: "image", mimeType: "image/png" })
   expect(records.some((r) => r.method === "session/load")).toBe(true)
   expect(records.filter((r) => r.method === "session/set_config_option").map((r) => r.params)).toContainEqual({
     sessionId: "native-session",

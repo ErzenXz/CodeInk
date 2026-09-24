@@ -24,6 +24,8 @@ function setup(
       }
       if (request.method === "POST" && request.url.endsWith("/prompt_async"))
         return new Response(undefined, { status: 204 })
+      if (request.method === "POST" && new URL(request.url).pathname === "/session")
+        return Response.json({ id: "ses_2", projectID: "project", directory: "/repo", title: "New session", time: { created: 1, updated: 1 } })
       if (request.method === "POST" && request.url.endsWith("/prompt")) {
         return Response.json({
           admittedSeq: 1,
@@ -108,6 +110,18 @@ describe("createCompatibleApi", () => {
       ],
     })
     expect(body.parts[2]).not.toHaveProperty("source")
+  })
+
+  test("forwards the target agent and handoff marker to the desktop bridge", async () => {
+    const { api, requests } = setup("v1")
+    await api.session.create({ agent: "build", model: { id: "codex-model", providerID: "local-codex" }, location: { directory: "/repo" } })
+    await api.session.prompt({
+      sessionID: "ses_2", text: "Continue", system: "codeink-handoff:ses_1",
+      model: { providerID: "local-codex", modelID: "codex-model" },
+    })
+
+    expect(await requests[0]!.json()).toMatchObject({ agent: "build", model: { id: "codex-model", providerID: "local-codex" } })
+    expect(await requests[1]!.json()).toMatchObject({ system: "codeink-handoff:ses_1", parts: [{ type: "text", text: "Continue" }] })
   })
 
   test("preserves original parts for V1 optimistic reconciliation", async () => {

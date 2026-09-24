@@ -86,7 +86,7 @@ describe("buildRequestParts", () => {
           filename: "opencode.global.dat",
           sourcePath: "C:\\Users\\Luke\\AppData\\Roaming\\ai.opencode.desktop.beta\\opencode.global.dat",
           mime: "text/plain",
-          dataUrl: "data:text/plain;base64,AAA",
+          dataUrl: "blob:local-preview",
         },
       ],
       text: "inspect this",
@@ -98,6 +98,8 @@ describe("buildRequestParts", () => {
     expect(result.requestParts.find((part) => part.type === "file")?.filename).toBe(
       "C:\\Users\\Luke\\AppData\\Roaming\\ai.opencode.desktop.beta\\opencode.global.dat",
     )
+    expect(result.requestParts.find((part) => part.type === "file")?.url).toMatch(/^file:\/\/\/C:/)
+    expect(result.optimisticParts.find((part) => part.type === "file")?.url).toBe("blob:local-preview")
   })
 
   test("preserves reference aliases as directory file parts", () => {

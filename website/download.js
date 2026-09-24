@@ -68,7 +68,14 @@ async function load(channel) {
     if (request !== controller) return
     const release = catalog
       .filter((release) => !release.draft && config.match(release))
-      .sort((a, b) => Date.parse(b.published_at) - Date.parse(a.published_at))[0]
+      .sort((a, b) => {
+        const left = /^v(\d+)\.(\d+)\.(\d+)/.exec(a.tag_name)?.slice(1).map(Number) ?? []
+        const right = /^v(\d+)\.(\d+)\.(\d+)/.exec(b.tag_name)?.slice(1).map(Number) ?? []
+        return (right[0] ?? 0) - (left[0] ?? 0) ||
+          (right[1] ?? 0) - (left[1] ?? 0) ||
+          (right[2] ?? 0) - (left[2] ?? 0) ||
+          Date.parse(b.published_at) - Date.parse(a.published_at)
+      })[0]
     panel.removeAttribute("aria-busy")
     if (!release) {
       status.textContent = `No ${config.label} build has been published yet. Follow progress on GitHub Releases.`

@@ -39,6 +39,7 @@ export type FollowupDraft = {
   agent: string
   model: { providerID: string; modelID: string }
   variant?: string
+  handoffFrom?: string
 }
 
 type FollowupSendInput = {
@@ -114,7 +115,7 @@ export async function sendFollowupDraft(input: FollowupSendInput) {
   const encodedImages = await Promise.all(
     images.map(async (attachment) => ({
       ...attachment,
-      dataUrl: await blobDataUrl(attachment.blob, attachment.mime),
+      dataUrl: attachment.sourcePath ? attachment.blob.url : await blobDataUrl(attachment.blob, attachment.mime),
     })),
   )
   const { requestParts, optimisticParts } = buildRequestParts({
@@ -171,6 +172,7 @@ export async function sendFollowupDraft(input: FollowupSendInput) {
       agent: input.draft.agent,
       model: input.draft.model,
       variant: input.draft.variant,
+      system: input.draft.handoffFrom ? `codeink-handoff:${input.draft.handoffFrom}` : undefined,
       legacyParts: requestParts,
       text: requestParts.flatMap((part) => (part.type === "text" ? [part.text] : [])).join("\n"),
       files: requestParts.flatMap((part) => {
@@ -209,7 +211,7 @@ export async function sendFollowupDraft(input: FollowupSendInput) {
 
 type PromptSubmitInput = {
   prompt: ReturnType<typeof usePrompt>
-  info: Accessor<{ id: string } | undefined>
+  info: Accessor<{ id: string; directory?: string; model?: { providerID: string } } | undefined>
   imageAttachments: Accessor<ImageAttachmentPart[]>
   commentCount: Accessor<number>
   autoAccept: Accessor<boolean>
@@ -352,11 +354,15 @@ export function createPromptSubmit(input: PromptSubmitInput) {
 
     const projectDirectory = sdk().directory
     const permissionState = permission.currentServerState()
-    const isNewSession = !params.id
-    const shouldAutoAccept = isNewSession && input.autoAccept()
-    const worktreeSelection = input.newSessionWorktree?.() || "main"
+    const source = input.info()
+    const handoff = source?.id === params.id && source?.model?.providerID?.startsWith("local-") &&
+      currentModel.provider.id.startsWith("local-") &&
+      source.model.providerID !== currentModel.provider.id ? source : undefined
+    const isNewSession = !params.id || !!handoff
+    const shouldAutoAccept = !params.id && input.autoAccept()
+    const worktreeSelection = handoff ? "main" : input.newSessionWorktree?.() || "main"
 
-    let sessionDirectory = projectDirectory
+    let sessionDirectory = handoff?.directory ?? projectDirectory
     let client = sdk().client
 
     if (isNewSession) {
@@ -398,7 +404,7 @@ export function createPromptSubmit(input: PromptSubmitInput) {
       input.onNewSessionWorktreeReset?.()
     }
 
-    let session = input.info()
+    let session = handoff ? undefined : source
     if (!session && isNewSession) {
       const created = await sdk()
         .api.session.create({
@@ -454,6 +460,7 @@ export function createPromptSubmit(input: PromptSubmitInput) {
       agent,
       model,
       variant,
+      handoffFrom: handoff?.id,
     }
 
     const clearInput = () => {

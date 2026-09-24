@@ -199,15 +199,22 @@ export function buildRequestParts(input: BuildRequestPartsInput) {
       id: Identifier.ascending("part"),
       type: "file",
       mime: attachment.mime,
-      url: attachment.dataUrl,
+      url: attachment.sourcePath ? `file://${encodeFilePath(attachment.sourcePath)}` : attachment.dataUrl,
       filename: attachment.sourcePath ?? attachment.filename,
     } satisfies PromptRequestPart
   })
 
   requestParts.push(...files, ...context, ...agents, ...images)
+  const imagePreviews = new Map(images.map((part, index) => [part.id, input.images[index].dataUrl]))
 
   return {
     requestParts,
-    optimisticParts: requestParts.map((part) => toOptimisticPart(part, input.sessionID, input.messageID)),
+    optimisticParts: requestParts.map((part) =>
+      toOptimisticPart(
+        part.type === "file" && imagePreviews.has(part.id) ? { ...part, url: imagePreviews.get(part.id)! } : part,
+        input.sessionID,
+        input.messageID,
+      ),
+    ),
   }
 }

@@ -3,7 +3,7 @@ import { getFilename } from "@codeink/core/util/path"
 import type { FilePart } from "@codeink/sdk/v2"
 
 export function attached(part: FilePart) {
-  return part.url.startsWith("data:") && !inline(part)
+  return !part.url.startsWith("file:") && !inline(part)
 }
 
 export function inline(part: FilePart) {

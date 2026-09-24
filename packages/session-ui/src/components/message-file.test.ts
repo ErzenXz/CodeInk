@@ -16,8 +16,10 @@ function file(part: Partial<FilePart> = {}): FilePart {
 }
 
 describe("message-file", () => {
-  test("treats data URLs as attachments", () => {
+  test("treats stored and data URLs as attachments", () => {
     expect(attached(file({ url: "data:text/plain;base64,SGVsbG8=" }))).toBe(true)
+    expect(attached(file({ url: "blob:local-preview" }))).toBe(true)
+    expect(attached(file({ url: "http://127.0.0.1:1234/attachment/0d45ca57-345c-4d92-88f9-2e11cf9f1419" }))).toBe(true)
     expect(attached(file())).toBe(false)
   })
 

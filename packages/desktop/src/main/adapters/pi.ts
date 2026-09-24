@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto"
 import { t } from "../../shared/i18n"
+import { readFile } from "node:fs/promises"
 import { AgentProcess } from "./process"
 import { piUsage, count } from "./usage"
 import { toolInfo } from "./tool-info"
@@ -112,9 +113,16 @@ export function pi(options: AdapterOptions): Adapter {
     return value
   }
   return {
-    async prompt(text) {
+    async prompt(text, attachments = []) {
       await (ready ??= state())
-      await proc.request((id) => ({ id, type: "prompt", message: text }))
+      const images = await Promise.all(attachments.filter((item) => item.mime.startsWith("image/")).map(async (item) => ({
+        type: "image", data: (await readFile(item.path)).toString("base64"), mimeType: item.mime,
+      })))
+      await proc.request((id) => ({
+        id, type: "prompt",
+        message: [text, ...attachments.filter((item) => !item.mime.startsWith("image/")).map((item) => `@${item.path}`)].filter(Boolean).join("\n"),
+        images,
+      }))
       await state()
     },
     async stop() {

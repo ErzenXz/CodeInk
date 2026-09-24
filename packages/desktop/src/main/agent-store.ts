@@ -36,10 +36,12 @@ const stateSchema = z.object({
           id: z.string(),
           role: z.enum(["user", "assistant", "tool", "error"]),
           text: z.string(),
+          attachments: z.array(z.object({ id: z.string().uuid(), filename: z.string(), mime: z.string() })).optional(),
           createdAt: z.number().optional(),
           completedAt: z.number().optional(),
           model: z.string().optional(),
           variant: z.string().optional(),
+          mode: z.enum(["build", "plan"]).optional(),
           usage: z
             .object({
               input: z.number().nonnegative().optional(),

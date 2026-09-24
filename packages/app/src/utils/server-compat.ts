@@ -43,6 +43,7 @@ type LegacyPrompt = {
   agent?: string
   model?: { providerID: string; modelID: string }
   variant?: string
+  system?: string
   legacyParts?: (TextPartInput | FilePartInput | AgentPartInput)[]
 }
 type LegacyLocation = { directory?: string }
@@ -163,6 +164,8 @@ function createV1Api(input: CompatibleInput): CompatibleApi {
       async create(value?: Parameters<ServerApi["session"]["create"]>[0]) {
         const result = await legacy(value?.location ?? undefined).session.create({
           directory: directory(value?.location ?? undefined),
+          agent: value?.agent ?? undefined,
+          model: value?.model ?? undefined,
         })
         if (!result.data) throw new Error("Failed to create session")
         return sessionInfo(result.data)
@@ -204,6 +207,7 @@ function createV1Api(input: CompatibleInput): CompatibleApi {
           agent: value.agent,
           model: value.model,
           variant: value.variant,
+          system: value.system,
           parts: value.legacyParts ?? [
             { type: "text", text: value.text },
             ...(value.files ?? []).map((file) => ({

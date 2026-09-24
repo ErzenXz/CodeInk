@@ -2,10 +2,11 @@ import { createServer, type IncomingMessage, type ServerResponse } from "node:ht
 import { createHash, randomUUID, timingSafeEqual } from "node:crypto"
 import { homedir } from "node:os"
 import { basename, join, resolve } from "node:path"
-import { realpath, stat } from "node:fs/promises"
+import { readFile, realpath, stat, unlink } from "node:fs/promises"
+import { fileURLToPath } from "node:url"
 import { execFile } from "node:child_process"
 import { promisify } from "node:util"
-import type { Agent, Session, Usage, AgentRules, AgentRulesReport } from "../shared/types"
+import type { Agent, Attachment, Session, Usage, AgentRules, AgentRulesReport } from "../shared/types"
 import type { Message, Part } from "@codeink/sdk/v2/client"
 type LegacySession = import("@codeink/sdk/v2/client").Session
 import { WorkspaceStore, agentSchema } from "./agent-store"
@@ -17,19 +18,29 @@ import { t } from "../shared/i18n"
 import { createTerminals } from "./terminals"
 import { ModelCatalog } from "./model-catalog"
 import { savedTool, toolInfo } from "./adapters/tool-info"
+import { attachmentPath, stageAttachment } from "./attachments"
+import { handoffContext } from "./handoff"
 
 const projectID = (directory: string) => createHash("sha256").update(directory).digest("hex").slice(0, 40)
+const signature = (value: unknown) => createHash("sha256").update(JSON.stringify(value)).digest("hex").slice(0, 24)
 const tokens = { input: 0, output: 0, reasoning: 0, cache: { read: 0, write: 0 } }
 const toolCache = new WeakMap<object, { text: string; info: ReturnType<typeof savedTool> }>()
 const partIDs = new WeakMap<Session["messages"][number], { index: number; id: string; value: string }>()
 function sessionCost(session: Session) {
   if (session.reportedCost !== undefined) return session.reportedCost
-  const users = session.messages.filter((message) => message.role === "user")
-  if (!users.length || users.some((message) => !message.costs)) return undefined
-  return users.reduce((sum, message) => sum + Object.values(message.costs ?? {}).reduce((a, b) => a + b, 0), 0)
+  let cost = 0
+  let seen = false
+  for (const message of session.messages) {
+    if (message.role !== "user") continue
+    if (!message.costs) return undefined
+    seen = true
+    for (const amount of Object.values(message.costs)) cost += amount
+  }
+  return seen ? cost : undefined
 }
 
 export function legacySession(session: Session): LegacySession {
+  const cost = sessionCost(session)
   return {
     id: session.id,
     slug: session.id,
@@ -40,22 +51,24 @@ export function legacySession(session: Session): LegacySession {
     agent: "build",
     model: { providerID: `local-${session.agentID}`, id: session.model || "default", variant: session.variant },
     time: { created: session.createdAt ?? session.updatedAt, updated: session.updatedAt },
-    cost: sessionCost(session) ?? 0,
-    ...{ codeinkCostKnown: sessionCost(session) !== undefined },
+    cost: cost ?? 0,
+    ...{ codeinkCostKnown: cost !== undefined },
     tokens,
   }
 }
 
 // The upstream renderer consumes its original wire format. Protocol translation
 // stays here so its session layout, timeline, composer and panels remain intact.
-export function legacyMessages(session: Session): { info: Message; parts: Part[] }[] {
+export function legacyMessages(session: Session, attachmentURL = (id: string) => `attachment:${id}`, startIndex = 0, endIndex = session.messages.length): { info: Message; parts: Part[] }[] {
   const result: { info: Message; parts: Part[] }[] = []
   let parent = ""
   let model = session.model
+  let mode: "build" | "plan" = "build"
   let usage: Usage | undefined
   let cost: number | undefined
   let current: { info: Message; parts: Part[] } | undefined
-  session.messages.forEach((message, index) => {
+  session.messages.slice(startIndex, endIndex).forEach((message, offset) => {
+    const index = startIndex + offset
     const createdAt = message.createdAt ?? session.createdAt ?? session.updatedAt
     const completedAt = message.completedAt ?? createdAt
     const cachedPart = partIDs.get(message)
@@ -73,6 +86,7 @@ export function legacyMessages(session: Session): { info: Message; parts: Part[]
       parent = message.id
       usage = message.usage
       model = usage?.model ?? message.model ?? session.model
+      mode = message.mode ?? "build"
       cost = message.costs ? Object.values(message.costs).reduce((a, b) => a + b, 0) : undefined
       current = undefined
       result.push({
@@ -84,7 +98,18 @@ export function legacyMessages(session: Session): { info: Message; parts: Part[]
           agent: "build",
           model: { providerID: `local-${session.agentID}`, modelID: model || "default", variant: message.variant },
         },
-        parts: [{ id: partID, messageID: message.id, sessionID: session.id, type: "text", text: message.text }],
+        parts: [
+          { id: partID, messageID: message.id, sessionID: session.id, type: "text", text: message.text },
+          ...(message.attachments ?? []).map((attachment) => ({
+            id: `prt_${attachment.id.replaceAll("-", "")}`,
+            messageID: message.id,
+            sessionID: session.id,
+            type: "file" as const,
+            mime: attachment.mime,
+            filename: attachment.filename,
+            url: attachmentURL(attachment.id),
+          })),
+        ],
       })
       return
     }
@@ -102,7 +127,7 @@ export function legacyMessages(session: Session): { info: Message; parts: Part[]
           },
           modelID: model || "default",
           providerID: `local-${session.agentID}`,
-          mode: "build",
+          mode,
           agent: "build",
           path: { cwd: session.directory, root: session.directory },
           cost: cost ?? 0,
@@ -170,7 +195,26 @@ export function legacyMessages(session: Session): { info: Message; parts: Part[]
     }
     current.parts.push({ ...base, type: "text", text: message.text })
   })
+  if (current?.info.role === "assistant" && session.messages[endIndex]?.role === "user") {
+    current.info.time.completed ??= session.messages[endIndex].createdAt ?? session.createdAt ?? session.updatedAt
+    current.info.finish = "stop"
+  }
   return result
+}
+
+function pageStart(session: Session, endIndex: number, limit: number) {
+  let count = 0
+  let hasReply = false
+  for (let index = endIndex - 1; index >= 0; index--) {
+    if (session.messages[index].role !== "user") {
+      hasReply = true
+      continue
+    }
+    count += hasReply ? 2 : 1
+    if (count >= limit) return index
+    hasReply = false
+  }
+  return 0
 }
 
 function currentSession(session: Session) {
@@ -191,8 +235,14 @@ export async function startBridge(
 ) {
   const store = new WorkspaceStore(join(directory, "agents.json"))
   await store.load()
+  const attachmentOwners = new Map<string, Attachment>(
+    store.state.sessions.flatMap((session) => session.messages.flatMap((message) => message.attachments ?? [])).map((item) => [item.id, item]),
+  )
   const streams = new Set<{ response: ServerResponse; directory?: string; global: boolean }>()
   const snapshots = new Map<string, Map<string, string>>()
+  const projected = new WeakMap<Session, { length: number; userIndex: number; userID?: string; updatedAt: number; status: Session["status"] }>()
+  let attachmentPort = 0
+  const attachmentURL = (id: string) => `http://${hostname}:${attachmentPort}/attachment/${id}`
   const emit = (directory: string, type: string, properties: unknown) => {
     const payload = { type, properties }
     for (const stream of streams) {
@@ -221,27 +271,46 @@ export async function startBridge(
   })
   const publish = (session: Session) => {
     const previous = snapshots.get(session.id) ?? new Map<string, string>()
-    const next = new Map<string, string>()
+    const last = projected.get(session)
+    const addedUser = session.messages
+      .slice(last?.length ?? 0)
+      .findLastIndex((message) => message.role === "user")
+    const userIndex =
+      !last || session.messages.length < last.length
+        ? session.messages.findLastIndex((message) => message.role === "user")
+        : addedUser < 0 ? last.userIndex : last.length + addedUser
+    const userID = session.messages[userIndex]?.id
+    const reset = !last || last.userID !== userID || session.messages.length < last.length
+    const next = reset ? new Map<string, string>() : previous
     const changed = (key: string, value: unknown, type: string, properties: unknown) => {
-      const serialized = JSON.stringify(value)
+      const serialized = signature(value)
+      const before = previous.get(key)
       next.set(key, serialized)
-      if (previous.get(key) !== serialized) emit(session.directory, type, properties)
+      if (before !== serialized) emit(session.directory, type, properties)
     }
     const info = legacySession(session)
     changed("session", info, "session.updated", { info })
-    for (const message of legacyMessages(session)) {
-      changed(message.info.id, message.info, "message.updated", { info: message.info })
-      message.parts.forEach((part) => changed(part.id, part, "message.part.updated", { part }))
+    if (session.status === "running" || (last && (last.length !== session.messages.length || last.updatedAt !== session.updatedAt || last.status !== session.status))) {
+      for (const message of legacyMessages(session, attachmentURL, Math.max(0, userIndex))) {
+        changed(message.info.id, message.info, "message.updated", { info: message.info })
+        message.parts.forEach((part) => changed(part.id, part, "message.part.updated", { part }))
+      }
     }
+    const approvals = new Set<string>()
     for (const approval of session.approvals) {
       const value = approval.questions ? question(session, approval) : permission(session, approval)
-      changed(`approval:${value.id}`, value, approval.questions ? "question.asked" : "permission.asked", value)
+      const key = `approval:${value.id}`
+      approvals.add(key)
+      changed(key, value, approval.questions ? "question.asked" : "permission.asked", value)
     }
+    for (const key of next.keys()) if (key.startsWith("approval:") && !approvals.has(key)) next.delete(key)
     const status = { type: session.status === "running" ? "busy" : "idle" }
+    const previousStatus = previous.get("status")
     changed("status", status, "session.status", { sessionID: session.id, status })
-    if (status.type === "idle" && previous.get("status") !== JSON.stringify(status))
+    if (status.type === "idle" && previousStatus !== signature(status))
       emit(session.directory, "session.idle", { sessionID: session.id })
     snapshots.set(session.id, next)
+    projected.set(session, { length: session.messages.length, userIndex, userID, updatedAt: session.updatedAt, status: session.status })
   }
   // The catalog is created below; the callback only runs once a session needs model features.
   const sessions = new Sessions(store, env, publish, (agentID) => catalog.features(agentID))
@@ -322,7 +391,7 @@ export async function startBridge(
     let size = 0
     for await (const chunk of request) {
       size += chunk.length
-      if (size > 2 * 1024 * 1024) throw new Error(t("requestTooLarge"))
+      if (size > 32 * 1024 * 1024) throw new Error(t("requestTooLarge"))
       chunks.push(Buffer.from(chunk))
     }
     return chunks.length ? object(JSON.parse(Buffer.concat(chunks).toString("utf8"))) : {}
@@ -332,6 +401,7 @@ export async function startBridge(
       const origin = request.headers.origin
       if (origin && (origin === "codeink://renderer" || /^http:\/\/(localhost|127\.0\.0\.1):\d+$/.test(origin)))
         response.setHeader("Access-Control-Allow-Origin", origin)
+      response.setHeader("Access-Control-Expose-Headers", "x-next-cursor")
       response.setHeader(
         "Access-Control-Allow-Headers",
         "Authorization,Content-Type,x-opencode-directory,x-opencode-workspace,x-opencode-ticket",
@@ -339,6 +409,20 @@ export async function startBridge(
       response.setHeader("Access-Control-Allow-Methods", "GET,POST,PATCH,DELETE,PUT,OPTIONS")
       if (request.method === "OPTIONS") {
         response.writeHead(204).end()
+        return
+      }
+      const attachment = /^\/attachment\/([a-f0-9-]{36})$/.exec(request.url ?? "")
+      if (attachment && request.method === "GET") {
+        const owner = attachmentOwners.get(attachment[1])
+        if (!owner) return response.writeHead(404).end()
+        const data = await readFile(attachmentPath(directory, owner.id))
+        response.writeHead(200, {
+          "Content-Type": owner.mime,
+          "Content-Length": data.length,
+          "X-Content-Type-Options": "nosniff",
+          "Cache-Control": "private, max-age=3600",
+        })
+        response.end(data)
         return
       }
       const expected = Buffer.from(`Basic ${Buffer.from(`opencode:${password}`).toString("base64")}`)
@@ -366,6 +450,7 @@ export async function startBridge(
           "Cache-Control": "no-cache",
           Connection: "keep-alive",
         })
+        response.flushHeaders()
         const stream = { response, global: path === "/global/event", directory: path === "/event" ? cwd : undefined }
         streams.add(stream)
         const payload = { type: "server.connected", properties: {} }
@@ -508,7 +593,10 @@ export async function startBridge(
         )
         return json(files)
       }
-      if ((path === "/session" || path === "/experimental/session") && method === "GET")
+      if ((path === "/session" || path === "/experimental/session") && method === "GET") {
+        const limit = url.searchParams.get("limit")
+        if (limit !== null && (!Number.isSafeInteger(Number(limit)) || Number(limit) < 1))
+          return json({ error: "Invalid session limit" }, 400)
         return json(
           store.state.sessions
             .filter(
@@ -516,15 +604,23 @@ export async function startBridge(
                 (!url.searchParams.has("directory") || item.directory === cwd) &&
                 (!url.searchParams.get("search") || item.title.includes(url.searchParams.get("search")!)),
             )
+            .sort((a, b) => b.updatedAt - a.updatedAt || a.id.localeCompare(b.id))
+            .slice(0, limit === null ? undefined : Number(limit))
             .map(legacySession),
         )
+      }
       if (path === "/session" && method === "POST") {
         await project(cwd)
+        const requestedModel = object(body.model)
+        const providerID = string(requestedModel.providerID)
+        const requestedAgent = providerID.startsWith("local-") ? providerID.slice(6) : ""
+        const knownAgent = store.state.agents.some((agent) => agent.id === requestedAgent)
         const session: Session = {
           id: `ses_${randomUUID().replaceAll("-", "")}`,
-          agentID: store.state.selectedAgent,
+          agentID: knownAgent ? requestedAgent : store.state.selectedAgent,
           directory: cwd,
-          model: "",
+          model: knownAgent && string(requestedModel.id) !== "default" ? string(requestedModel.id) : "",
+          variant: knownAgent ? string(requestedModel.variant) || undefined : undefined,
           title: t("newSession"),
           messages: [],
           createdAt: Date.now(),
@@ -607,7 +703,13 @@ export async function startBridge(
           return json(legacySession(session))
         }
         if (!action && method === "DELETE") {
+          const attachments = session.messages.flatMap((message) => message.attachments ?? [])
           await sessions.archive(session.id)
+          snapshots.delete(session.id)
+          await Promise.all(attachments.map(async (attachment) => {
+            attachmentOwners.delete(attachment.id)
+            await unlink(attachmentPath(directory, attachment.id)).catch(() => {})
+          }))
           emit(session.directory, "session.deleted", { info: legacySession(session) })
           return json(true)
         }
@@ -616,9 +718,29 @@ export async function startBridge(
           return json(true)
         }
         if (["children", "todo", "diff"].includes(action!)) return json([])
-        if (action === "message" && method === "GET") return json(legacyMessages(session))
-        if (action?.startsWith("message/") && method === "GET")
-          return json(legacyMessages(session).find((item) => item.info.id === action.slice(8)))
+        if (action === "message" && method === "GET") {
+          if (!url.searchParams.has("limit") && !url.searchParams.has("before"))
+            return json(legacyMessages(session, attachmentURL))
+          const limit = Number(url.searchParams.get("limit") ?? 20)
+          const before = url.searchParams.get("before")
+          const endIndex = before === null ? session.messages.length : Number(before)
+          if (!Number.isInteger(limit) || limit < 1 || !Number.isInteger(endIndex) || endIndex < 0 || endIndex > session.messages.length ||
+              (before !== null && endIndex < session.messages.length && session.messages[endIndex]?.role !== "user"))
+            return json({ error: "Invalid conversation page" }, 400)
+          const startIndex = pageStart(session, endIndex, Math.min(limit, 200))
+          if (startIndex > 0) response.setHeader("x-next-cursor", String(startIndex))
+          return json(legacyMessages(session, attachmentURL, startIndex, endIndex))
+        }
+        if (action?.startsWith("message/") && method === "GET") {
+          const id = decodeURIComponent(action.slice(8))
+          const exact = session.messages.findIndex((item) => item.role === "user" && item.id === id)
+          const startIndex = exact >= 0 ? exact : session.messages.findIndex((item) => item.role === "user" && `${item.id}a` === id)
+          if (startIndex < 0) return json({ error: "Message not found" }, 404)
+          const next = session.messages.findIndex((item, index) => index > startIndex && item.role === "user")
+          const endIndex = next < 0 ? session.messages.length : next
+          const item = legacyMessages(session, attachmentURL, startIndex, endIndex).find((item) => item.info.id === id)
+          return item ? json(item) : json({ error: "Message not found" }, 404)
+        }
         if (action === "prompt_async" || (action === "message" && method === "POST")) {
           const model = object(body.model)
           const agentID = string(model.providerID).replace(/^local-/, "") || session.agentID
@@ -628,23 +750,59 @@ export async function startBridge(
             session.model = modelID
           }
           const parts = array(body.parts).map(object)
-          if (parts.some((part) => part.type === "file" && !string(part.url).startsWith("file:")))
-            throw new Error(t("unsupportedAttachments"))
-          const text = parts
-            .map((part) =>
-              part.type === "text" ? string(part.text) : part.type === "file" ? `\n@${string(part.url)}` : "",
-            )
-            .join("\n")
-          if (!session.messages.length) session.title = text.trim().slice(0, 72)
-          await sessions.send({
-            sessionID: session.id,
-            messageID: string(body.messageID) || undefined,
-            agentID,
-            directory: session.directory,
-            model: modelID,
-            variant: string(body.variant) || undefined,
-            text,
-          })
+          const staged = await Promise.allSettled(
+            parts.filter((part) => part.type === "file" && !part.source).map((part) => stageAttachment(directory, part, string(body.messageID))),
+          )
+          const failure = staged.find((result) => result.status === "rejected")
+          if (failure) {
+            await Promise.all(staged
+              .filter((result) => result.status === "fulfilled")
+              .filter((result) => !attachmentOwners.has(result.value.id))
+              .map((result) => unlink(result.value.path).catch(() => {})))
+            throw failure.reason
+          }
+          const attachments = staged.filter((result) => result.status === "fulfilled").map((result) => result.value)
+          const existingAttachments = new Set(attachments.filter((attachment) => attachmentOwners.has(attachment.id)).map((attachment) => attachment.id))
+          attachments.forEach((attachment) => attachmentOwners.set(attachment.id, attachment))
+          try {
+            const text = parts
+              .map((part) =>
+                part.type === "text"
+                  ? string(part.text)
+                  : part.type === "file" && part.source && string(part.url).startsWith("file:")
+                    ? `\n@${fileURLToPath(new URL(string(part.url)))}`
+                    : part.type === "agent"
+                      ? `\n@${string(part.name)}`
+                      : "",
+              )
+              .join("\n")
+            if (!session.messages.length)
+              session.title =
+                text.trim().slice(0, 72) ||
+                attachments.map((attachment) => attachment.filename).join(", ").slice(0, 72) ||
+                session.title
+            const system = string(body.system)
+            const handoffFrom = system.startsWith("codeink-handoff:") ? sessions.get(system.slice("codeink-handoff:".length)) : undefined
+            if (handoffFrom && (handoffFrom.id === session.id || handoffFrom.directory !== session.directory || session.messages.length))
+              throw new Error(t("invalidHandoff"))
+            await sessions.send({
+              sessionID: session.id,
+              messageID: string(body.messageID) || undefined,
+              agentID,
+              directory: session.directory,
+              model: modelID,
+              variant: string(body.variant) || undefined,
+              text,
+              handoffContext: handoffFrom ? handoffContext(handoffFrom) : system.slice(0, 12_000) || undefined,
+              attachments,
+            })
+          } catch (error) {
+            await Promise.all(attachments.filter((attachment) => !existingAttachments.has(attachment.id)).map(async (attachment) => {
+              attachmentOwners.delete(attachment.id)
+              await unlink(attachment.path).catch(() => {})
+            }))
+            throw error
+          }
           return json(true, 200)
         }
       }
@@ -660,6 +818,9 @@ export async function startBridge(
     server.once("error", reject)
     server.listen(port, hostname, () => resolve())
   })
+  const address = server.address()
+  if (!address || typeof address === "string") throw new Error(t("failed"))
+  attachmentPort = address.port
   let stopping: Promise<void> | undefined
   return {
     listAgents,

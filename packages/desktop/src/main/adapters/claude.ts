@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto"
+import { readFile } from "node:fs/promises"
 import { t } from "../../shared/i18n"
 import { AgentProcess } from "./process"
 import { claudeUsage, count } from "./usage"
@@ -172,7 +173,7 @@ export function claude(options: AdapterOptions): Adapter {
     },
   })
   return {
-    async prompt(text) {
+    async prompt(text, attachments = []) {
       await (ready ??= proc.request((id) => ({
         type: "control_request",
         request_id: id,
@@ -182,9 +183,18 @@ export function claude(options: AdapterOptions): Adapter {
       streamed.clear()
       authenticationFailed = false
       tools.clear()
+      const content = await Promise.all(
+        attachments.map(async (attachment) => {
+          if (attachment.mime.startsWith("image/"))
+            return { type: "image", source: { type: "base64", media_type: attachment.mime, data: (await readFile(attachment.path)).toString("base64") } }
+          if (attachment.mime === "application/pdf")
+            return { type: "document", source: { type: "base64", media_type: attachment.mime, data: (await readFile(attachment.path)).toString("base64") }, title: attachment.filename }
+          return { type: "text", text: `@${attachment.path}` }
+        }),
+      )
       proc.send({
         type: "user",
-        message: { role: "user", content: text },
+        message: { role: "user", content: content.length ? [...(text ? [{ type: "text", text }] : []), ...content] : text },
         parent_tool_use_id: null,
         session_id: options.remoteID ?? "",
       })

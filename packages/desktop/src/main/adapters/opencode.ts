@@ -1,4 +1,5 @@
 import { t } from "../../shared/i18n"
+import { readFile } from "node:fs/promises"
 import { openCodeServer } from "./opencode-server"
 import { openCodeUsage, count } from "./usage"
 import { toolInfo } from "./tool-info"
@@ -142,12 +143,19 @@ export function opencode(options: AdapterOptions): Adapter {
     })
   }
   return {
-    async prompt(text) {
+    async prompt(text, attachments = []) {
       await (ready ??= initialize())
       const [providerID, ...model] = options.model.split("/")
       await request(`/session/${encodeURIComponent(session!)}/prompt_async`, {
-        parts: [{ type: "text", text }],
+        parts: [
+          ...(text ? [{ type: "text", text }] : []),
+          ...(await Promise.all(attachments.map(async (attachment) => ({
+            type: "file", mime: attachment.mime, filename: attachment.filename,
+            url: `data:${attachment.mime};base64,${(await readFile(attachment.path)).toString("base64")}`,
+          })))),
+        ],
         ...(providerID && model.length ? { model: { providerID, modelID: model.join("/") } } : {}),
+        agent: options.rules().access === "plan" ? "plan" : "build",
         ...(options.variant ? { variant: options.variant } : {}),
       })
     },

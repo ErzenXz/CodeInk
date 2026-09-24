@@ -1,4 +1,4 @@
-import type { Agent, AgentEvent, AgentRules, Answer } from "../../shared/types"
+import type { Agent, AgentEvent, AgentRules, Answer, PromptAttachment } from "../../shared/types"
 
 export type AdapterOptions = {
   agent: Agent
@@ -16,7 +16,7 @@ export type Adapter = {
   configure?(model: string, variant?: string): void
   /** Applies changed rules to the running agent; returns false when it must restart to take effect. */
   setRules?(rules: AgentRules): boolean
-  prompt(text: string): Promise<void>
+  prompt(text: string, attachments?: PromptAttachment[]): Promise<void>
   stop(): Promise<void>
   answer(id: string, answer: Answer): Promise<void>
   dispose(): void

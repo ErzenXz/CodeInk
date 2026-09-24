@@ -1,4 +1,5 @@
 import { count } from "./usage"
+import { readFile } from "node:fs/promises"
 import { randomUUID } from "node:crypto"
 import { t } from "../../shared/i18n"
 import { AgentProcess } from "./process"
@@ -235,7 +236,7 @@ export function acp(options: AdapterOptions): Adapter {
     configure(model, variant) {
       selection = { model, variant }
     },
-    async prompt(text) {
+    async prompt(text, attachments = []) {
       await (ready ??= initialize())
       const model = config.find((option) => option.category === "model" && option.type === "select")
       if (selection.model) {
@@ -247,10 +248,19 @@ export function acp(options: AdapterOptions): Adapter {
       }
       const thought = config.find((option) => option.category === "thought_level" && option.type === "select")
       if (selection.variant && thought) await setOption(thought, selection.variant)
+      const promptText = [text, ...attachments.filter((item) => !item.mime.startsWith("image/")).map((item) => `@${item.path}`)].filter(Boolean).join("\n")
       messageID = randomUUID()
       tools.clear()
       void peer
-        .rpc("session/prompt", { sessionId: session, prompt: [{ type: "text", text }] }, 0)
+        .rpc("session/prompt", {
+          sessionId: session,
+          prompt: [
+            ...(promptText ? [{ type: "text", text: promptText }] : []),
+            ...(await Promise.all(attachments.filter((item) => item.mime.startsWith("image/")).map(async (item) => ({
+              type: "image", data: (await readFile(item.path)).toString("base64"), mimeType: item.mime,
+            })))),
+          ],
+        }, 0)
         .then(() => {
           if (!disposed) options.emit({ type: "done" })
         })
