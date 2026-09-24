@@ -454,6 +454,15 @@ h3 {
   padding-bottom: clamp(48px, 7vw, 80px);
 }
 
+.product-hunt-badge {
+  display: inline-block;
+  margin-top: 24px;
+}
+
+.product-hunt-badge img {
+  display: block;
+}
+
 .page-hero {
   padding-top: clamp(72px, 10vw, 120px);
   padding-bottom: clamp(40px, 6vw, 72px);
