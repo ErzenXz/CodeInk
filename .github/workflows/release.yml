@@ -139,6 +139,7 @@ jobs:
           codesign --display --verbose=4 "$app" 2>&1 | grep -q 'Authority=Developer ID Application:'
           dmg=$(find packages/desktop/dist -maxdepth 1 -name "codeink-${CODEINK_CHANNEL}-*-mac-${{ matrix.arch }}.dmg" -print -quit)
           test -n "$dmg"
+          codesign --verify --verbose=2 "$dmg"
           xcrun notarytool submit "$dmg" \
             --key "$APPLE_API_KEY" \
             --key-id "$APPLE_API_KEY_ID" \

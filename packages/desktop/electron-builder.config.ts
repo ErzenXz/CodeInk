@@ -31,6 +31,7 @@ export default {
     // workflow submits the signed DMG and finishes after Apple accepts it.
     notarize: false,
   },
+  dmg: { sign: true },
   nsis: {
     oneClick: false,
     allowToChangeInstallationDirectory: true,

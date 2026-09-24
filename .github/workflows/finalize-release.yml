@@ -177,8 +177,10 @@ jobs:
             ditto -c -k --keepParent "$app" "release/$(basename "$zip")"
 
             cp "$dmg" "release/$(basename "$dmg")"
+            codesign --verify --verbose=2 "release/$(basename "$dmg")"
             xcrun stapler staple "release/$(basename "$dmg")"
             xcrun stapler validate "release/$(basename "$dmg")"
+            spctl --assess --type open --context context:primary-signature --verbose=4 "release/$(basename "$dmg")"
           done
       - name: Publish verified channel release
         if: steps.status.outputs.ready == 'true'
