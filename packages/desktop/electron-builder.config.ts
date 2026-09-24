@@ -16,7 +16,8 @@ export default {
     { from: "resources/THIRD-PARTY-NOTICES.txt", to: "THIRD-PARTY-NOTICES.txt" },
     { from: "../../licenses", to: "licenses" },
   ],
-  publish: null,
+  // The release workflow uploads only after signing and notarization succeed.
+  publish: { provider: "github", owner: "ErzenXz", repo: "CodeInk" },
   npmRebuild: false,
   asar: true,
   mac: {

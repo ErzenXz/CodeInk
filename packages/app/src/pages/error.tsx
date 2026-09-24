@@ -249,19 +249,19 @@ export const ErrorPage: Component<ErrorPageProps> = (props) => {
     setStore("actionError", state?.status === "error" ? state.message : undefined)
   }
 
-  async function openUpdateDownload() {
-    await platform.updater
-      ?.openDownload()
+  async function activateUpdate() {
+    const updater = platform.updater
+    if (!updater) return
+    await (updater.state().status === "ready" ? updater.install() : updater.openDownload())
       .then(() => setStore("actionError", undefined))
       .catch((err) => {
         setStore("actionError", formatError(err, language.t))
       })
   }
 
-  const updateVersion = () => {
+  const updateAction = () => {
     const state = platform.updater?.state()
-    if (state?.status !== "available") return
-    return state.version
+    if (state?.status === "available" || state?.status === "downloading" || state?.status === "ready" || state?.status === "installing") return state
   }
 
   async function exportDebugLogs() {
@@ -323,7 +323,7 @@ export const ErrorPage: Component<ErrorPageProps> = (props) => {
           </Show>
           <Show when={platform.updater}>
             <Show
-              when={updateVersion()}
+              when={updateAction()}
               fallback={
                 <Button
                   size="large"
@@ -337,9 +337,15 @@ export const ErrorPage: Component<ErrorPageProps> = (props) => {
                 </Button>
               }
             >
-              {(version) => (
-                <Button size="large" onClick={openUpdateDownload}>
-                  {language.t("error.page.action.downloadVersion", { version: version() })}
+              {(update) => (
+                <Button size="large" onClick={activateUpdate} disabled={update().status === "downloading" || update().status === "installing"}>
+                  {update().status === "ready"
+                    ? language.t("toast.update.action.installRestart")
+                    : update().status === "downloading"
+                      ? language.t("settings.updates.action.downloading")
+                      : update().status === "installing"
+                        ? language.t("settings.updates.action.installing")
+                        : language.t("error.page.action.downloadVersion", { version: update().version })}
                 </Button>
               )}
             </Show>

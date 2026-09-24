@@ -159,15 +159,15 @@ export default function LegacyLayout(props: ParentProps) {
     debugTools: true,
   })
 
-  const updateVersion = () => {
+  const updateAction = () => {
     const state = platform.updater?.state()
-    if (state?.status !== "available") return
-    return state.version
+    if (state?.status === "available" || state?.status === "ready") return state
   }
-  const openUpdateDownload = () => void platform.updater?.openDownload()
+  const activateUpdate = () => void (platform.updater?.state().status === "ready" ? platform.updater.install() : platform.updater?.openDownload())
   const titlebarUpdate: TitlebarUpdate = {
-    version: updateVersion,
-    openDownload: openUpdateDownload,
+    version: () => updateAction()?.version,
+    actionLabel: () => language.t(updateAction()?.status === "ready" ? "toast.update.action.installRestart" : "toast.update.action.viewDownload"),
+    activate: activateUpdate,
   }
 
   const editor = createInlineEditorController()
@@ -2249,8 +2249,8 @@ export default function LegacyLayout(props: ParentProps) {
             : undefined
         }
       />
-      <Show when={updateVersion() !== undefined}>
-        <UpdateAvailableToast version={updateVersion() ?? ""} openDownload={openUpdateDownload} language={language} />
+      <Show when={updateAction()}>
+        {(update) => <UpdateAvailableToast version={update().version} ready={update().status === "ready"} activate={activateUpdate} language={language} />}
       </Show>
       <div class="flex-1 min-h-0 min-w-0 flex">
         <div class="flex-1 min-h-0 relative">
@@ -2404,7 +2404,8 @@ export default function LegacyLayout(props: ParentProps) {
 
 function UpdateAvailableToast(props: {
   version: string
-  openDownload: () => void
+  ready: boolean
+  activate: () => void
   language: ReturnType<typeof useLanguage>
 }) {
   let toastId: number | undefined
@@ -2414,11 +2415,11 @@ function UpdateAvailableToast(props: {
       persistent: true,
       icon: "download",
       title: props.language.t("toast.update.title"),
-      description: props.language.t("toast.update.description.downloadPage", { version: props.version }),
+      description: props.language.t(props.ready ? "toast.update.description" : "toast.update.description.downloadPage", { version: props.version }),
       actions: [
         {
-          label: props.language.t("toast.update.action.viewDownload"),
-          onClick: props.openDownload,
+          label: props.language.t(props.ready ? "toast.update.action.installRestart" : "toast.update.action.viewDownload"),
+          onClick: props.activate,
         },
         {
           label: props.language.t("toast.update.action.notYet"),

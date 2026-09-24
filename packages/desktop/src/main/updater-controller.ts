@@ -7,7 +7,9 @@ export function createUpdaterController(input: {
   enabled: boolean
   currentVersion: string
   checkForUpdates: () => Promise<string>
-  openDownload: () => void
+  downloadUpdate?: () => Promise<unknown>
+  installUpdate?: () => Promise<void> | void
+  openDownload?: () => void
   log?: (message: string, data?: object) => void
 }) {
   let state: UpdaterState = input.enabled ? { status: "idle" } : { status: "disabled" }
@@ -23,12 +25,24 @@ export function createUpdaterController(input: {
 
   const check = () => {
     if (!input.enabled) return Promise.resolve(state)
+    if (state.status === "downloading" || state.status === "ready" || state.status === "installing")
+      return Promise.resolve(state)
     if (pending) return pending
 
     pending = (async () => {
       transition({ status: "checking" })
       const version = await input.checkForUpdates()
-      return transition(isNewerRelease(version, input.currentVersion) ? { status: "available", version } : { status: "up-to-date" })
+      if (!isNewerRelease(version, input.currentVersion)) return transition({ status: "up-to-date" })
+      if (!input.downloadUpdate) return transition({ status: "available", version })
+      transition({ status: "downloading", version })
+      void input.downloadUpdate()
+        .then(() => {
+          if (state.status === "downloading" && state.version === version) transition({ status: "ready", version })
+        })
+        .catch((error) =>
+          transition({ status: "error", message: error instanceof Error ? error.message : String(error) }),
+        )
+      return state
     })()
       .catch((error) =>
         transition({ status: "error", message: error instanceof Error ? error.message : String(error) }),
@@ -50,7 +64,16 @@ export function createUpdaterController(input: {
     check,
     openDownload() {
       if (state.status !== "available") return
-      input.openDownload()
+      input.openDownload?.()
+    },
+    install() {
+      if (state.status !== "ready" || !input.installUpdate) return
+      transition({ status: "installing", version: state.version })
+      void Promise.resolve()
+        .then(input.installUpdate)
+        .catch((error) =>
+          transition({ status: "error", message: error instanceof Error ? error.message : String(error) }),
+        )
     },
   }
 }

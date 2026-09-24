@@ -272,6 +272,8 @@ export const DESKTOP_NATIVE_ENGLISH = {
   "desktop.updater.dialog.checkFailed.title": "Update Error",
   "desktop.updater.dialog.upToDate.message": "You're up to date.",
   "desktop.updater.dialog.upToDate.title": "No Updates",
+  "desktop.updater.dialog.downloading.message": "CodeInk {{version}} is downloading in the background. You can keep working.",
+  "desktop.updater.dialog.downloading.title": "Downloading Update",
   "desktop.updater.dialog.ready.message": "Update {{version}} downloaded. Restart now?",
   "desktop.updater.dialog.ready.title": "Update Ready",
   "desktop.updater.dialog.available.message": "CodeInk {{version}} is available. Open our download page?",

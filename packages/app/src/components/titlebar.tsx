@@ -51,7 +51,8 @@ const macTrafficLightsBaseWidth = 84
 
 export type TitlebarUpdate = {
   version: () => string | undefined
-  openDownload: () => void
+  actionLabel: () => string
+  activate: () => void
 }
 
 export function useTitlebarRightMount() {
@@ -140,9 +141,9 @@ export function Titlebar(props: { update?: TitlebarUpdate; debugTools?: { visibl
     return {
       visible: version !== undefined,
       label: language.t("titlebar.update"),
-      ariaLabel: language.t("toast.update.action.viewDownload"),
+      ariaLabel: props.update?.actionLabel() ?? language.t("toast.update.action.viewDownload"),
       title: version ? language.t("titlebar.updateVersion", { version }) : undefined,
-      onOpenDownload: () => props.update?.openDownload(),
+      onActivate: () => props.update?.activate(),
     }
   })
   const v2RightState = createMemo<TitlebarV2RightState>(() => ({
@@ -726,7 +727,7 @@ type TitlebarUpdatePillState = {
   label: string
   ariaLabel: string
   title?: string
-  onOpenDownload: () => void
+  onActivate: () => void
 }
 
 type TitlebarV2RightState = {
@@ -750,7 +751,7 @@ function TitlebarUpdateIconButton(props: { state: TitlebarUpdatePillState }) {
       <button
         type="button"
         class="absolute right-0 top-0 z-10 flex h-5 w-5 items-center justify-end overflow-hidden rounded-full bg-v2-icon-icon-accent/20 text-v2-icon-icon-accent transition-[width,background-color] duration-150 ease-out group-hover:w-[68px] group-hover:bg-[color-mix(in_srgb,var(--v2-icon-icon-accent)_20%,var(--v2-background-bg-deep))] group-focus-within:w-[68px] group-focus-within:bg-[color-mix(in_srgb,var(--v2-icon-icon-accent)_20%,var(--v2-background-bg-deep))] focus-visible:outline-none disabled:opacity-60 motion-reduce:transition-none"
-        onClick={props.state.onOpenDownload}
+        onClick={props.state.onActivate}
         aria-label={props.state.ariaLabel}
       >
         <span class="shrink-0 ml-[8px] mr-px text-[11px] text-v2-text-text-accent [font-weight:530] opacity-0 translate-x-2 motion-safe:transition-all duration-150 ease-out group-hover:opacity-100 group-hover:translate-x-0 group-focus-within:opacity-100 group-focus-within:translate-x-0 motion-reduce:translate-x-0">

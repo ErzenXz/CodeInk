@@ -79,10 +79,10 @@ export default function NewLayout(props: ParentProps) {
   const update: TitlebarUpdate = {
     version: () => {
       const state = platform.updater?.state()
-      if (state?.status !== "available") return
-      return state.version
+      if (state?.status === "available" || state?.status === "ready") return state.version
     },
-    openDownload: () => void platform.updater?.openDownload(),
+    actionLabel: () => language.t(platform.updater?.state().status === "ready" ? "toast.update.action.installRestart" : "toast.update.action.viewDownload"),
+    activate: () => void (platform.updater?.state().status === "ready" ? platform.updater.install() : platform.updater?.openDownload()),
   }
 
   return (

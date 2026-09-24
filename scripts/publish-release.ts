@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto"
 import { readdir, rename } from "node:fs/promises"
+import { updateMetadata } from "./update-metadata"
 const {
   RELEASE_TAG: tag,
   RELEASE_CHANNEL: channel,
@@ -31,16 +32,20 @@ for (const target of [
 ])
   if (!files.some((file) => file.endsWith(target))) throw new Error(`Missing ${target}`)
 const assets = await Promise.all(
-  files.map(async (name) => ({
-    name,
-    sha256: createHash("sha256")
-      .update(Buffer.from(await Bun.file(`release/${name}`).arrayBuffer()))
-      .digest("hex"),
-    size: Bun.file(`release/${name}`).size,
-  })),
+  files.map(async (name) => {
+    const sha256 = createHash("sha256")
+    const sha512 = createHash("sha512")
+    for await (const chunk of Bun.file(`release/${name}`).stream()) {
+      sha256.update(chunk)
+      sha512.update(chunk)
+    }
+    return { name, sha256: sha256.digest("hex"), sha512: sha512.digest("base64"), size: Bun.file(`release/${name}`).size }
+  }),
 )
 await Bun.write("release/SHA256SUMS.txt", assets.map((file) => `${file.sha256}  ${file.name}`).join("\n") + "\n")
 await Bun.write("release/manifest.json", JSON.stringify({ version, channel, commit, assets }, null, 2))
+const metadata = updateMetadata(version, channel, assets)
+await Promise.all(metadata.map((file) => Bun.write(`release/${file.name}`, file.content)))
 const title = `CodeInk ${channel === "early-access" ? "Early Access " : ""}${version}`
 const message = Bun.spawnSync(["git", "log", "-1", "--format=%B", commit], { stdout: "pipe", stderr: "pipe" })
 if (message.exitCode !== 0) throw new Error("Could not read release commit message")
@@ -58,6 +63,9 @@ async function gh(args: string[], allowFailure = false) {
 const existing = await gh(["release", "view", tag, "--json", "isDraft"], true)
 if (existing && !JSON.parse(existing).isDraft)
   throw new Error("A published release is immutable; make a new push to release changes")
+const latest = await gh(["release", "view", "--json", "tagName"], true)
+const latestVersion = latest ? (JSON.parse(latest).tagName as string).replace(/^v/, "") : undefined
+const makeLatest = channel === "production" && (!latestVersion || version.localeCompare(latestVersion, undefined, { numeric: true }) >= 0)
 if (!existing)
   await gh([
     "release",
@@ -79,6 +87,7 @@ await gh([
   ...files.map((file) => `release/${file}`),
   "release/SHA256SUMS.txt",
   "release/manifest.json",
+  ...metadata.map((file) => `release/${file.name}`),
   "--clobber",
 ])
-await gh(["release", "edit", tag, "--draft=false", `--latest=${channel === "production" ? "true" : "false"}`])
+await gh(["release", "edit", tag, "--draft=false", `--latest=${makeLatest}`])
