@@ -5,12 +5,17 @@ import { useComments } from "@/context/comments"
 import { useLocal } from "@/context/local"
 import { usePrompt } from "@/context/prompt"
 import { useServerSync } from "@/context/server-sync"
+import { useLanguage } from "@/context/language"
+import { useSDK } from "@/context/sdk"
+import { pathKey } from "@/utils/path-key"
 import { createPromptInputController, createPromptProjectControls } from "@/pages/session/composer"
 import { createPromptModelSelection } from "@/pages/session/composer/prompt-model-selection"
 import { useSessionKey } from "@/pages/session/session-layout"
 import { useComposerCommands } from "@/pages/session/use-composer-commands"
 
 export function createNewSessionDraftController(workspace: { worktree: () => string; resetWorktree: () => void }) {
+  const language = useLanguage()
+  const sdk = useSDK()
   const prompt = usePrompt()
   const serverSync = useServerSync()
   const comments = useComments()
@@ -36,6 +41,15 @@ export function createNewSessionDraftController(workspace: { worktree: () => str
       return workspace.worktree()
     },
     onNewSessionWorktreeReset: workspace.resetWorktree,
+    onBeforeSubmit: () => {
+      const directory = pathKey(sdk().directory)
+      if (projectControls().available.some((project) =>
+        (!project.server || project.server.key === projectControls().server) &&
+        (pathKey(project.worktree) === directory || project.sandboxes?.some((sandbox) => pathKey(sandbox) === directory)),
+      )) return true
+      projectControls().add(language.t("command.project.open"))
+      return false
+    },
     onSubmit: comments.clear,
   })
 

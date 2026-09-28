@@ -27,7 +27,7 @@ import {
   useSettings,
 } from "@/context/settings"
 import { decode64 } from "@/utils/base64"
-import { playSoundById, SOUND_OPTIONS } from "@/utils/sound"
+import { normalizeSoundID, playSoundById, SOUND_OPTIONS } from "@/utils/sound"
 import { ExternalLink } from "./external-link"
 import { SettingsList } from "./settings-list"
 
@@ -228,7 +228,7 @@ export const SettingsGeneral: Component = () => {
     set: (id: string) => void,
   ) => ({
     options: soundOptions,
-    current: enabled() ? (soundOptions.find((o) => o.id === current()) ?? noneSound) : noneSound,
+    current: enabled() ? (soundOptions.find((o) => o.id === normalizeSoundID(current())) ?? noneSound) : noneSound,
     value: (o: (typeof soundOptions)[number]) => o.id,
     label: (o: (typeof soundOptions)[number]) => language.t(o.label),
     onHighlight: (option: (typeof soundOptions)[number] | undefined) => {

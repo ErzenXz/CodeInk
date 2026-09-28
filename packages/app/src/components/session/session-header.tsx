@@ -13,6 +13,7 @@ import { createStore } from "solid-js/store"
 import { createMediaQuery } from "@solid-primitives/media"
 import { Portal } from "solid-js/web"
 import { useCommand } from "@/context/command"
+import { useDialog } from "@codeink/ui/context/dialog"
 import { useLanguage } from "@/context/language"
 import { useLayout } from "@/context/layout"
 import { usePlatform } from "@/context/platform"
@@ -33,6 +34,8 @@ import { KeybindV2 } from "@codeink/ui/v2/keybind-v2"
 import { TooltipV2 } from "@codeink/ui/v2/tooltip-v2"
 import { reviewTooltipKeybind } from "../command-tooltip-keybind"
 import { useTitlebarRightMount } from "../titlebar"
+import { ButtonV2 } from "@codeink/ui/v2/button-v2"
+import { HandoffContextDialog } from "./handoff-context-dialog"
 
 const OPEN_APPS = [
   "vscode",
@@ -140,6 +143,7 @@ const showRequestError = (language: ReturnType<typeof useLanguage>, err: unknown
 export function SessionHeader() {
   const layout = useLayout()
   const command = useCommand()
+  const dialog = useDialog()
   const server = useServer()
   const platform = usePlatform()
   const language = useLanguage()
@@ -234,6 +238,22 @@ export function SessionHeader() {
   const tint = createMemo(() =>
     messageAgentColor(params.id ? sync().data.message[params.id] : undefined, sync().data.agent),
   )
+  const handoff = createMemo(() => {
+    const session = params.id ? sync().session.get(params.id) : undefined
+    return (session as { codeinkHandoff?: { fromSessionID: string; fromAgentID: string } } | undefined)?.codeinkHandoff
+  })
+  const openHandoff = () => {
+    const sessionID = params.id
+    if (!sessionID || !handoff() || !platform.agentWorkspace) return
+    void platform.agentWorkspace
+      .handoffPrompt(sessionID)
+      .then((prompt) => {
+        if (params.id !== sessionID) return
+        if (!prompt) throw new Error(language.t("session.handoff.unavailable"))
+        dialog.show(() => <HandoffContextDialog prompt={prompt} />)
+      })
+      .catch((error: unknown) => showRequestError(language, error))
+  }
   const v2ActionsState = createMemo<SessionHeaderV2ActionsState>(() => ({
     statusVisible: status(),
     statusLabel: language.t("status.popover.trigger"),
@@ -284,7 +304,7 @@ export function SessionHeader() {
   const [centerMount, setCenterMount] = createSignal<HTMLElement | null>(null)
   const rightMount = useTitlebarRightMount()
   onMount(() => {
-    setCenterMount(document.getElementById("opencode-titlebar-center"))
+    setCenterMount(document.getElementById("codeink-titlebar-center"))
   })
 
   return (
@@ -440,6 +460,17 @@ export function SessionHeader() {
                     </div>
                   </Show>
                   <div class="flex items-center gap-1">
+                    <Show when={handoff() && platform.agentWorkspace}>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="small"
+                        onClick={openHandoff}
+                        aria-label={language.t("session.handoff.view")}
+                      >
+                        {language.t("session.handoff.view")}
+                      </Button>
+                    </Show>
                     <Show when={status()}>
                       <Tooltip placement="bottom" value={language.t("status.popover.trigger")}>
                         <StatusPopover />
@@ -507,7 +538,14 @@ export function SessionHeader() {
                 </div>
               }
             >
-              <SessionHeaderV2Actions state={v2ActionsState()} />
+              <div class="flex items-center gap-2">
+                <Show when={handoff() && platform.agentWorkspace}>
+                  <ButtonV2 variant="outline" size="small" onClick={openHandoff}>
+                    {language.t("session.handoff.view")}
+                  </ButtonV2>
+                </Show>
+                <SessionHeaderV2Actions state={v2ActionsState()} />
+              </div>
             </Show>
           </Portal>
         )}

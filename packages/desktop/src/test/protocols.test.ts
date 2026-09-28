@@ -88,6 +88,7 @@ for (const protocol of ["codex", "claude", "opencode", "pi"] as const) {
       .split("\n")
       .map((line) => object(JSON.parse(line)))
     if (protocol === "codex") {
+      expect(object(records.find((item) => item.method === "initialize")?.params).capabilities).toEqual({ experimentalApi: true })
       expect(object(records.find((item) => item.method === "thread/start")?.params).model).toBe(model)
       expect(object(records.find((item) => item.method === "turn/start")?.params)).toMatchObject({
         model,
@@ -136,6 +137,36 @@ for (const protocol of ["codex", "claude", "opencode", "pi"] as const) {
     await resumed.stop()
   }, 15000)
 }
+
+test("Codex recovers a missing native thread and retains the saved conversation", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "codeink-codex-recovery-"))
+  const log = join(directory, "requests.jsonl")
+  cleanup.push(() => removeFixture(directory))
+  const events: AgentEvent[] = []
+  const adapter = connectAgent({
+    agent: { id: "codex", name: "Codex", protocol: "codex", command: process.execPath, args: [fixture, "codex"] },
+    executable: process.execPath,
+    directory,
+    env: { ...process.env, CODEINK_FIXTURE_RECORD: log },
+    rules: () => ({ access: "ask", fast: false }),
+    model: "gpt-6-luna",
+    remoteID: "missing-native-thread",
+    history: [{ role: "user", text: "Earlier question" }, { role: "assistant", text: "Earlier answer" }],
+    emit: (event) => events.push(event),
+  })
+  cleanup.push(() => adapter.dispose())
+  await adapter.prompt("Continue with Luna")
+  await eventually(() => events.some((event) => event.type === "approval"))
+  expect(events.filter((event) => event.type === "error")).toEqual([])
+  expect(events.find((event) => event.type === "session")).toEqual({ type: "session", id: "native-session" })
+  const records = (await readFile(log, "utf8")).trim().split("\n").map((line) => object(JSON.parse(line)))
+  expect(records.filter((item) => item.method === "thread/resume")).toHaveLength(1)
+  expect(records.filter((item) => item.method === "thread/start")).toHaveLength(1)
+  const turn = object(records.find((item) => item.method === "turn/start")?.params)
+  expect(turn.model).toBe("gpt-6-luna")
+  expect(String(object(array(turn.input)[0]).text)).toContain("Earlier answer")
+  expect(String(object(array(turn.input)[0]).text)).toContain("Continue with Luna")
+})
 
 test("Pi command rejection fails the turn immediately", async () => {
   const adapter = connectAgent({

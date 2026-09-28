@@ -11,7 +11,7 @@ CodeInk is maintained by Erzen Krasniqi. App source, installers, releases, and t
 
 Push code to either branch to run tests, type checking, and native platform builds. The build workflow saves signed macOS installers and their Apple submission IDs. **Finalize desktop releases** checks Apple's status when a build completes and hourly afterward; it staples and verifies both macOS packages before publishing the complete release. A failed check, build, or notarization prevents publication. The website always reads the most recent published release for each channel. Documentation-only changes skip desktop packaging. Use **Actions → Desktop releases → Run workflow** on the desired branch to build manually.
 
-Production and Early Access have separate app IDs and data folders and can be installed together. Development runs use CodeInk Dev. Your installed agent's own credentials and native sessions remain under that agent's control. No coding agent is bundled.
+Production and Early Access have separate app IDs and data folders and can be installed together. Development runs use CodeInk Dev. Your installed agent's own credentials and native sessions remain under that agent's control. CodeInk Agent is built in; external agent executables are installed separately.
 
 ## Platforms
 
@@ -27,7 +27,9 @@ The root `package.json` is the base semantic version. CI adds the `Desktop relea
 
 ## Signing
 
-macOS releases require an Apple Developer ID Application signature and notarization. The build workflow fails before packaging if any required Apple credential is missing. It verifies the Developer ID signature, submits each signed DMG without waiting on Apple's queue, and retains the packages. The finalization workflow verifies the stapled notarization tickets and Gatekeeper assessment before publication. The `v0.1.16` production and `v0.1.15-early-access` macOS assets predate this gate and can show a misleading “damaged” warning; do not recommend them for macOS. The Account Holder must create the Developer ID certificate and accept any pending Apple Developer agreement. Windows installers may still show SmartScreen until Windows signing is configured. Checksums verify download integrity; they are not publisher identity verification. The in-app update check reads CodeInk GitHub releases for its own channel and opens the CodeInk download page when a newer build exists. It does not install updates in place. Older builds with the disabled updater need one manual download.
+macOS releases require an Apple Developer ID Application signature and notarization. The build workflow fails before packaging if any required Apple credential is missing. It verifies the Developer ID signature, submits each signed DMG without waiting on Apple's queue, and retains the packages. The finalization workflow verifies the stapled notarization tickets and Gatekeeper assessment before publication. The `v0.1.16` production and `v0.1.15-early-access` macOS assets predate this gate and can show a misleading “damaged” warning; do not recommend them for macOS. The Account Holder must create the Developer ID certificate and accept any pending Apple Developer agreement. Windows installers may still show SmartScreen until Windows signing is configured. Checksums verify download integrity; they are not publisher identity verification.
+
+Current macOS, Windows, and Linux AppImage builds download channel updates in the app and offer a restart to install. Linux `.deb` installations use the CodeInk download page. Native updates require the release's channel YAML metadata and verified installer hashes. Production uses `latest`; Early Access uses `early-access`. Older builds with the disabled updater need one manual download.
 
 To enable platform signing, add repository Actions secrets:
 

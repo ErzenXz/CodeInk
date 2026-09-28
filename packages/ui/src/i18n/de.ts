@@ -1,8 +1,10 @@
+import { englishFallback } from "./locale-fallback"
 import { dict as en } from "./en"
 
 type Keys = keyof typeof en
 
 export const dict = {
+  ...englishFallback,
   "ui.sessionReview.title": "Sitzungsänderungen",
   "ui.sessionReview.title.git": "Git-Änderungen",
   "ui.sessionReview.title.branch": "Branch-Änderungen",
@@ -75,15 +77,6 @@ export const dict = {
   "ui.sessionTurn.retry.geminiHot": "Gemini ist gerade stark überlastet",
   "ui.sessionTurn.error.freeUsageExceeded": "Kostenloses Nutzungslimit überschritten",
   "ui.sessionTurn.error.addCredits": "Guthaben aufladen",
-
-  "dialog.usageExceeded.freeTier.title": "Kostenloses Limit erreicht",
-  "dialog.usageExceeded.freeTier.description":
-    "OpenCode Go für 10 $ pro Monat abonnieren und zuverlässigen Zugriff auf die besten Open-Source-Modelle erhalten.",
-  "dialog.usageExceeded.freeTier.actionLabel": "Abonnieren",
-  "dialog.usageExceeded.accountRateLimit.title": "Go-Limit erreicht",
-  "dialog.usageExceeded.accountRateLimit.description":
-    "Nutzungslimit erreicht. Um dieses Modell jetzt weiter zu nutzen, die Nutzung über das verfügbare Guthaben aktivieren",
-  "dialog.usageExceeded.accountRateLimit.actionLabel": "Einstellungen öffnen",
 
   "ui.sessionTurn.status.delegating": "Arbeit wird delegiert",
   "ui.sessionTurn.status.planning": "Nächste Schritte werden geplant",

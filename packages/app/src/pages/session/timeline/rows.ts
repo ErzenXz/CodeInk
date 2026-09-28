@@ -129,9 +129,17 @@ export namespace Timeline {
         .filter((part) => renderable(part, showReasoning))
         .map((part) => ({ messageID: message.id, messageIndex, part })),
     )
+    const running =
+      isActive &&
+      (status !== "idle" ||
+        assistantPartRefs.some(
+          (ref) => ref.part.type === "tool" && ["pending", "running"].includes(ref.part.state.status),
+        ))
+    // Keep live tool rows mounted as calls arrive. Grouping the second call would replace the first row mid-stream.
+    const grouping = running ? { tool: isGroupedTool, min: Number.POSITIVE_INFINITY } : toolRuns
     // Once a turn settles with a closing answer, every step before that answer folds under "Worked for …".
     // Turns that end on a tool call, an error or an interruption stay unfolded so the last step stays visible.
-    const settled = !(isActive && status !== "idle") && !interrupted && !error
+    const settled = !running && !interrupted && !error
     const answerStart = assistantPartRefs.findLastIndex((ref) => ref.part.type !== "text") + 1
     const answered = answerStart > 0 && answerStart < assistantPartRefs.length
     // A single step (such as a user-run shell command) reads better as its own row than behind a fold.
@@ -142,8 +150,8 @@ export namespace Timeline {
     const assistantItems =
       workRefs > 0
         ? [
-            { type: "work" as const, groups: groupParts(assistantPartRefs.slice(0, workRefs), toolRuns) },
-            ...groupParts(assistantPartRefs.slice(workRefs), toolRuns).map((group) => ({
+            { type: "work" as const, groups: groupParts(assistantPartRefs.slice(0, workRefs), grouping) },
+            ...groupParts(assistantPartRefs.slice(workRefs), grouping).map((group) => ({
               type: "part" as const,
               group,
             })),
@@ -152,7 +160,7 @@ export namespace Timeline {
           ? [
               ...groupParts(
                 assistantPartRefs.filter((ref) => ref.messageIndex <= interruptedMessageIndex),
-                toolRuns,
+                grouping,
               ).map((group) => ({
                 type: "part" as const,
                 group,
@@ -160,13 +168,13 @@ export namespace Timeline {
               { type: "interrupted" as const },
               ...groupParts(
                 assistantPartRefs.filter((ref) => ref.messageIndex > interruptedMessageIndex),
-                toolRuns,
+                grouping,
               ).map((group) => ({
                 type: "part" as const,
                 group,
               })),
             ]
-          : groupParts(assistantPartRefs, toolRuns).map((group) => ({ type: "part" as const, group }))
+          : groupParts(assistantPartRefs, grouping).map((group) => ({ type: "part" as const, group }))
     if (previousUserMessage) rows.push(new TimelineRow.TurnGap({ userMessageID: userMessage.id }))
 
     if (comments.length > 0 && !inlineComments)

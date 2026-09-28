@@ -14,7 +14,7 @@ import { ProviderIcon } from "@codeink/ui/provider-icon"
 import { useFilteredList } from "@codeink/ui/hooks"
 import { For, Show, type Component } from "solid-js"
 import { useLocal } from "@/context/local"
-import { popularProviders } from "@/hooks/use-providers"
+import { isRetiredModelProvider, popularProviders } from "@/hooks/use-providers"
 import { useLanguage } from "@/context/language"
 import { useDialog } from "@codeink/ui/context/dialog"
 import { DialogConnectProvider } from "./dialog-connect-provider"
@@ -59,7 +59,7 @@ export const DialogManageModels: Component = () => {
         search={{ placeholder: language.t("dialog.model.search.placeholder"), autofocus: true }}
         emptyMessage={language.t("dialog.model.empty")}
         key={(x) => `${x?.provider?.id}:${x?.id}`}
-        items={local.model.list()}
+        items={local.model.list().filter((item) => !isRetiredModelProvider(item.provider.id))}
         filterKeys={["provider.name", "name", "id"]}
         sortBy={compareModels}
         groupBy={(x) => x.provider.id}
@@ -138,7 +138,7 @@ export const DialogManageModelsV2: Component = () => {
     local.model.setVisibility({ modelID: item.id, providerID: item.provider.id }, checked)
   }
   const list = useFilteredList<ModelItem>({
-    items: () => local.model.list(),
+    items: () => local.model.list().filter((item) => !isRetiredModelProvider(item.provider.id)),
     key: (x) => `${x.provider.id}:${x.id}`,
     filterKeys: ["provider.name", "name", "id"],
     sortBy: compareModels,

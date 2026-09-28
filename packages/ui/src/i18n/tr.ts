@@ -1,8 +1,10 @@
+import { englishFallback } from "./locale-fallback"
 import { dict as en } from "./en"
 
 type Keys = keyof typeof en
 
 export const dict = {
+  ...englishFallback,
   "ui.sessionReview.title": "Oturum değişiklikleri",
   "ui.sessionReview.title.git": "Git değişiklikleri",
   "ui.sessionReview.title.branch": "Dal değişiklikleri",
@@ -76,15 +78,6 @@ export const dict = {
   "ui.sessionTurn.retry.geminiHot": "Gemini şu anda aşırı yoğun",
   "ui.sessionTurn.error.freeUsageExceeded": "Ücretsiz kullanım aşıldı",
   "ui.sessionTurn.error.addCredits": "Kredi ekle",
-
-  "dialog.usageExceeded.freeTier.title": "Ücretsiz sınıra ulaşıldı",
-  "dialog.usageExceeded.freeTier.description":
-    "En iyi açık kaynaklı modellere güvenilir erişim için aylık $10 karşılığında OpenCode Go'ya abone olun.",
-  "dialog.usageExceeded.freeTier.actionLabel": "Abone ol",
-  "dialog.usageExceeded.accountRateLimit.title": "Go sınırına ulaşıldı",
-  "dialog.usageExceeded.accountRateLimit.description":
-    "Kullanım sınırına ulaşıldı. Bu modeli şimdi kullanmaya devam etmek için mevcut bakiyenizden kullanımı etkinleştirin.",
-  "dialog.usageExceeded.accountRateLimit.actionLabel": "Ayarları aç",
 
   "ui.sessionTurn.status.delegating": "Görev devrediliyor",
   "ui.sessionTurn.status.planning": "Sonraki adımlar planlanıyor",

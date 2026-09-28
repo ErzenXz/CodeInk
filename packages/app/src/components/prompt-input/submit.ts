@@ -48,6 +48,7 @@ type FollowupSendInput = {
   sync: DirectorySync
   draft: FollowupDraft
   messageID?: string
+  delivery?: "steer" | "queue"
   optimisticBusy?: boolean
   before?: () => Promise<boolean> | boolean
 }
@@ -169,6 +170,7 @@ export async function sendFollowupDraft(input: FollowupSendInput) {
     await input.api.prompt({
       sessionID: input.draft.sessionID,
       id: messageID,
+      delivery: input.delivery,
       agent: input.draft.agent,
       model: input.draft.model,
       variant: input.draft.variant,
@@ -229,6 +231,7 @@ type PromptSubmitInput = {
   shouldQueue?: Accessor<boolean>
   onQueue?: (draft: FollowupDraft) => void
   onAbort?: () => void
+  onBeforeSubmit?: () => boolean
   onSubmit?: () => void
   model?: ModelSelection
 }
@@ -337,6 +340,8 @@ export function createPromptSubmit(input: PromptSubmitInput) {
       return
     }
 
+    if (input.onBeforeSubmit?.() === false) return
+
     const modelSelection = input.model ?? local.model
     const currentModel = modelSelection.current()
     const currentAgent = local.agent.current()
@@ -366,9 +371,14 @@ export function createPromptSubmit(input: PromptSubmitInput) {
     let client = sdk().client
 
     if (isNewSession) {
-      if (worktreeSelection === "create") {
+      if (worktreeSelection === "create" || worktreeSelection.startsWith("branch:")) {
         const createdWorktree = await client.worktree
-          .create({ directory: projectDirectory })
+          .create({
+            directory: projectDirectory,
+            ...(worktreeSelection.startsWith("branch:")
+              ? { worktreeCreateInput: { name: decodeURIComponent(worktreeSelection.slice("branch:".length)) } }
+              : {}),
+          })
           .then((x) => x.data)
           .catch((err) => {
             showToast({
@@ -389,7 +399,7 @@ export function createPromptSubmit(input: PromptSubmitInput) {
         sessionDirectory = createdWorktree.directory
       }
 
-      if (worktreeSelection !== "main" && worktreeSelection !== "create") {
+      if (worktreeSelection !== "main" && worktreeSelection !== "create" && !worktreeSelection.startsWith("branch:")) {
         sessionDirectory = worktreeSelection
       }
 

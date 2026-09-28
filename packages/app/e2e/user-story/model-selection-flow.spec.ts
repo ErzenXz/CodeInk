@@ -1,14 +1,9 @@
 import { expect, test } from "@playwright/test"
 import { mockOpenCodeServer } from "../utils/mock-server"
-import { expectAppVisible } from "../utils/waits"
 
-const directory = "C:/OpenCode/NewProject"
+const directory = "C:/CodeInk/NewProject"
 
-test("creates a session in a new project, connects OpenCode Go, and selects its model", async ({ page }) => {
-  let connectedGo = false
-  let pendingGo = false
-  const connections: Array<{ integrationID: string; body: unknown }> = []
-
+test("keeps external-agent models while hiding the retired subscription", async ({ page }) => {
   await mockOpenCodeServer(page, {
     directory,
     project: {
@@ -22,12 +17,30 @@ test("creates a session in a new project, connects OpenCode Go, and selects its 
     provider: () => ({
       all: [
         {
+          id: "local-codeink",
+          name: "CodeInk Agent",
+          models: {
+            "gateway-free": {
+              id: "gateway-free",
+              name: "Gateway Free Model",
+              cost: { input: 0, output: 0 },
+              limit: { context: 200_000 },
+            },
+            "gateway-fast": {
+              id: "gateway-fast",
+              name: "Gateway Fast Model",
+              cost: { input: 1, output: 1 },
+              limit: { context: 200_000 },
+            },
+          },
+        },
+        {
           id: "opencode",
           name: "OpenCode",
           models: {
-            "free-model": {
-              id: "free-model",
-              name: "Free Model",
+            "agent-free": {
+              id: "agent-free",
+              name: "External Agent Free Model",
               cost: { input: 0, output: 0 },
               limit: { context: 200_000 },
             },
@@ -35,7 +48,7 @@ test("creates a session in a new project, connects OpenCode Go, and selects its 
         },
         {
           id: "opencode-go",
-          name: "OpenCode Go",
+          name: "Legacy Subscription",
           models: {
             "go-model-1": {
               id: "go-model-1",
@@ -46,17 +59,9 @@ test("creates a session in a new project, connects OpenCode Go, and selects its 
           },
         },
       ],
-      connected: connectedGo ? ["opencode", "opencode-go"] : ["opencode"],
-      default: { providerID: "opencode", modelID: "free-model" },
+      connected: ["local-codeink", "opencode", "opencode-go"],
+      default: { providerID: "local-codeink", modelID: "gateway-free" },
     }),
-    integrationMethods: { "opencode-go": [{ type: "api", label: "API key" }] },
-    onConnectKey: (input) => {
-      connections.push(input)
-      if (input.integrationID === "opencode-go") pendingGo = true
-    },
-    onInstanceDispose: () => {
-      if (pendingGo) connectedGo = true
-    },
     sessions: [],
     pageMessages: () => ({ items: [] }),
     fileList: (path) =>
@@ -69,29 +74,22 @@ test("creates a session in a new project, connects OpenCode Go, and selects its 
   })
 
   await page.goto("/")
-  const addProject = page.locator('[data-action="home-add-project-row"]')
-  await expectAppVisible(addProject)
-  await addProject.click()
-  await page.locator("[data-directory-path]").click()
-
-  await page.locator('[data-action="home-new-session"]').click()
-  await expectAppVisible(page.locator('[data-component="prompt-input-v2"]'))
+  await expect(page.locator('[data-component="prompt-input-v2"]')).toBeVisible()
 
   const modelControl = page.locator('[data-action="prompt-model"]')
   await modelControl.click()
-  await expect(page.locator('[data-section="free-models"]')).toContainText("Free models provided by OpenCode")
+  const menu = page.getByRole("menu", { name: "Gateway Free Model" })
+  await expect(menu).toContainText("CodeInk Agent")
+  await expect(menu).toContainText("Gateway Free Model")
+  await expect(menu).toContainText("External Agent Free Model")
+  await expect(menu).not.toContainText("Go Model 1")
+  await menu.getByRole("menuitemradio", { name: "Gateway Fast Model" }).click()
+  await expect(modelControl).toContainText("Gateway Fast Model")
 
-  await page.locator('[data-provider-id="opencode-go"]').click()
-  await page.locator('[data-input="provider-api-key"]').fill("mock-go-api-key")
-  await page.locator('[data-action="provider-connect-submit"]').click()
-  await expect(page.locator('[data-component="dialog-v2"]')).toHaveCount(0)
-  expect(connections).toEqual([{ integrationID: "opencode-go", body: { type: "api", key: "mock-go-api-key" } }])
-
-  await expect(modelControl).toHaveAttribute("data-control-type", "popover")
   await modelControl.click()
-  const goModel = page.locator('[data-option-key="opencode-go:go-model-1"]')
-  await expect(goModel).toBeVisible()
-  await goModel.click()
-
-  await expect(modelControl).toContainText("Go Model 1")
+  await page.getByRole("menuitem", { name: "Manage models" }).click()
+  const manage = page.locator('[data-component="dialog-v2"]')
+  await expect(manage).toContainText("CodeInk Agent")
+  await expect(manage).toContainText("External Agent Free Model")
+  await expect(manage).not.toContainText("Legacy Subscription")
 })

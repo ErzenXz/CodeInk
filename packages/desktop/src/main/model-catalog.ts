@@ -2,6 +2,7 @@ import type { Provider } from "@codeink/sdk/v2/client"
 import type { AgentStatus } from "../shared/types"
 import { t } from "../shared/i18n"
 import { discoverModels, type AgentModel } from "./adapters/model-discovery"
+import type { GatewayProvider } from "./gateway-keys"
 
 type Entry = {
   agentID: string
@@ -18,6 +19,7 @@ export class ModelCatalog {
   constructor(
     private env: NodeJS.ProcessEnv,
     private changed: () => void,
+    private gatewayKey: (provider: GatewayProvider) => string | undefined = () => undefined,
   ) {}
 
   list(agents: AgentStatus[], directory: string) {
@@ -80,7 +82,13 @@ export class ModelCatalog {
   }
 
   private entry(agent: AgentStatus, directory: string) {
-    const key = JSON.stringify([agent.id, agent.protocol, agent.executable, agent.args, directory])
+    const key = JSON.stringify([
+      agent.id,
+      agent.protocol,
+      agent.executable,
+      agent.args,
+      agent.protocol === "codeink" ? "" : directory,
+    ])
     const cached = this.entries.get(key)
     if (cached?.pending || (cached && cached.expires > Date.now()) || this.closed) return cached
     // Limit retained project catalogs; cancelling eviction also releases its process.
@@ -96,7 +104,13 @@ export class ModelCatalog {
     const timer = setTimeout(() => controller.abort(), 15_000)
     entry.controller = controller
     this.entries.set(key, entry)
-    entry.pending = discoverModels({ agent, directory, env: this.env, signal: controller.signal })
+    entry.pending = discoverModels({
+      agent,
+      directory,
+      env: this.env,
+      signal: controller.signal,
+      gatewayKey: this.gatewayKey,
+    })
       .then((models) => {
         entry.models = models.sort((a, b) => Number(b.default === true) - Number(a.default === true))
         entry.status = models.length ? "ready" : "unavailable"
@@ -126,9 +140,9 @@ function toModel(providerID: string, model: AgentModel, order: number): Provider
     capabilities: {
       temperature: false,
       reasoning: model.reasoning === true,
-      attachment: false,
+      attachment: model.image === true,
       toolcall: true,
-      input: { text: true, image: false, audio: false, video: false, pdf: false },
+      input: { text: true, image: model.image === true, audio: false, video: false, pdf: false },
       output: { text: true, image: false, audio: false, video: false, pdf: false },
       interleaved: false,
     },

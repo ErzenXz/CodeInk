@@ -38,23 +38,25 @@ describe("theme preload", () => {
   })
 
   test("keeps cached css for non-default themes", () => {
-    localStorage.setItem("opencode-theme-id", "nightowl")
+    localStorage.setItem("opencode-theme-id", "codeink-slate")
     localStorage.setItem("opencode-theme-css-light", "--background-base:#fff;")
 
     run()
 
-    expect(document.documentElement.dataset.theme).toBe("nightowl")
-    expect(localStorage.getItem("codeink-theme-id")).toBe("nightowl")
+    expect(document.documentElement.dataset.theme).toBe("codeink-slate")
+    expect(localStorage.getItem("codeink-theme-id")).toBe("codeink-slate")
     expect(localStorage.getItem("codeink-theme-css-light")).toBe("--background-base:#fff;")
     expect(document.getElementById("codeink-theme-preload")?.textContent).toContain("--background-base:#fff;")
   })
 
-  test("migrates the old classic theme ID", () => {
+  test("resets a removed theme and discards its cached CSS", () => {
     localStorage.setItem("opencode-theme-id", "opencode")
+    localStorage.setItem("opencode-theme-css-light", "--background-base:#f00;")
 
     run()
 
-    expect(document.documentElement.dataset.theme).toBe("codeink-classic")
-    expect(localStorage.getItem("codeink-theme-id")).toBe("codeink-classic")
+    expect(document.documentElement.dataset.theme).toBe("codeink")
+    expect(localStorage.getItem("codeink-theme-id")).toBe("codeink")
+    expect(localStorage.getItem("opencode-theme-css-light")).toBeNull()
   })
 })

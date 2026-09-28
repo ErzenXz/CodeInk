@@ -115,7 +115,7 @@ const markBoundaryGesture = (input: {
   const target = boundaryTarget(input.root, input.target)
   if (target === input.root) {
     input.onMarkScrollGesture(input.root)
-    return
+    return true
   }
   if (
     shouldMarkBoundaryGesture({
@@ -126,7 +126,9 @@ const markBoundaryGesture = (input: {
     })
   ) {
     input.onMarkScrollGesture(input.root)
+    return true
   }
+  return false
 }
 
 function TimelineThinkingRow(props: { reasoningHeading?: string; showReasoningSummaries: boolean }) {
@@ -583,7 +585,13 @@ export function MessageTimeline(props: {
       rootHeight: root.clientHeight,
     })
     if (!delta) return
-    markBoundaryGesture({ root, target: event.target, delta, onMarkScrollGesture: props.onMarkScrollGesture })
+    const scrollingTimeline = markBoundaryGesture({
+      root,
+      target: event.target,
+      delta,
+      onMarkScrollGesture: props.onMarkScrollGesture,
+    })
+    if (scrollingTimeline && delta < 0) props.onPauseAutoScroll()
   }
 
   const handleListTouchStart = (event: TouchEvent) => {
@@ -600,12 +608,13 @@ export function MessageTimeline(props: {
     const delta = prev - next
     if (!delta) return
 
-    markBoundaryGesture({
+    const scrollingTimeline = markBoundaryGesture({
       root: event.currentTarget,
       target: event.target,
       delta,
       onMarkScrollGesture: props.onMarkScrollGesture,
     })
+    if (scrollingTimeline && delta < 0) props.onPauseAutoScroll()
   }
 
   const handleListTouchEnd = () => {
@@ -645,6 +654,7 @@ export function MessageTimeline(props: {
     if (scrollKeyOwner(event.currentTarget, event.target, key) !== event.currentTarget) return
     if (!prependLoading) clearPrependAnchor()
     props.onMarkScrollGesture(event.currentTarget)
+    if (key === "up" || key === "page-up" || key === "home") props.onPauseAutoScroll()
   }
 
   const handleListScroll = (event: Event & { currentTarget: HTMLDivElement }) => {

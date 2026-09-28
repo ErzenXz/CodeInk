@@ -46,7 +46,7 @@ export interface Settings {
     layoutTransitionEligible?: boolean
     agentVisibilityInitialized?: boolean
     newInterfaceNoticeDismissed?: boolean
-    shouldDisplayTabsToast?: boolean
+    shouldDisplayAgentToast?: boolean
   }
   appearance: {
     fontSize: number
@@ -88,14 +88,6 @@ export function isAppUpgrade(previous: string | undefined, current: string | und
   if (!previous || !current) return false
   const comparison = compareVersions(current, previous)
   return comparison !== undefined && comparison > 0
-}
-
-export function shouldDisplayTabsToast(
-  previous: string | undefined,
-  current: string | undefined,
-  existingInstall: boolean,
-) {
-  return isAppUpgrade(previous, current) || (!previous && existingInstall)
 }
 
 export function hasExistingWebState(settings: Promise<string> | string | null, previousVersion: string | undefined) {
@@ -227,11 +219,11 @@ const defaultSettings: Settings = {
   },
   sounds: {
     agentEnabled: true,
-    agent: "staplebops-01",
+    agent: "glow",
     permissionsEnabled: true,
-    permissions: "staplebops-02",
+    permissions: "pulse",
     errorsEnabled: true,
-    errors: "nope-03",
+    errors: "drop",
   },
 }
 
@@ -341,14 +333,9 @@ export const { use: useSettings, provider: SettingsProvider } = createSimpleCont
     })
 
     createEffect(() => {
-      if (!ready() || !launchState.classified) return
-      if (typeof store.general?.shouldDisplayTabsToast === "boolean") return
-      if (!launchState.previous && !layoutTransitionClassified()) return
-      setStore(
-        "general",
-        "shouldDisplayTabsToast",
-        shouldDisplayTabsToast(launchState.previous, platform.version, layoutTransitionEligible()),
-      )
+      if (!ready() || platform.platform !== "desktop") return
+      if (typeof store.general?.shouldDisplayAgentToast === "boolean") return
+      setStore("general", "shouldDisplayAgentToast", true)
     })
 
     createEffect(() => {
@@ -491,9 +478,9 @@ export const { use: useSettings, provider: SettingsProvider } = createSimpleCont
         dismissNewInterfaceNotice() {
           setStore("general", "newInterfaceNoticeDismissed", true)
         },
-        shouldDisplayTabsToast: withFallback(() => store.general?.shouldDisplayTabsToast, false),
-        dismissTabsToast() {
-          setStore("general", "shouldDisplayTabsToast", false)
+        shouldDisplayAgentToast: withFallback(() => store.general?.shouldDisplayAgentToast, false),
+        dismissAgentToast() {
+          setStore("general", "shouldDisplayAgentToast", false)
         },
       },
       visibility: {

@@ -1,8 +1,10 @@
+import { englishFallback } from "./locale-fallback"
 import { dict as en } from "./en"
 
 type Keys = keyof typeof en
 
 export const dict = {
+  ...englishFallback,
   "desktop.menu.app": "CodeInk",
   "desktop.menu.file": "Dosya",
   "desktop.menu.edit": "Düzen",
@@ -211,10 +213,6 @@ export const dict = {
   "dialog.provider.group.popular": "Popüler",
   "dialog.provider.group.other": "Diğer",
   "dialog.provider.custom.label": "Özel OpenAI uyumlu sağlayıcı",
-  "dialog.provider.tag.recommended": "Önerilen",
-  "dialog.provider.opencode.note": "Claude, GPT, Gemini ve daha fazlasını içeren seçilmiş modeller",
-  "dialog.provider.opencode.tagline": "Güvenilir, optimize edilmiş modeller",
-  "dialog.provider.opencodeGo.tagline": "Herkes için düşük maliyetli abonelik",
   "dialog.provider.anthropic.note": "Pro ve Max dahil Claude modellerine doğrudan erişim",
   "dialog.provider.copilot.note": "GitHub Copilot üzerinden kodlama yardımı için yapay zekâ modelleri",
   "dialog.provider.openai.note": "Hızlı ve yetenekli genel yapay zekâ görevleri için GPT modelleri",
@@ -228,12 +226,6 @@ export const dict = {
   "dialog.model.manage": "Modelleri yönet",
   "dialog.model.manage.description": "Model seçicide hangi modellerin görüneceğini özelleştirin.",
   "dialog.model.manage.provider.toggle": "Tüm {{provider}} modellerini aç/kapat",
-
-  "dialog.model.unpaid.freeModels.title": "OpenCode tarafından sunulan ücretsiz modeller",
-  "dialog.model.unpaid.addMore.title": "Popüler sağlayıcılardan daha fazla model ekleyin",
-  "dialog.model.unpaid.viewMoreProviders": "70'ten fazla sağlayıcı daha görüntüle",
-
-  "dialog.provider.viewAll": "Daha fazla sağlayıcı göster",
 
   "provider.connect.title": "{{provider}} bağla",
   "provider.connect.title.anthropicProMax": "Claude Pro/Max ile giriş yap",
@@ -249,13 +241,6 @@ export const dict = {
   "provider.connect.apiKey.label": "{{provider}} API anahtarı",
   "provider.connect.apiKey.placeholder": "API anahtarı",
   "provider.connect.apiKey.required": "API anahtarı gerekli",
-  "provider.connect.opencodeZen.line1":
-    "OpenCode Zen, kodlama ajanları için seçilmiş güvenilir optimize edilmiş modellere erişim sağlar.",
-  "provider.connect.opencodeZen.line2":
-    "Tek bir API anahtarıyla Claude, GPT, Gemini, GLM ve daha fazlası gibi modellere erişebilirsiniz.",
-  "provider.connect.opencodeZen.visit.prefix": "",
-  "provider.connect.opencodeZen.visit.link": "opencode.ai/zen",
-  "provider.connect.opencodeZen.visit.suffix": " adresini ziyaret ederek API anahtarınızı alın.",
   "provider.connect.oauth.code.visit.prefix": "Yetkilendirme kodunuzu almak için ",
   "provider.connect.oauth.code.visit.link": "bu bağlantıya",
   "provider.connect.oauth.code.visit.suffix":
@@ -427,8 +412,6 @@ export const dict = {
   "dialog.mcp.empty": "Yapılandırılmış MCP yok",
 
   "dialog.lsp.empty": "LSP'ler dosya türlerinden otomatik algılanır",
-  "dialog.plugins.empty": "Eklentiler opencode.json içinde yapılandırılır",
-
   "mcp.status.connected": "bağlı",
   "mcp.status.failed": "başarısız",
   "mcp.status.needs_auth": "kimlik doğrulama gerekli",
@@ -572,8 +555,6 @@ export const dict = {
   "dialog.project.edit.worktree.startup.description": "Yeni bir çalışma alanı (worktree) oluşturduktan sonra çalışır.",
   "dialog.project.edit.worktree.startup.placeholder": "örneğin bun install",
 
-  "dialog.usageExceeded.dontShowAgain": "Bir daha gösterme",
-
   "context.breakdown.title": "Bağlam Dökümü",
   "context.breakdown.note": 'Girdi tokenlerinin yaklaşık dökümü. "Diğer" araç tanımları ve ek yükleri içerir.',
   "context.breakdown.system": "Sistem",
@@ -706,7 +687,6 @@ export const dict = {
   "error.chain.responseBody": "Yanıt gövdesi:\n{{body}}",
   "error.chain.didYouMean": "Bunu mu demek istediniz: {{suggestions}}",
   "error.chain.modelNotFound": "Model bulunamadı: {{provider}}/{{model}}",
-  "error.chain.checkConfig": "Yapılandırma dosyanızdaki (opencode.json) sağlayıcı/model adlarını kontrol edin",
   "error.chain.mcpFailed":
     'MCP sunucusu "{{name}}" çalıştırılamadı. Not: CodeInk henüz MCP kimlik doğrulamasını desteklemiyor.',
   "error.chain.providerAuthFailed": "Sağlayıcı kimlik doğrulaması başarısız ({{provider}}): {{message}}",
@@ -995,51 +975,12 @@ export const dict = {
   "settings.updates.toast.latest.description": "CodeInk'un en son sürümünü kullanıyorsunuz.",
 
   "sound.option.none": "Yok",
-  "sound.option.alert01": "Uyarı 01",
-  "sound.option.alert02": "Uyarı 02",
-  "sound.option.alert03": "Uyarı 03",
-  "sound.option.alert04": "Uyarı 04",
-  "sound.option.alert05": "Uyarı 05",
-  "sound.option.alert06": "Uyarı 06",
-  "sound.option.alert07": "Uyarı 07",
-  "sound.option.alert08": "Uyarı 08",
-  "sound.option.alert09": "Uyarı 09",
-  "sound.option.alert10": "Uyarı 10",
-  "sound.option.bipbop01": "Bip-bop 01",
-  "sound.option.bipbop02": "Bip-bop 02",
-  "sound.option.bipbop03": "Bip-bop 03",
-  "sound.option.bipbop04": "Bip-bop 04",
-  "sound.option.bipbop05": "Bip-bop 05",
-  "sound.option.bipbop06": "Bip-bop 06",
-  "sound.option.bipbop07": "Bip-bop 07",
-  "sound.option.bipbop08": "Bip-bop 08",
-  "sound.option.bipbop09": "Bip-bop 09",
-  "sound.option.bipbop10": "Bip-bop 10",
-  "sound.option.staplebops01": "Staplebops 01",
-  "sound.option.staplebops02": "Staplebops 02",
-  "sound.option.staplebops03": "Staplebops 03",
-  "sound.option.staplebops04": "Staplebops 04",
-  "sound.option.staplebops05": "Staplebops 05",
-  "sound.option.staplebops06": "Staplebops 06",
-  "sound.option.staplebops07": "Staplebops 07",
-  "sound.option.nope01": "Hayır 01",
-  "sound.option.nope02": "Hayır 02",
-  "sound.option.nope03": "Hayır 03",
-  "sound.option.nope04": "Hayır 04",
-  "sound.option.nope05": "Hayır 05",
-  "sound.option.nope06": "Hayır 06",
-  "sound.option.nope07": "Hayır 07",
-  "sound.option.nope08": "Hayır 08",
-  "sound.option.nope09": "Hayır 09",
-  "sound.option.nope10": "Hayır 10",
-  "sound.option.nope11": "Hayır 11",
-  "sound.option.nope12": "Hayır 12",
-  "sound.option.yup01": "Evet 01",
-  "sound.option.yup02": "Evet 02",
-  "sound.option.yup03": "Evet 03",
-  "sound.option.yup04": "Evet 04",
-  "sound.option.yup05": "Evet 05",
-  "sound.option.yup06": "Evet 06",
+  "sound.option.glow": "Glow",
+  "sound.option.pulse": "Pulse",
+  "sound.option.drop": "Drop",
+  "sound.option.spark": "Spark",
+  "sound.option.bloom": "Bloom",
+  "sound.option.tap": "Tap",
 
   "settings.general.notifications.agent.title": "Ajan",
   "settings.general.notifications.agent.description":

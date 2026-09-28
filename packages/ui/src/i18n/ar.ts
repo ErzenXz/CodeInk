@@ -1,4 +1,6 @@
+import { englishFallback } from "./locale-fallback"
 export const dict = {
+  ...englishFallback,
   "ui.sessionReview.title": "تغييرات الجلسة",
   "ui.sessionReview.title.git": "تغييرات Git",
   "ui.sessionReview.title.branch": "تغييرات الفرع",
@@ -74,15 +76,6 @@ export const dict = {
   "ui.sessionTurn.retry.geminiHot": "Gemini مزدحم جدًا حاليًا",
   "ui.sessionTurn.error.freeUsageExceeded": "تم تجاوز حد الاستخدام المجاني",
   "ui.sessionTurn.error.addCredits": "إضافة رصيد",
-
-  "dialog.usageExceeded.freeTier.title": "تم الوصول إلى الحد المجاني",
-  "dialog.usageExceeded.freeTier.description":
-    "اشترك في OpenCode Go مقابل $10/شهر للحصول على وصول موثوق إلى أفضل النماذج مفتوحة المصدر.",
-  "dialog.usageExceeded.freeTier.actionLabel": "اشترك",
-  "dialog.usageExceeded.accountRateLimit.title": "تم الوصول إلى حد Go",
-  "dialog.usageExceeded.accountRateLimit.description":
-    "تم الوصول إلى حد الاستخدام. لمتابعة استخدام هذا النموذج الآن، قم بتفعيل الاستخدام من رصيدك المتاح",
-  "dialog.usageExceeded.accountRateLimit.actionLabel": "فتح الإعدادات",
 
   "ui.sessionTurn.status.delegating": "جارٍ تفويض العمل",
   "ui.sessionTurn.status.planning": "تخطيط الخطوات التالية",

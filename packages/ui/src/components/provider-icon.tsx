@@ -1,7 +1,8 @@
 import type { Component, JSX } from "solid-js"
-import { createMemo, splitProps } from "solid-js"
+import { createMemo, splitProps, Show } from "solid-js"
 import sprite from "./provider-icons/sprite.svg"
 import agents from "./agent-icons.svg"
+import codeinkIcon from "../assets/brand/codeink-icon.png"
 import { iconNames, type IconName } from "./provider-icons/types"
 
 export type ProviderIconProps = JSX.SVGElementTags["svg"] & {
@@ -40,7 +41,7 @@ export const ProviderIcon: Component<ProviderIconProps> = (props) => {
 
   const resolved = createMemo(() => {
     const id = local.id.replace(/^local-/, "")
-    if (local.id.startsWith("local-") && agentIDs.has(id)) return `${agents}#${id}`
+    if ((local.id.startsWith("local-") || id === "opencode") && agentIDs.has(id)) return `${agents}#${id}`
     const name = ({ codex: "openai", claude: "anthropic" } as Record<string, string>)[id] ?? local.id
     return `${sprite}#${iconNames.includes(name as IconName) ? name : "synthetic"}`
   })
@@ -53,7 +54,9 @@ export const ProviderIcon: Component<ProviderIconProps> = (props) => {
         [local.class ?? ""]: !!local.class,
       }}
     >
-      <use href={resolved()} />
+      <Show when={local.id === "local-codeink"} fallback={<use href={resolved()} />}>
+        <image href={codeinkIcon} width="100%" height="100%" />
+      </Show>
     </svg>
   )
 }

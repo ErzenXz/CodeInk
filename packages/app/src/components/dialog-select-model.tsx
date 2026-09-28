@@ -6,7 +6,7 @@ import { createStore } from "solid-js/store"
 import { Portal } from "solid-js/web"
 import { useLocal } from "@/context/local"
 import { useDialog } from "@codeink/ui/context/dialog"
-import { popularProviders } from "@/hooks/use-providers"
+import { isRetiredModelProvider, popularProviders } from "@/hooks/use-providers"
 import { Button } from "@codeink/ui/button"
 import { IconButton } from "@codeink/ui/icon-button"
 import { ScrollView } from "@codeink/ui/scroll-view"
@@ -25,8 +25,7 @@ import { createMenuDismissController } from "@/utils/menu-dismiss-controller"
 import { createEventListener } from "@solid-primitives/event-listener"
 import { matchesModelSearch } from "./dialog-select-model-search"
 
-const isFree = (provider: string, cost: { input: number } | undefined) =>
-  provider === "opencode" && (!cost || cost.input === 0)
+const isFree = (cost: { input: number; output: number } | undefined) => cost?.input === 0 && cost.output === 0
 
 type ModelState = ReturnType<typeof useLocal>["model"]
 type ModelItem = ReturnType<ModelState["list"]>[number]
@@ -59,6 +58,7 @@ const ModelList: Component<{
   const models = createMemo(() =>
     model
       .list()
+      .filter((m) => !isRetiredModelProvider(m.provider.id))
       .filter((m) => model.visible({ modelID: m.id, providerID: m.provider.id }))
       .filter((m) => (props.provider ? m.provider.id === props.provider : true)),
   )
@@ -87,7 +87,7 @@ const ModelList: Component<{
           placement="right-start"
           gutter={12}
           openDelay={0}
-          value={<ModelTooltip model={item} latest={item.latest} free={isFree(item.provider.id, item.cost)} />}
+          value={<ModelTooltip model={item} latest={item.latest} free={isFree(item.cost)} />}
         >
           {node}
         </Tooltip>
@@ -102,7 +102,7 @@ const ModelList: Component<{
       {(i) => (
         <div class="w-full flex items-center gap-x-2 text-13-regular">
           <ModelLabel model={i} />
-          <Show when={isFree(i.provider.id, i.cost)}>
+          <Show when={isFree(i.cost)}>
             <Tag>{language.t("model.tag.free")}</Tag>
           </Show>
           <Show when={i.latest}>
@@ -263,6 +263,7 @@ function createModelSelectorController(input: {
   const allModels = createMemo(() =>
     model
       .list()
+      .filter((item) => !isRetiredModelProvider(item.provider.id))
       .filter((item) => model.visible({ modelID: item.id, providerID: item.provider.id }))
       .filter((item) => (input.provider() ? item.provider.id === input.provider() : true)),
   )
@@ -506,7 +507,7 @@ function ModelSelectorPopoverV2View(props: {
                                 onSelect={() => selectModel(item)}
                               >
                                 <ModelLabel model={item} />
-                                <Show when={isFree(item.provider.id, item.cost)}>
+                                <Show when={isFree(item.cost)}>
                                   <TagV2 class="shrink-0">{language.t("model.tag.free")}</TagV2>
                                 </Show>
                                 <Show when={item.latest}>
@@ -554,7 +555,7 @@ function ModelSelectorPopoverV2View(props: {
                   <ModelTooltip
                     model={item()}
                     latest={item().latest}
-                    free={isFree(item().provider.id, item().cost)}
+                    free={isFree(item().cost)}
                     v2
                   />
                 </div>

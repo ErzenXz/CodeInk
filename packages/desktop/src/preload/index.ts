@@ -14,11 +14,21 @@ const api: ElectronAPI = {
   killSidecar: () => ipcRenderer.invoke("kill-sidecar"),
   listInstalledAgents: () => ipcRenderer.invoke("agents-list"),
   saveInstalledAgent: (agent) => ipcRenderer.invoke("agents-save", agent),
+  gatewayStatus: () => ipcRenderer.invoke("gateway-status"),
+  handoffPrompt: (sessionID) => ipcRenderer.invoke("handoff-prompt", sessionID),
+  setGatewayKey: (provider, key) => ipcRenderer.invoke("gateway-key-set", provider, key),
   listAgentExtensions: (refresh) => ipcRenderer.invoke("agents-extensions", refresh === true),
   setAgentExtensionEnabled: (input) => ipcRenderer.invoke("agents-extension-toggle", input),
   listAgentRules: () => ipcRenderer.invoke("agents-rules"),
   setAgentRules: (agentID, rules) => ipcRenderer.invoke("agents-rules-set", agentID, rules),
   readAgentUsage: (refresh) => ipcRenderer.invoke("agents-usage", refresh === true),
+  usageMonitoringEnabled: () => ipcRenderer.invoke("agents-usage-enabled"),
+  setUsageMonitoringEnabled: (enabled) => ipcRenderer.invoke("agents-usage-enable", enabled),
+  onUsageMonitoringChange: (callback) => {
+    const handler = (_: unknown, enabled: boolean) => callback(enabled)
+    ipcRenderer.on("agents-usage-changed", handler)
+    return () => ipcRenderer.removeListener("agents-usage-changed", handler)
+  },
   readAgentInstructions: () => ipcRenderer.invoke("agents-instructions"),
   writeAgentInstructions: (agentID, content) => ipcRenderer.invoke("agents-instructions-save", agentID, content),
   awaitInitialization: () => ipcRenderer.invoke("await-initialization"),

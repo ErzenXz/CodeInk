@@ -100,7 +100,6 @@ import { Persist, persisted } from "@/utils/persist"
 import { extractPromptFromParts } from "@/utils/prompt"
 import { formatServerError, isLocalSessionNotFoundError, isSessionNotFoundError } from "@/utils/server-errors"
 import { legacySessionHref, requireServerKey, sessionHref } from "@/utils/session-route"
-import { useUsageExceededDialogs } from "./session/usage-exceeded-dialogs"
 import { createSessionOwnership } from "./session/session-ownership"
 import { createSessionLineage } from "./session/session-lineage"
 
@@ -1724,7 +1723,7 @@ export default function Page() {
   })
 
   const followupMutation = useMutation(() => ({
-    mutationFn: async (input: { sessionID: string; id: string; manual?: boolean }) => {
+    mutationFn: async (input: { sessionID: string; id: string; manual?: boolean; delivery?: "steer" }) => {
       const owner = sessionOwnership.capture()
       const item = (followup.items[input.sessionID] ?? []).find((entry) => entry.id === input.id)
       if (!item) return
@@ -1737,7 +1736,9 @@ export default function Page() {
         sync: sync(),
         serverSync: serverSync(),
         draft: item,
-        optimisticBusy: item.sessionDirectory === sdk().directory,
+        messageID: item.id,
+        delivery: input.delivery,
+        optimisticBusy: item.sessionDirectory === sdk().directory && !busy(input.sessionID),
       }).catch((err) => {
         setFollowup("failed", input.sessionID, input.id)
         fail(err)
@@ -1760,10 +1761,17 @@ export default function Page() {
     return followupMutation.variables?.id
   })
 
+  const steerSupported = createMemo(() => {
+    const provider = info()?.model?.providerID
+    if (!provider) return false
+    if (provider === "local-codex" || provider === "local-codeink" || provider === "local-pi") return true
+    return !provider.startsWith("local-") && serverSDK().protocolKind() === "v2"
+  })
+
   const queueEnabled = createMemo(() => {
     const id = params.id
     if (!id) return false
-    return settings.general.followup() === "queue" && busy(id) && !composer.blocked() && !isChildSession()
+    return busy(id) && !composer.blocked() && !isChildSession()
   })
 
   const followupText = (item: FollowupDraft) => {
@@ -1792,15 +1800,30 @@ export default function Page() {
     setFollowup("paused", draft.sessionID, undefined)
   }
 
-  const followupDock = createMemo(() => queuedFollowups().map((item) => ({ id: item.id, text: followupText(item) })))
+  const followupDock = createMemo(() => queuedFollowups().map((item) => ({
+    id: item.id,
+    text: followupText(item),
+    canSteer:
+      steerSupported() &&
+      item.model.providerID === info()?.model?.providerID &&
+      item.model.modelID === info()?.model?.id &&
+      item.variant === info()?.model?.variant,
+  })))
 
-  const sendFollowup = (sessionID: string, id: string, opts?: { manual?: boolean }) => {
+  const sendFollowup = (sessionID: string, id: string, opts?: { manual?: boolean; delivery?: "steer" }) => {
     if (sync().session.get(sessionID)?.parentID) return Promise.resolve()
     const item = (followup.items[sessionID] ?? []).find((entry) => entry.id === id)
     if (!item) return Promise.resolve()
     if (followupBusy(sessionID)) return Promise.resolve()
 
-    return followupMutation.mutateAsync({ sessionID, id, manual: opts?.manual })
+    return followupMutation.mutateAsync({ sessionID, id, manual: opts?.manual, delivery: opts?.delivery })
+  }
+
+  const removeFollowup = (id: string) => {
+    const sessionID = params.id
+    if (!sessionID || followupBusy(sessionID)) return
+    setFollowup("items", sessionID, (items) => (items ?? []).filter((entry) => entry.id !== id))
+    setFollowup("failed", sessionID, (value) => (value === id ? undefined : value))
   }
 
   const editFollowup = (id: string) => {
@@ -2021,7 +2044,6 @@ export default function Page() {
     if (fillFrame !== undefined) cancelAnimationFrame(fillFrame)
   })
 
-  useUsageExceededDialogs()
 
   const mobileTabs = (compact = false, bottom = false) => (
     <Tabs value={store.mobileTab} class="h-auto">
@@ -2156,7 +2178,10 @@ export default function Page() {
                 ? {
                     items: followupDock(),
                     sending: sendingFollowup(),
+                    busy: busy(params.id!),
                     onSend: (id) => void sendFollowup(params.id!, id, { manual: true }),
+                    onSteer: (id) => void sendFollowup(params.id!, id, { manual: true, delivery: "steer" }),
+                    onRemove: removeFollowup,
                     onEdit: editFollowup,
                   }
                 : undefined,

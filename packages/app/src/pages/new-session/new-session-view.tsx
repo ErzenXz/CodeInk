@@ -2,7 +2,6 @@ import { useDialog } from "@codeink/ui/context/dialog"
 import { Tooltip } from "@codeink/ui/tooltip"
 import { Icon as IconV2 } from "@codeink/ui/v2/icon"
 import { TooltipV2 } from "@codeink/ui/v2/tooltip-v2"
-import { WordmarkV2 } from "@codeink/ui/v2/wordmark-v2"
 import { Show, createMemo, createSignal, type Accessor } from "solid-js"
 import { createStore } from "solid-js/store"
 import { Portal } from "solid-js/web"
@@ -18,6 +17,8 @@ import { StatusPopoverV2 } from "@/components/status-popover"
 import { useLanguage } from "@/context/language"
 import { useSDK } from "@/context/sdk"
 import { useServerSync } from "@/context/server-sync"
+import { useServerSDK } from "@/context/server-sdk"
+import { ServerConnection, serverName } from "@/context/server"
 import { useProviders } from "@/hooks/use-providers"
 import { NEW_SESSION_CONTENT_WIDTH } from "@/pages/session/new-session-layout"
 import { Persist, persisted } from "@/utils/persist"
@@ -31,40 +32,70 @@ export function NewSessionView(props: {
   project: PromptProjectController
   workspace: NewSessionWorkspaceController
 }) {
+  const language = useLanguage()
+  const serverSDK = useServerSDK()
+  const serverLabel = () =>
+    ServerConnection.local(serverSDK().server)
+      ? language.t("session.new.workspace.triggerLocal")
+      : serverName(serverSDK().server)
+
   return (
     <div class="@container relative flex flex-col min-h-0 h-full flex-1">
       <div
         data-component="session-new-design"
         class="relative flex-1 min-h-0 overflow-hidden rounded-xl bg-v2-background-bg-deep group-data-[shell=sidebar]/shell:rounded-none group-data-[shell=sidebar]/shell:bg-v2-background-bg-base group-data-[shell=sidebar]/shell:shadow-[inset_0.5px_0_0_var(--v2-border-border-muted)]"
       >
-        <div class="absolute inset-0 flex items-center justify-center px-6">
+        <div class="absolute inset-0 flex items-center justify-center px-3 sm:px-6">
           <div class={NEW_SESSION_CONTENT_WIDTH}>
-            <WordmarkV2 class="mx-auto block h-auto w-[min(420px,70%)] text-v2-background-bg-inverse" />
-            <div class="mt-10 flex flex-col gap-6">
-              <PromptInputV2Composer controller={props.input} />
-              <Show when={props.project.empty()}>
-                <PromptProjectAddButton controller={props.project} />
-              </Show>
-              <Show when={props.project.selected()}>
-                <div class="flex min-h-7 min-w-0 flex-col items-center justify-center gap-0 text-v2-text-text-faint sm:flex-row">
+            <div class="flex flex-col">
+              <div
+                data-component="new-session-context"
+                class="flex min-h-11 min-w-0 flex-wrap items-center gap-x-2 gap-y-1 rounded-t-2xl border border-b-0 border-v2-border-border-muted bg-v2-background-bg-layer-02/70 px-3 py-1.5 text-[13px] text-v2-text-text-muted"
+              >
+                <Show when={props.project.empty()}>
+                  <PromptProjectAddButton controller={props.project} />
+                </Show>
+                <Show when={props.project.selected()}>
                   <PromptProjectSelector controller={props.project} placement="bottom" />
+                </Show>
+                <button
+                  type="button"
+                  class="flex min-w-0 items-center gap-1.5 rounded-md px-1.5 py-1 hover:bg-v2-overlay-simple-overlay-hover focus-visible:outline-none focus-visible:bg-v2-overlay-simple-overlay-hover"
+                  aria-label={language.t("session.new.workspace.chooseServerProject")}
+                  title={serverLabel()}
+                  onClick={() => props.project.setOpen(true)}
+                >
+                  <IconV2 name="monitor" size="small" class="shrink-0 text-v2-icon-icon-muted" />
+                  <span class="max-w-40 truncate">{serverLabel()}</span>
+                </button>
+                <Show when={props.project.selected()}>
                   <Show
                     when={props.workspace.bar.visible()}
                     fallback={
-                      <PromptGitStatus branch={props.workspace.bar.branch()} noGit={!props.workspace.project.git()} />
+                      <PromptGitStatus
+                        branch={props.workspace.bar.branch()}
+                        noGit={!props.workspace.project.git()}
+                        separator={false}
+                        onClick={() => props.project.setOpen(true)}
+                      />
                     }
                   >
                     <PromptWorkspaceSelector
                       value={props.workspace.selection.value()}
                       projectRoot={props.workspace.project.root()}
                       workspaces={props.workspace.project.workspaces()}
+                      branches={props.workspace.project.branches()}
                       branch={props.workspace.bar.branch()}
+                      compact
                       onChange={props.workspace.selection.set}
                       onDone={props.input.restoreFocus}
                     />
                   </Show>
-                </div>
-              </Show>
+                </Show>
+              </div>
+              <div class="relative -mt-px [&_[data-component=prompt-input-v2]]:rounded-t-lg">
+                <PromptInputV2Composer controller={props.input} />
+              </div>
             </div>
           </div>
         </div>

@@ -10,6 +10,7 @@ export async function installTimelineSettings(page: Page) {
       JSON.stringify({
         general: {
           newLayoutDesigns: true,
+          sessionTabPosition: "top",
           editToolPartsExpanded: true,
           shellToolPartsExpanded: true,
           showReasoningSummaries: true,
@@ -41,6 +42,11 @@ export async function installStressSessionTabs(page: Page, input?: { draftID?: s
   const server = stressServer()
   await page.addInitScript(
     ({ directory, sessionIDs, dirBase64, server, draftID }) => {
+      const settings = JSON.parse(localStorage.getItem("settings.v3") ?? "{}")
+      localStorage.setItem(
+        "settings.v3",
+        JSON.stringify({ ...settings, general: { ...settings.general, sessionTabPosition: "top" } }),
+      )
       localStorage.setItem(
         "opencode.global.dat:server",
         JSON.stringify({

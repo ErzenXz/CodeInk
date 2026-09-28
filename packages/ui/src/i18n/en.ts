@@ -74,15 +74,6 @@ export const dict: Record<string, string> = {
   "ui.sessionTurn.error.freeUsageExceeded": "Free usage exceeded",
   "ui.sessionTurn.error.addCredits": "Add credits",
 
-  "dialog.usageExceeded.freeTier.title": "Free limit reached",
-  "dialog.usageExceeded.freeTier.description":
-    "Subscribe to OpenCode Go for reliable access to the best open-source models for $10/month.",
-  "dialog.usageExceeded.freeTier.actionLabel": "Subscribe",
-  "dialog.usageExceeded.accountRateLimit.title": "Go limit reached",
-  "dialog.usageExceeded.accountRateLimit.description":
-    "Usage limit reached. To continue using this model now, enable usage from your available balance",
-  "dialog.usageExceeded.accountRateLimit.actionLabel": "Open settings",
-
   "ui.sessionTurn.status.delegating": "Delegating work",
   "ui.sessionTurn.status.planning": "Planning next steps",
   "ui.sessionTurn.status.gatheringContext": "Exploring",
@@ -221,6 +212,8 @@ export const dict: Record<string, string> = {
   "ui.message.duration.seconds": "{{count}}s",
   "ui.message.duration.minutesSeconds": "{{minutes}}m {{seconds}}s",
   "ui.message.interrupted": "Interrupted",
+  "ui.message.weeklyDelta": "+{{percent}}% weekly",
+  "ui.message.weeklyDeltaHint": "Observed change in your account's weekly limit during this reply. Other activity may contribute.",
   "ui.message.queued": "Queued",
   "ui.message.attachment.alt": "attachment",
 

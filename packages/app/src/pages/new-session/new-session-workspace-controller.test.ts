@@ -39,5 +39,8 @@ describe("new session workspace selection", () => {
       "feature",
     )
     expect(resolveNewSessionBranch({ worktree: "/missing", local: "dev", worktreeBranch: branch })).toBe("dev")
+    expect(resolveNewSessionBranch({ worktree: "branch:feature%2Flogin", local: "dev", worktreeBranch: branch })).toBe(
+      "feature/login",
+    )
   })
 })

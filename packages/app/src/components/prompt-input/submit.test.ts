@@ -660,4 +660,32 @@ describe("prompt submit worktree selection", () => {
     expect(storedSessions["/repo/worktree-a"]?.[0]).toMatchObject({ id: "session-1", title: "New session 1" })
     expect(optimisticSeeded).toEqual([true])
   })
+
+  test("holds a busy-session message in the queue without sending it", async () => {
+    params = { id: "session-1" }
+    const queued: Array<{ sessionID: string; prompt: Prompt }> = []
+    const submit = createPromptSubmit({
+      prompt,
+      info: () => ({ id: "session-1" }),
+      imageAttachments: () => [],
+      commentCount: () => 0,
+      autoAccept: () => false,
+      mode: () => "normal",
+      working: () => true,
+      editor: () => undefined,
+      queueScroll: () => undefined,
+      promptLength: (value) => value.reduce((sum, part) => sum + ("content" in part ? part.content.length : 0), 0),
+      addToHistory: () => undefined,
+      resetHistoryNavigation: () => undefined,
+      setMode: () => undefined,
+      setPopover: () => undefined,
+      shouldQueue: () => true,
+      onQueue: (draft) => queued.push(draft),
+    })
+
+    await submit.handleSubmit({ preventDefault: () => undefined } as unknown as Event)
+
+    expect(queued).toMatchObject([{ sessionID: "session-1", prompt: [{ type: "text", content: "ls" }] }])
+    expect(sentPrompts).toEqual([])
+  })
 })

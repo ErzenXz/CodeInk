@@ -1,7 +1,7 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http"
 import { createHash, randomUUID, timingSafeEqual } from "node:crypto"
 import { homedir } from "node:os"
-import { basename, join, resolve } from "node:path"
+import { basename, dirname, join, resolve } from "node:path"
 import { readFile, realpath, stat, unlink } from "node:fs/promises"
 import { fileURLToPath } from "node:url"
 import { execFile } from "node:child_process"
@@ -20,27 +20,18 @@ import { ModelCatalog } from "./model-catalog"
 import { savedTool, toolInfo } from "./adapters/tool-info"
 import { attachmentPath, stageAttachment } from "./attachments"
 import { handoffContext } from "./handoff"
+import { GatewayKeyStore, gatewayEndpoints, type GatewayProvider } from "./gateway-keys"
+import { readAgentWeeklyLimit } from "./agent-extensions"
+import { weeklyDelta } from "./weekly-delta"
+import { sessionSummary } from "./session-summary"
 
 const projectID = (directory: string) => createHash("sha256").update(directory).digest("hex").slice(0, 40)
 const signature = (value: unknown) => createHash("sha256").update(JSON.stringify(value)).digest("hex").slice(0, 24)
 const tokens = { input: 0, output: 0, reasoning: 0, cache: { read: 0, write: 0 } }
 const toolCache = new WeakMap<object, { text: string; info: ReturnType<typeof savedTool> }>()
 const partIDs = new WeakMap<Session["messages"][number], { index: number; id: string; value: string }>()
-function sessionCost(session: Session) {
-  if (session.reportedCost !== undefined) return session.reportedCost
-  let cost = 0
-  let seen = false
-  for (const message of session.messages) {
-    if (message.role !== "user") continue
-    if (!message.costs) return undefined
-    seen = true
-    for (const amount of Object.values(message.costs)) cost += amount
-  }
-  return seen ? cost : undefined
-}
-
 export function legacySession(session: Session): LegacySession {
-  const cost = sessionCost(session)
+  const cost = sessionSummary(session).cost
   return {
     id: session.id,
     slug: session.id,
@@ -53,18 +44,27 @@ export function legacySession(session: Session): LegacySession {
     time: { created: session.createdAt ?? session.updatedAt, updated: session.updatedAt },
     cost: cost ?? 0,
     ...{ codeinkCostKnown: cost !== undefined },
+    ...(session.handoff
+      ? { codeinkHandoff: { fromSessionID: session.handoff.fromSessionID, fromAgentID: session.handoff.fromAgentID } }
+      : {}),
     tokens,
   }
 }
 
 // The upstream renderer consumes its original wire format. Protocol translation
 // stays here so its session layout, timeline, composer and panels remain intact.
-export function legacyMessages(session: Session, attachmentURL = (id: string) => `attachment:${id}`, startIndex = 0, endIndex = session.messages.length): { info: Message; parts: Part[] }[] {
+export function legacyMessages(
+  session: Session,
+  attachmentURL = (id: string) => `attachment:${id}`,
+  startIndex = 0,
+  endIndex = session.messages.length,
+): { info: Message; parts: Part[] }[] {
   const result: { info: Message; parts: Part[] }[] = []
   let parent = ""
   let model = session.model
   let mode: "build" | "plan" = "build"
   let usage: Usage | undefined
+  let weeklyUsageDelta: number | undefined
   let cost: number | undefined
   let current: { info: Message; parts: Part[] } | undefined
   session.messages.slice(startIndex, endIndex).forEach((message, offset) => {
@@ -85,6 +85,7 @@ export function legacyMessages(session: Session, attachmentURL = (id: string) =>
       }
       parent = message.id
       usage = message.usage
+      weeklyUsageDelta = message.weeklyDelta
       model = usage?.model ?? message.model ?? session.model
       mode = message.mode ?? "build"
       cost = message.costs ? Object.values(message.costs).reduce((a, b) => a + b, 0) : undefined
@@ -142,6 +143,7 @@ export function legacyMessages(session: Session, attachmentURL = (id: string) =>
         },
         parts: [],
       }
+      if (weeklyUsageDelta !== undefined) Object.assign(current.info, { codeinkWeeklyDelta: weeklyUsageDelta })
       result.push(current)
     }
     if (current.info.role === "assistant" && message.completedAt !== undefined)
@@ -232,15 +234,31 @@ export async function startBridge(
   password: string,
   directory: string,
   env: NodeJS.ProcessEnv,
+  usageMonitoringEnabled: () => boolean = () => false,
 ) {
   const store = new WorkspaceStore(join(directory, "agents.json"))
   await store.load()
+  const gatewayKeys = new GatewayKeyStore(join(directory, "gateway-keys.json"))
+  await gatewayKeys.load()
   const attachmentOwners = new Map<string, Attachment>(
-    store.state.sessions.flatMap((session) => session.messages.flatMap((message) => message.attachments ?? [])).map((item) => [item.id, item]),
+    store.state.sessions
+      .flatMap((session) => sessionSummary(session).attachments)
+      .map((item) => [item.id, item]),
   )
   const streams = new Set<{ response: ServerResponse; directory?: string; global: boolean }>()
+  const sessionStatusListeners = new Set<() => void>()
   const snapshots = new Map<string, Map<string, string>>()
-  const projected = new WeakMap<Session, { length: number; userIndex: number; userID?: string; updatedAt: number; status: Session["status"] }>()
+  const projected = new WeakMap<
+    Session,
+    { length: number; userIndex: number; userID?: string; updatedAt: number; status: Session["status"] }
+  >()
+  const weeklyRuns = new Map<string, {
+    agentID: string
+    family: string
+    userID: string
+    before: ReturnType<typeof readAgentWeeklyLimit>
+    shared: boolean
+  }>()
   let attachmentPort = 0
   const attachmentURL = (id: string) => `http://${hostname}:${attachmentPort}/attachment/${id}`
   const emit = (directory: string, type: string, properties: unknown) => {
@@ -272,13 +290,13 @@ export async function startBridge(
   const publish = (session: Session) => {
     const previous = snapshots.get(session.id) ?? new Map<string, string>()
     const last = projected.get(session)
-    const addedUser = session.messages
-      .slice(last?.length ?? 0)
-      .findLastIndex((message) => message.role === "user")
+    const addedUser = session.messages.slice(last?.length ?? 0).findLastIndex((message) => message.role === "user")
     const userIndex =
       !last || session.messages.length < last.length
         ? session.messages.findLastIndex((message) => message.role === "user")
-        : addedUser < 0 ? last.userIndex : last.length + addedUser
+        : addedUser < 0
+          ? last.userIndex
+          : last.length + addedUser
     const userID = session.messages[userIndex]?.id
     const reset = !last || last.userID !== userID || session.messages.length < last.length
     const next = reset ? new Map<string, string>() : previous
@@ -290,7 +308,13 @@ export async function startBridge(
     }
     const info = legacySession(session)
     changed("session", info, "session.updated", { info })
-    if (session.status === "running" || (last && (last.length !== session.messages.length || last.updatedAt !== session.updatedAt || last.status !== session.status))) {
+    if (
+      session.status === "running" ||
+      (last &&
+        (last.length !== session.messages.length ||
+          last.updatedAt !== session.updatedAt ||
+          last.status !== session.status))
+    ) {
       for (const message of legacyMessages(session, attachmentURL, Math.max(0, userIndex))) {
         changed(message.info.id, message.info, "message.updated", { info: message.info })
         message.parts.forEach((part) => changed(part.id, part, "message.part.updated", { part }))
@@ -307,14 +331,69 @@ export async function startBridge(
     const status = { type: session.status === "running" ? "busy" : "idle" }
     const previousStatus = previous.get("status")
     changed("status", status, "session.status", { sessionID: session.id, status })
+    if (previousStatus !== signature(status)) sessionStatusListeners.forEach((listener) => listener())
     if (status.type === "idle" && previousStatus !== signature(status))
       emit(session.directory, "session.idle", { sessionID: session.id })
     snapshots.set(session.id, next)
-    projected.set(session, { length: session.messages.length, userIndex, userID, updatedAt: session.updatedAt, status: session.status })
+    projected.set(session, {
+      length: session.messages.length,
+      userIndex,
+      userID,
+      updatedAt: session.updatedAt,
+      status: session.status,
+    })
+    if (last?.status !== "running" && session.status === "running" && userID && usageMonitoringEnabled() && (last || session.messages.length === 1)) {
+      const family = store.state.agents.find((item) => item.id === session.agentID)?.protocol ?? session.agentID
+      const overlapping = [...weeklyRuns.values()].filter((item) => item.family === family)
+      overlapping.forEach((item) => { item.shared = true })
+      weeklyRuns.set(session.id, {
+        agentID: session.agentID,
+        family,
+        userID,
+        before: overlapping.length > 0
+          ? Promise.resolve(undefined)
+          : listAgents().then((agents) => agents.find((item) => item.id === session.agentID))
+            .then((agent) => agent ? readAgentWeeklyLimit(agent, env) : undefined)
+            .catch(() => undefined),
+        shared: overlapping.length > 0,
+      })
+    }
+    if (last?.status === "running" && session.status !== "running") {
+      const run = weeklyRuns.get(session.id)
+      if (!run) return
+      void (async () => {
+        try {
+          const before = await run.before
+          const userIndex = session.messages.findIndex((item) => item.id === run.userID)
+          const firstOutput = session.messages.slice(userIndex + 1).find((item) => item.role !== "user")
+          if (!before || !firstOutput?.createdAt || before.sampledAt > firstOutput.createdAt || run.shared || !usageMonitoringEnabled() || session.status !== "idle") return
+          const agent = (await listAgents()).find((item) => item.id === run.agentID)
+          if (!agent) return
+          const after = await readAgentWeeklyLimit(agent, env)
+          const delta = weeklyDelta(before, after)
+          const user = session.messages.find((item) => item.id === run.userID)
+          if (!delta || !user || run.shared || session.status !== "idle" || session.messages.findLast((item) => item.role === "user")?.id !== user.id) return
+          user.weeklyDelta = delta
+          session.updatedAt = Date.now()
+          await store.save()
+          publish(session)
+        } finally {
+          if (weeklyRuns.get(session.id) === run) weeklyRuns.delete(session.id)
+        }
+      })().catch(() => {
+        if (weeklyRuns.get(session.id) === run) weeklyRuns.delete(session.id)
+      })
+    }
   }
   // The catalog is created below; the callback only runs once a session needs model features.
-  const sessions = new Sessions(store, env, publish, (agentID) => catalog.features(agentID))
-  const listAgents = () => detectAgents(store.state.agents, env)
+  const sessions = new Sessions(
+    store,
+    env,
+    publish,
+    (agentID) => catalog.features(agentID),
+    (provider) => gatewayKeys.get(provider),
+  )
+  const listAgents = () => detectAgents(store.state.agents, env, Object.values(gatewayKeys.status()).some(Boolean))
   const saveAgent = async (input: Agent) => {
     const agent = agentSchema.parse(input)
     if (sessions.isAgentBusy(agent.id)) throw new Error(t("pending"))
@@ -329,13 +408,33 @@ export async function startBridge(
     return listAgents()
   }
   let catalogTimer: ReturnType<typeof setTimeout> | undefined
-  const catalog = new ModelCatalog(env, () => {
-    if (catalogTimer) return
-    catalogTimer = setTimeout(() => {
-      catalogTimer = undefined
-      emit("global", "integration.connection.updated", {})
-    }, 80)
-  })
+  const catalog = new ModelCatalog(
+    env,
+    () => {
+      if (catalogTimer) return
+      catalogTimer = setTimeout(() => {
+        catalogTimer = undefined
+        emit("global", "integration.connection.updated", {})
+      }, 80)
+    },
+    (provider) => gatewayKeys.get(provider),
+  )
+  const setGatewayKey = async (provider: GatewayProvider, key: string) => {
+    if (sessions.isAgentBusy("codeink")) throw new Error(t("pending"))
+    if (key.trim()) {
+      const response = await fetch(`${gatewayEndpoints[provider]}/${provider === "openrouter" ? "key" : "models"}`, {
+        headers: { Authorization: `Bearer ${key.trim()}` },
+        signal: AbortSignal.timeout(10_000),
+      })
+      await response.body?.cancel()
+      if (!response.ok) throw new Error(t("gatewayKeyRejected"))
+    }
+    const status = await gatewayKeys.set(provider, key)
+    sessions.resetAgent("codeink")
+    catalog.invalidate("codeink")
+    emit("global", "integration.connection.updated", {})
+    return status
+  }
   const providers = async (cwd: string) => catalog.list(await listAgents(), cwd)
   const agentRules = async (): Promise<AgentRulesReport[]> =>
     (await listAgents()).flatMap((agent) => {
@@ -359,23 +458,6 @@ export async function startBridge(
     await sessions.setRules(agentID, rules)
     return agentRules()
   }
-  const project = async (path: string) => {
-    const root = await realpath(path)
-    if (!(await stat(root)).isDirectory()) throw new Error(t("invalidProject"))
-    if (!store.state.projects.some((item) => item.directory === root)) {
-      store.state.projects.push({ directory: root, name: basename(root) })
-      await store.save()
-    }
-    const stored = store.state.projects.find((item) => item.directory === root)!
-    return {
-      id: projectID(root),
-      worktree: root,
-      name: stored.name,
-      icon: stored.icon,
-      time: { created: 0, updated: 0 },
-      sandboxes: [],
-    }
-  }
   const git = async (cwd: string, args: string[]) =>
     (
       await promisify(execFile)("git", args, {
@@ -386,6 +468,47 @@ export async function startBridge(
         windowsHide: true,
       })
     ).stdout
+  const worktrees = async (cwd: string) =>
+    git(cwd, ["worktree", "list", "--porcelain"]).then(
+      (output) =>
+        output
+          .trim()
+          .split(/\n\s*\n/)
+          .map((entry) => ({
+            directory: entry.match(/^worktree (.+)$/m)?.[1],
+            branch: entry.match(/^branch refs\/heads\/(.+)$/m)?.[1],
+          }))
+          .filter((entry): entry is { directory: string; branch: string | undefined } => !!entry.directory),
+      () => undefined,
+    )
+  const project = async (path: string) => {
+    const root = await realpath(path)
+    if (!(await stat(root)).isDirectory()) throw new Error(t("invalidProject"))
+    if (!store.state.projects.some((item) => item.directory === root)) {
+      store.state.projects.push({ directory: root, name: basename(root) })
+      await store.save()
+    }
+    const stored = store.state.projects.find((item) => item.directory === root)!
+    const linked = await worktrees(root)
+    return {
+      id: projectID(root),
+      worktree: root,
+      name: stored.name,
+      icon: stored.icon,
+      time: { created: 0, updated: 0 },
+      vcs: linked ? ("git" as const) : undefined,
+      sandboxes: linked?.map((item) => item.directory).filter((directory) => directory !== root) ?? [],
+      codeinkWorktreeBranches: Object.fromEntries(
+        linked?.filter((item) => item.branch).map((item) => [item.directory, item.branch]) ?? [],
+      ),
+      codeinkBranches: linked
+        ? await git(root, ["for-each-ref", "--format=%(refname:short)", "refs/heads"]).then(
+            (output) => output.trim().split("\n").filter(Boolean),
+            () => [],
+          )
+        : [],
+    }
+  }
   const readBody = async (request: IncomingMessage) => {
     const chunks: Buffer[] = []
     let size = 0
@@ -485,6 +608,26 @@ export async function startBridge(
       if (path === "/project" || path === "/experimental/project")
         return json(await Promise.all(store.state.projects.map((item) => project(item.directory))))
       if (path === "/project/current") return json(await project(cwd))
+      if (path === "/experimental/worktree" && method === "GET")
+        return json((await worktrees(cwd))?.map((item) => item.directory) ?? [])
+      if (path === "/experimental/worktree" && method === "POST") {
+        const root = await git(cwd, ["rev-parse", "--show-toplevel"]).then((value) => value.trim())
+        const name = typeof body.name === "string" && body.name.trim()
+          ? body.name.trim()
+          : `codeink-${Date.now().toString(36)}-${randomUUID().slice(0, 6)}`
+        await git(root, ["check-ref-format", "--branch", name])
+        const existing = (await worktrees(root))?.find((item) => item.branch === name)
+        if (existing) return json({ name, branch: name, directory: existing.directory })
+        const branchExists = await git(root, ["show-ref", "--verify", "--quiet", `refs/heads/${name}`]).then(
+          () => true,
+          () => false,
+        )
+        const slug = name.replace(/[^a-zA-Z0-9._-]+/g, "-").slice(0, 48)
+        const directory = join(dirname(root), `${basename(root)}-${slug}-${randomUUID().slice(0, 6)}`)
+        await git(root, ["worktree", "add", ...(branchExists ? [] : ["-b", name]), directory, ...(branchExists ? [name] : ["HEAD"])])
+        emit("global", "project.updated", await project(root))
+        return json({ name, branch: name, directory })
+      }
       const projectRoute = /^\/project\/([^/]+)$/.exec(path)
       if (projectRoute && method === "PATCH") {
         const item = store.state.projects.find((item) => projectID(item.directory) === projectRoute[1])
@@ -516,7 +659,6 @@ export async function startBridge(
           "/experimental/resource",
           "/experimental/tool",
           "/experimental/tool/ids",
-          "/experimental/worktree",
           "/experimental/workspace",
           "/pty",
         ].includes(path) &&
@@ -706,10 +848,12 @@ export async function startBridge(
           const attachments = session.messages.flatMap((message) => message.attachments ?? [])
           await sessions.archive(session.id)
           snapshots.delete(session.id)
-          await Promise.all(attachments.map(async (attachment) => {
-            attachmentOwners.delete(attachment.id)
-            await unlink(attachmentPath(directory, attachment.id)).catch(() => {})
-          }))
+          await Promise.all(
+            attachments.map(async (attachment) => {
+              attachmentOwners.delete(attachment.id)
+              await unlink(attachmentPath(directory, attachment.id)).catch(() => {})
+            }),
+          )
           emit(session.directory, "session.deleted", { info: legacySession(session) })
           return json(true)
         }
@@ -724,8 +868,14 @@ export async function startBridge(
           const limit = Number(url.searchParams.get("limit") ?? 20)
           const before = url.searchParams.get("before")
           const endIndex = before === null ? session.messages.length : Number(before)
-          if (!Number.isInteger(limit) || limit < 1 || !Number.isInteger(endIndex) || endIndex < 0 || endIndex > session.messages.length ||
-              (before !== null && endIndex < session.messages.length && session.messages[endIndex]?.role !== "user"))
+          if (
+            !Number.isInteger(limit) ||
+            limit < 1 ||
+            !Number.isInteger(endIndex) ||
+            endIndex < 0 ||
+            endIndex > session.messages.length ||
+            (before !== null && endIndex < session.messages.length && session.messages[endIndex]?.role !== "user")
+          )
             return json({ error: "Invalid conversation page" }, 400)
           const startIndex = pageStart(session, endIndex, Math.min(limit, 200))
           if (startIndex > 0) response.setHeader("x-next-cursor", String(startIndex))
@@ -734,7 +884,8 @@ export async function startBridge(
         if (action?.startsWith("message/") && method === "GET") {
           const id = decodeURIComponent(action.slice(8))
           const exact = session.messages.findIndex((item) => item.role === "user" && item.id === id)
-          const startIndex = exact >= 0 ? exact : session.messages.findIndex((item) => item.role === "user" && `${item.id}a` === id)
+          const startIndex =
+            exact >= 0 ? exact : session.messages.findIndex((item) => item.role === "user" && `${item.id}a` === id)
           if (startIndex < 0) return json({ error: "Message not found" }, 404)
           const next = session.messages.findIndex((item, index) => index > startIndex && item.role === "user")
           const endIndex = next < 0 ? session.messages.length : next
@@ -751,18 +902,24 @@ export async function startBridge(
           }
           const parts = array(body.parts).map(object)
           const staged = await Promise.allSettled(
-            parts.filter((part) => part.type === "file" && !part.source).map((part) => stageAttachment(directory, part, string(body.messageID))),
+            parts
+              .filter((part) => part.type === "file" && !part.source)
+              .map((part) => stageAttachment(directory, part, string(body.messageID))),
           )
           const failure = staged.find((result) => result.status === "rejected")
           if (failure) {
-            await Promise.all(staged
-              .filter((result) => result.status === "fulfilled")
-              .filter((result) => !attachmentOwners.has(result.value.id))
-              .map((result) => unlink(result.value.path).catch(() => {})))
+            await Promise.all(
+              staged
+                .filter((result) => result.status === "fulfilled")
+                .filter((result) => !attachmentOwners.has(result.value.id))
+                .map((result) => unlink(result.value.path).catch(() => {})),
+            )
             throw failure.reason
           }
           const attachments = staged.filter((result) => result.status === "fulfilled").map((result) => result.value)
-          const existingAttachments = new Set(attachments.filter((attachment) => attachmentOwners.has(attachment.id)).map((attachment) => attachment.id))
+          const existingAttachments = new Set(
+            attachments.filter((attachment) => attachmentOwners.has(attachment.id)).map((attachment) => attachment.id),
+          )
           attachments.forEach((attachment) => attachmentOwners.set(attachment.id, attachment))
           try {
             const text = parts
@@ -779,28 +936,42 @@ export async function startBridge(
             if (!session.messages.length)
               session.title =
                 text.trim().slice(0, 72) ||
-                attachments.map((attachment) => attachment.filename).join(", ").slice(0, 72) ||
+                attachments
+                  .map((attachment) => attachment.filename)
+                  .join(", ")
+                  .slice(0, 72) ||
                 session.title
             const system = string(body.system)
-            const handoffFrom = system.startsWith("codeink-handoff:") ? sessions.get(system.slice("codeink-handoff:".length)) : undefined
-            if (handoffFrom && (handoffFrom.id === session.id || handoffFrom.directory !== session.directory || session.messages.length))
+            const handoffFrom = system.startsWith("codeink-handoff:")
+              ? sessions.get(system.slice("codeink-handoff:".length))
+              : undefined
+            if (
+              handoffFrom &&
+              (handoffFrom.id === session.id || handoffFrom.directory !== session.directory || session.messages.length)
+            )
               throw new Error(t("invalidHandoff"))
             await sessions.send({
               sessionID: session.id,
               messageID: string(body.messageID) || undefined,
+              delivery: body.delivery === "steer" || body.delivery === "queue" ? body.delivery : undefined,
               agentID,
               directory: session.directory,
               model: modelID,
               variant: string(body.variant) || undefined,
               text,
               handoffContext: handoffFrom ? handoffContext(handoffFrom) : system.slice(0, 12_000) || undefined,
+              handoffSource: handoffFrom ? { sessionID: handoffFrom.id, agentID: handoffFrom.agentID } : undefined,
               attachments,
-            })
+            }, false)
           } catch (error) {
-            await Promise.all(attachments.filter((attachment) => !existingAttachments.has(attachment.id)).map(async (attachment) => {
-              attachmentOwners.delete(attachment.id)
-              await unlink(attachment.path).catch(() => {})
-            }))
+            await Promise.all(
+              attachments
+                .filter((attachment) => !existingAttachments.has(attachment.id))
+                .map(async (attachment) => {
+                  attachmentOwners.delete(attachment.id)
+                  await unlink(attachment.path).catch(() => {})
+                }),
+            )
             throw error
           }
           return json(true, 200)
@@ -823,10 +994,22 @@ export async function startBridge(
   attachmentPort = address.port
   let stopping: Promise<void> | undefined
   return {
+    subscribeSessionStatus(listener: () => void) {
+      sessionStatusListeners.add(listener)
+      return () => sessionStatusListeners.delete(listener)
+    },
     listAgents,
     saveAgent,
     agentRules,
     setAgentRules,
+    gatewayStatus: () => gatewayKeys.status(),
+    handoffPrompt: (sessionID: string) => {
+      const session = sessions.get(sessionID)
+      if (!session.handoff) return undefined
+      const request = session.messages.find((message) => message.role === "user")?.text ?? ""
+      return `${session.handoff.context}\n\nCurrent request:\n${request}`
+    },
+    setGatewayKey,
     store,
     sessions,
     server,

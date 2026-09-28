@@ -19,7 +19,13 @@ import { sessionNotFoundError } from "@/utils/server-errors"
 import { rootSession } from "@/utils/session-route"
 import { normalizeSessionInfo } from "@/utils/session"
 import { compareMessages, messageKey, normalizeSessionMessages } from "@/utils/session-message"
-import { dropSessionCaches, pickSessionCacheEvictions, SESSION_CACHE_LIMIT } from "./global-sync/session-cache"
+import {
+  dropSessionCaches,
+  pickSessionCacheEvictions,
+  sessionCacheBytes,
+  SESSION_CACHE_LIMIT,
+  SESSION_CACHE_BYTES,
+} from "./global-sync/session-cache"
 import { createV2SessionReducer, type V2SessionReduction } from "./server-session-v2-reducer"
 import type { ServerApi } from "@/utils/server"
 
@@ -474,6 +480,7 @@ export function createServerSession(
     clearedMessageParts: new Set([...load.clearedMessageParts].filter((messageID) => messageID !== exclude)),
   })
 
+  const sizes = new Map<string, number>()
   const evict = (sessionIDs: string[]) => {
     if (sessionIDs.length === 0) return
     const evicted = new Set(sessionIDs)
@@ -481,6 +488,7 @@ export function createServerSession(
       if (evicted.has(item.sessionID)) deltaBases.delete(partID)
     }
     sessionIDs.forEach((sessionID) => {
+      sizes.delete(sessionID)
       generations.delete(sessionID)
       clearOptimistic(sessionID)
       requests.delete(sessionID)
@@ -531,7 +539,14 @@ export function createServerSession(
 
   const touch = (sessionID: string) =>
     evict(
-      pickSessionCacheEvictions({ seen, keep: sessionID, limit: SESSION_CACHE_LIMIT, preserve: protectedSessions() }),
+      pickSessionCacheEvictions({
+        seen,
+        keep: sessionID,
+        limit: SESSION_CACHE_LIMIT,
+        preserve: protectedSessions(),
+        sizes,
+        maxBytes: SESSION_CACHE_BYTES,
+      }),
     )
 
   const fetchMessages = async (sessionID: string, limit: number, before?: string, onAttempt?: () => void) => {
@@ -829,7 +844,11 @@ export function createServerSession(
         if (orphanParts.get(sessionID)?.size === 0) orphanParts.delete(sessionID)
       }
       if (messageLoads.get(sessionID) === load) messageLoads.delete(sessionID)
-      if (generations.get(sessionID) === active) setMeta("loading", sessionID, false)
+      if (generations.get(sessionID) === active) {
+        setMeta("loading", sessionID, false)
+        sizes.set(sessionID, sessionCacheBytes(data, sessionID))
+        touch(sessionID)
+      }
     }
   }
 
@@ -1418,6 +1437,10 @@ export function createServerSession(
       const count = pinned.get(sessionID)
       if (!count || count === 1) pinned.delete(sessionID)
       if (count && count > 1) pinned.set(sessionID, count - 1)
+      if (count && !pinned.has(sessionID)) {
+        sizes.set(sessionID, sessionCacheBytes(data, sessionID))
+        touch(sessionID)
+      }
     },
     apply,
     applyV2,

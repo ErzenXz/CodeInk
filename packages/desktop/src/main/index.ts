@@ -18,6 +18,7 @@ import { registerIpcHandlers, sendDeepLinks, sendMenuCommand } from "./ipc"
 import { forwardInitializationFailure } from "./initialization"
 import { exportDebugLogs, initCrashReporter, initLogging, startNetLog, write as writeLog } from "./logging"
 import { createMenu } from "./menu"
+import { startMenuBar } from "./menu-bar"
 import {
   finishFirstLaunchOnboarding,
   initializeOldLayoutEligibility,
@@ -271,6 +272,7 @@ const main = Effect.gen(function* () {
   registerRendererProtocol()
   setDockIcon()
   const updater = setupUpdater()
+  let refreshMenuBar: (() => void) | undefined
   const menuDeps = {
     trigger: (id: string) => {
       const win = getLastFocusedWindow()
@@ -307,7 +309,10 @@ const main = Effect.gen(function* () {
     exportDebugLogs: () => exportDebugLogs(),
     recordFatalRendererError: (error) => writeLog("renderer", "fatal renderer error", { ...error }, "error"),
     setNativeTranslations: (bundle) => {
-      if (setNativeTranslations(bundle)) createMenu(menuDeps)
+      if (setNativeTranslations(bundle)) {
+        createMenu(menuDeps)
+        refreshMenuBar?.()
+      }
     },
   })
   registerWslIpcHandlers(wslServers)
@@ -389,6 +394,12 @@ const main = Effect.gen(function* () {
   }).pipe(forwardInitializationFailure(serverReady), Effect.forkChild)
 
   yield* Fiber.await(loadingTask)
+  try {
+    refreshMenuBar = startMenuBar()
+    logger.log("menu bar started", { enabled: !!refreshMenuBar })
+  } catch (error) {
+    logger.error("menu bar setup failed", error)
+  }
 
   app.on("window-all-closed", () => {
     if (process.platform === "darwin") return

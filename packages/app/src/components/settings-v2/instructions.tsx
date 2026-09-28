@@ -1,7 +1,7 @@
-import { type Component, createEffect, createMemo, createResource, For, Show } from "solid-js"
+import { type Component, createEffect, createMemo, createResource, Show } from "solid-js"
 import { createStore } from "solid-js/store"
 import { ButtonV2 } from "@codeink/ui/v2/button-v2"
-import { ProviderIcon } from "@codeink/ui/provider-icon"
+import { SelectV2 } from "@codeink/ui/v2/select-v2"
 import { useLanguage } from "@/context/language"
 import { usePlatform } from "@/context/platform"
 import { showToast } from "@/utils/toast"
@@ -62,58 +62,44 @@ export const SettingsInstructionsV2: Component = () => {
           {language.t("settings.instructions.description")}
         </p>
         <Show when={platform.agentWorkspace} fallback={<p class="text-[13px]">{language.t("hub.desktopOnly")}</p>}>
-          <div class="flex flex-wrap gap-1">
-            <For each={ordered()}>
-              {(file) => (
-                <button
-                  type="button"
-                  class="flex h-8 items-center gap-2 rounded-full px-3 text-12-medium transition-colors duration-150"
-                  classList={{
-                    "bg-v2-background-bg-inverse text-v2-text-text-inverse": current()?.agentID === file.agentID,
-                    "text-v2-text-text-muted hover:bg-[var(--v2-glass-surface-hover)]":
-                      current()?.agentID !== file.agentID,
-                    "opacity-60": !file.installed,
-                  }}
-                  aria-pressed={current()?.agentID === file.agentID}
-                  onClick={() => {
-                    if (file.agentID === current()?.agentID) return
-                    if (dirty() && !window.confirm(language.t("settings.instructions.discard"))) return
-                    setState("selected", file.agentID)
-                  }}
-                >
-                  <ProviderIcon id={`local-${file.agentID}`} class="size-3.5 shrink-0" />
-                  {file.name}
-                </button>
-              )}
-            </For>
-          </div>
           <Show when={current()}>
             {(file) => (
-              <div data-component="settings-v2-list" class="!px-0">
-                <div class="flex min-w-0 items-center gap-2 border-b-[0.5px] border-v2-border-border-muted px-[22px] py-3">
-                  <span
-                    class="min-w-0 flex-1 truncate font-mono text-[11px] text-v2-text-text-faint"
-                    title={file().path}
-                  >
-                    {file().path}
-                  </span>
+              <div class="flex min-w-0 flex-col gap-3">
+                <div class="flex min-w-0 items-center gap-3">
+                  <SelectV2
+                    appearance="base"
+                    class="max-w-56"
+                    options={ordered()}
+                    current={file()}
+                    value={(item) => item.agentID}
+                    label={(item) => item.name}
+                    aria-label={language.t("settings.instructions.title")}
+                    onSelect={(item) => {
+                      if (!item || item.agentID === file().agentID) return
+                      if (dirty() && !window.confirm(language.t("settings.instructions.discard"))) return
+                      setState("selected", item.agentID)
+                    }}
+                  />
                   <Show
                     when={dirty()}
                     fallback={
                       <Show when={!file().exists}>
-                        <span class="shrink-0 text-12-regular text-v2-text-text-faint">
+                        <span class="text-[11px] text-v2-text-text-faint">
                           {language.t("settings.instructions.new")}
                         </span>
                       </Show>
                     }
                   >
-                    <span class="shrink-0 text-12-regular text-v2-state-fg-warning">
+                    <span class="text-[11px] text-v2-state-fg-warning">
                       {language.t("settings.instructions.unsaved")}
                     </span>
                   </Show>
                 </div>
+                <span class="min-w-0 truncate font-mono text-[11px] text-v2-text-text-faint" title={file().path}>
+                  {file().path}
+                </span>
                 <textarea
-                  class="block min-h-[420px] w-full resize-y bg-transparent px-[22px] py-4 font-mono text-[12.5px] leading-5 text-v2-text-text-base outline-none placeholder:text-v2-text-text-faint"
+                  class="block min-h-[300px] w-full resize-y rounded-lg border border-v2-border-border-muted bg-v2-background-bg-base px-4 py-3 font-mono text-[12.5px] leading-5 text-v2-text-text-base outline-none focus:border-v2-border-border-focus placeholder:text-v2-text-text-faint"
                   spellcheck={false}
                   placeholder={language.t("settings.instructions.placeholder")}
                   aria-label={file().name}

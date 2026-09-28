@@ -45,48 +45,16 @@ function knownThemes() {
 
 const names: Record<string, string> = {
   codeink: "CodeInk",
-  amoled: "AMOLED",
-  aura: "Aura",
-  ayu: "Ayu",
-  carbonfox: "Carbonfox",
-  catppuccin: "Catppuccin",
-  "catppuccin-frappe": "Catppuccin Frappe",
-  "catppuccin-macchiato": "Catppuccin Macchiato",
-  cobalt2: "Cobalt2",
-  cursor: "Cursor",
-  dracula: "Dracula",
-  everforest: "Everforest",
-  flexoki: "Flexoki",
-  github: "GitHub",
-  gruvbox: "Gruvbox",
-  kanagawa: "Kanagawa",
-  "lucent-orng": "Lucent Orng",
-  material: "Material",
-  matrix: "Matrix",
-  mercury: "Mercury",
-  monokai: "Monokai",
-  nightowl: "Night Owl",
-  nord: "Nord",
-  "one-dark": "One Dark",
-  onedarkpro: "One Dark Pro",
-  "codeink-classic": "CodeInk Classic",
-  orng: "Orng",
-  "osaka-jade": "Osaka Jade",
-  palenight: "Palenight",
-  rosepine: "Rose Pine",
-  shadesofpurple: "Shades of Purple",
-  solarized: "Solarized",
-  synthwave84: "Synthwave '84",
-  tokyonight: "Tokyonight",
-  vercel: "Vercel",
-  vesper: "Vesper",
-  zenburn: "Zenburn",
+  "codeink-slate": "CodeInk Slate",
+  "codeink-sage": "CodeInk Sage",
+  "codeink-ember": "CodeInk Ember",
+  "codeink-violet": "CodeInk Violet",
 }
 const codeinkTheme = codeinkThemeJson as DesktopTheme
 
 function normalize(id: string | null | undefined) {
   if (id === "oc-1" || id === "oc-2") return "codeink"
-  if (id === "opencode") return "codeink-classic"
+  if (id === "opencode") return "codeink"
   return id
 }
 
@@ -181,7 +149,8 @@ export const { use: useTheme, provider: ThemeProvider } = createSimpleContext({
     defaultTheme?: string
     onThemeApplied?: (theme: DesktopTheme, mode: "light" | "dark", scheme: ColorScheme) => void
   }) => {
-    const themeId = normalize(read(STORAGE_KEYS.THEME_ID) ?? props.defaultTheme) ?? "codeink"
+    const requestedTheme = normalize(read(STORAGE_KEYS.THEME_ID) ?? props.defaultTheme)
+    const themeId = requestedTheme && knownThemes().has(requestedTheme) ? requestedTheme : "codeink"
     const colorScheme = (read(STORAGE_KEYS.COLOR_SCHEME) as ColorScheme | null) ?? "system"
     const mode = colorScheme === "system" ? getSystemMode() : colorScheme
     const [store, setStore] = createStore({
@@ -267,7 +236,8 @@ export const { use: useTheme, provider: ThemeProvider } = createSimpleContext({
       makeEventListener(mediaQuery, "change", onMedia)
 
       const rawTheme = read(STORAGE_KEYS.THEME_ID)
-      const savedTheme = normalize(rawTheme ?? props.defaultTheme) ?? "codeink"
+      const requestedTheme = normalize(rawTheme ?? props.defaultTheme)
+      const savedTheme = requestedTheme && knownThemes().has(requestedTheme) ? requestedTheme : "codeink"
       const savedScheme = (read(STORAGE_KEYS.COLOR_SCHEME) as ColorScheme | null) ?? "system"
       write(STORAGE_KEYS.THEME_ID, savedTheme)
       write(STORAGE_KEYS.COLOR_SCHEME, savedScheme)

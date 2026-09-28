@@ -215,7 +215,10 @@ export function desktopNativePluralCategories(locale: DesktopNativeLocale) {
 
 function locale(value: string) {
   try {
-    return new Intl.Locale(value).maximize()
+    const parsed = new Intl.Locale(value)
+    // Bun's ICU infers "Aran" for pa-PK; Punjabi in Pakistan uses Arabic script.
+    if (parsed.language === "pa" && parsed.region === "PK" && !parsed.script) return new Intl.Locale("pa-Arab-PK")
+    return parsed.maximize()
   } catch {
     return undefined
   }
@@ -267,6 +270,26 @@ export const DESKTOP_NATIVE_ENGLISH = {
   "desktop.menu.shareFeedback": "Share Feedback",
   "desktop.menu.reportBug": "Report a Bug",
   "desktop.menu.ariaLabel": "CodeInk menu",
+  "desktop.tray.running": "Running sessions",
+  "desktop.tray.noneRunning": "No running sessions",
+  "desktop.tray.moreRunning": "{{count}} more running sessions",
+  "desktop.tray.usage": "Usage",
+  "desktop.tray.noLimits": "No plan limits available",
+  "desktop.tray.expiredLimits": "Saved Claude limits expired. Check /usage in Claude Code.",
+  "desktop.tray.staleLimits": "Saved Claude limits are outdated. Check /usage in Claude Code.",
+  "desktop.tray.staleOtherLimits": "Last good limits are outdated. Refresh usage.",
+  "desktop.tray.limit": "{{window}}: {{percent}}% used",
+  "desktop.tray.metric": "{{resource}}: {{value}} {{unit}}",
+  "desktop.tray.window.session": "Current session",
+  "desktop.tray.window.weekly": "Weekly",
+  "desktop.tray.window.other": "Limit",
+  "desktop.tray.resets": "Resets {{time}}",
+  "desktop.tray.outdated": "Usage data is outdated",
+  "desktop.tray.refreshFailed": "Refresh failed. Showing the last available data.",
+  "desktop.tray.tokens": "{{input}} input · {{output}} output tokens",
+  "desktop.tray.refresh": "Refresh usage",
+  "desktop.tray.openUsage": "Open Usage settings",
+  "desktop.tray.openApp": "Open CodeInk",
 
   "desktop.updater.dialog.checkFailed.message": "Update check failed.",
   "desktop.updater.dialog.checkFailed.title": "Update Error",
@@ -331,6 +354,103 @@ export type DesktopNativeMessages = Record<DesktopNativeKey, string>
 export type DesktopNativeBundle = { locale: DesktopNativeLocale; messages: DesktopNativeMessages }
 
 export const DESKTOP_NATIVE_KEYS = Object.keys(DESKTOP_NATIVE_ENGLISH) as DesktopNativeKey[]
+// Four older locale bundles store native strings by position. Freeze the original
+// order so adding English copy never remaps an existing translation.
+export const DESKTOP_NATIVE_TRANSLATED_KEYS = [
+  "desktop.menu.app",
+  "desktop.menu.file",
+  "desktop.menu.edit",
+  "desktop.menu.view",
+  "desktop.menu.go",
+  "desktop.menu.window",
+  "desktop.menu.help",
+  "desktop.menu.checkForUpdates",
+  "desktop.menu.settings",
+  "desktop.menu.reloadWebview",
+  "desktop.menu.restart",
+  "desktop.menu.exportLogs",
+  "desktop.menu.newSession",
+  "desktop.menu.openProject",
+  "desktop.menu.newWindow",
+  "desktop.menu.closeWindow",
+  "desktop.menu.undo",
+  "desktop.menu.redo",
+  "desktop.menu.cut",
+  "desktop.menu.copy",
+  "desktop.menu.paste",
+  "desktop.menu.delete",
+  "desktop.menu.selectAll",
+  "desktop.menu.toggleSidebar",
+  "desktop.menu.toggleTerminal",
+  "desktop.menu.toggleFileTree",
+  "desktop.menu.reload",
+  "desktop.menu.toggleDeveloperTools",
+  "desktop.menu.actualSize",
+  "desktop.menu.zoomIn",
+  "desktop.menu.zoomOut",
+  "desktop.menu.toggleFullScreen",
+  "desktop.menu.back",
+  "desktop.menu.forward",
+  "desktop.menu.previousSession",
+  "desktop.menu.nextSession",
+  "desktop.menu.previousProject",
+  "desktop.menu.nextProject",
+  "desktop.menu.minimize",
+  "desktop.menu.maximize",
+  "desktop.menu.documentation",
+  "desktop.menu.supportForum",
+  "desktop.menu.shareFeedback",
+  "desktop.menu.reportBug",
+  "desktop.menu.ariaLabel",
+  "desktop.updater.dialog.checkFailed.message",
+  "desktop.updater.dialog.checkFailed.title",
+  "desktop.updater.dialog.upToDate.message",
+  "desktop.updater.dialog.upToDate.title",
+  "desktop.updater.dialog.ready.message",
+  "desktop.updater.dialog.ready.title",
+  "desktop.updater.dialog.restart",
+  "desktop.updater.dialog.later",
+  "desktop.recovery.action.relaunch",
+  "desktop.recovery.action.exportLogs",
+  "desktop.recovery.action.keepWaiting",
+  "desktop.recovery.action.quit",
+  "desktop.recovery.loadFailed",
+  "desktop.recovery.terminated",
+  "desktop.recovery.unresponsive",
+  "desktop.recovery.unresponsive.detail",
+  "desktop.recovery.loadFailed.detail",
+  "desktop.recovery.terminated.detail",
+  "desktop.recovery.unknown",
+  "desktop.dialog.chooseFolder",
+  "desktop.dialog.chooseFile",
+  "desktop.dialog.saveFile",
+  "desktop.dialog.files",
+  "desktop.server.local",
+  "desktop.wsl.error.windowsOnly",
+  "desktop.wsl.error.unavailable",
+  "desktop.wsl.error.listInstalled",
+  "desktop.wsl.error.listOnline",
+  "desktop.wsl.error.executeDistro",
+  "desktop.wsl.error.installWsl",
+  "desktop.wsl.error.installDistro",
+  "desktop.wsl.error.installOpencode",
+  "desktop.wsl.error.alreadyAdded",
+  "desktop.wsl.error.opencodeMissing",
+  "desktop.wsl.error.opencodeCannotRun",
+  "desktop.wsl.error.opencodeNotInstalled",
+  "desktop.wsl.error.updateVersion",
+  "desktop.wsl.error.noVersion",
+  "desktop.wsl.error.serverExited",
+  "desktop.wsl.error.serverExitedBeforeHealthy",
+  "desktop.wsl.error.healthTimeout",
+  "desktop.wsl.error.commandTimeout",
+  "desktop.wsl.error.failedPort",
+  "desktop.picker.error.notSelected",
+  "desktop.picker.error.sizeLimit",
+] as const satisfies readonly DesktopNativeKey[]
+export function desktopNativeTranslations(values: readonly string[]) {
+  return Object.fromEntries(DESKTOP_NATIVE_TRANSLATED_KEYS.slice(0, values.length).map((key, index) => [key, values[index]!]))
+}
 export const DESKTOP_NATIVE_MAX_PAYLOAD_BYTES = 64 * 1024
 
 export function createDesktopNativeBundle(

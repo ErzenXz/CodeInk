@@ -1,0 +1,35 @@
+{
+  "$schema": "../desktop-theme.schema.json",
+  "name": "CodeInk Slate",
+  "id": "codeink-slate",
+  "light": {
+    "palette": {
+      "neutral": "#f7f8fa",
+      "ink": "#262c36",
+      "primary": "#506b96",
+      "accent": "#79689b",
+      "success": "#387b5f",
+      "warning": "#996327",
+      "error": "#b34f58",
+      "info": "#466f91",
+      "interactive": "#3e6499",
+      "diffAdd": "#83c9a2",
+      "diffDelete": "#e5a0a1"
+    }
+  },
+  "dark": {
+    "palette": {
+      "neutral": "#141922",
+      "ink": "#e8ebf0",
+      "primary": "#a7bce1",
+      "accent": "#bcaadd",
+      "success": "#8ecda9",
+      "warning": "#e1b370",
+      "error": "#e6969d",
+      "info": "#92c0df",
+      "interactive": "#a4bdec",
+      "diffAdd": "#6d9d7f",
+      "diffDelete": "#a7666e"
+    }
+  }
+}

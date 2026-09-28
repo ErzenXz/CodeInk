@@ -1,17 +1,17 @@
-import { createEffect, createMemo, createSignal, For, Show, Suspense, type ParentProps } from "solid-js"
+import { createEffect, createMemo, createSignal, For, lazy, Show, Suspense, type ParentProps } from "solid-js"
 import { createStore } from "solid-js/store"
 import { createMediaQuery } from "@solid-primitives/media"
 import { useNavigate } from "@solidjs/router"
 import { Icon as IconV2 } from "@codeink/ui/v2/icon"
 import { MenuV2 } from "@codeink/ui/v2/menu-v2"
 import { DebugBar } from "@/components/debug-bar"
-import { TabsInfoPopup } from "@/components/help-button"
+import { AgentInfoPopup } from "@/components/help-button"
 import { Titlebar, type TitlebarUpdate } from "@/components/titlebar"
 import { SessionSidebar } from "@/components/session-sidebar"
 import { SessionSidebarFilters, type SessionSidebarControls } from "@/components/session-sidebar-filters"
 import { useDirectoryPicker } from "@/components/directory-picker"
 import { useGlobal } from "@/context/global"
-import { useServer } from "@/context/server"
+import { ServerConnection, useServer } from "@/context/server"
 import { homeProjectDirectories } from "@/pages/layout/helpers"
 import { openProjects } from "@/utils/open-projects"
 import { useCommand } from "@/context/command"
@@ -21,6 +21,9 @@ import { useSettings } from "@/context/settings"
 import { useLanguage } from "@/context/language"
 import { useTabs } from "@/context/tabs"
 import { setV2Toast, ToastRegion } from "@/utils/toast"
+
+const SessionPane = lazy(() => import("@/pages/session/pane").then((module) => ({ default: module.SessionPane })))
+const maxPanes = 3
 
 const hubNav = [
   { page: "library", icon: "library", label: "sidebar.nav.library" },
@@ -47,6 +50,15 @@ export default function NewLayout(props: ParentProps) {
   // Narrow windows always fall back to top tabs.
   const mode = createMemo(() => (wide() ? settings.general.sessionTabPosition() : "top"))
   const sidebar = createMemo(() => mode() !== "top")
+  command.register("new-layout-sidebar", () => [
+    {
+      id: "sidebar.toggle",
+      title: language.t("command.sidebar.toggle"),
+      category: language.t("command.category.view"),
+      keybind: "mod+b",
+      onSelect: () => layout.sidebarV2.toggle(),
+    },
+  ])
   const [sidebarControls, setSidebarControls] = createSignal<SessionSidebarControls>()
   const addProject = () => {
     const conn = server.current ?? global.servers.list()[0]
@@ -64,16 +76,37 @@ export default function NewLayout(props: ParentProps) {
     sidebarQuery: "",
     sidebarViewMenuOpen: false,
   })
+  const [panes, setPanes] = createStore<{ server: ServerConnection.Key; sessionId: string; title: string }[]>([])
+  const canOpenPane = (session: { server: ServerConnection.Key; sessionId: string }) => {
+    const route = layout.route()
+    return (
+      panes.length < maxPanes - 1 &&
+      !panes.some((pane) => pane.server === session.server && pane.sessionId === session.sessionId) &&
+      !(route.type === "session" && route.server === session.server && route.sessionId === session.sessionId)
+    )
+  }
 
   createEffect(() => setV2Toast(true))
 
-  // The sidebar already lists projects and sessions, so it opens a fresh chat instead of the overview page.
-  // Without any project the overview stays, since it is where the first project gets added.
+  // The overview belongs to top tabs. A fresh install should still open the composer;
+  // its project picker will ask for a directory before the first prompt runs.
   const tabs = useTabs()
+  const hasProjects = createMemo(() =>
+    global.servers.list().some((conn) => global.ensureServerCtx(conn).projects.list().length > 0),
+  )
   createEffect(() => {
-    if (!sidebar() || !tabs.ready() || layout.route().type !== "home") return
-    if (!global.servers.list().some((conn) => global.ensureServerCtx(conn).projects.list().length > 0)) return
-    command.trigger("tab.new")
+    if (!tabs.ready() || layout.route().type !== "home") return
+    const connections = global.servers.list()
+    if (sidebar() && hasProjects()) {
+      command.trigger("tab.new")
+      return
+    }
+    if (hasProjects()) return
+    const conn =
+      (server.current && global.ensureServerCtx(server.current).sync.data.path.home ? server.current : undefined) ??
+      connections.find((item) => global.ensureServerCtx(item).sync.data.path.home)
+    if (!conn) return
+    void tabs.newDraft({ server: ServerConnection.key(conn), directory: global.ensureServerCtx(conn).sync.data.path.home })
   })
 
   const update: TitlebarUpdate = {
@@ -81,8 +114,16 @@ export default function NewLayout(props: ParentProps) {
       const state = platform.updater?.state()
       if (state?.status === "available" || state?.status === "ready") return state.version
     },
-    actionLabel: () => language.t(platform.updater?.state().status === "ready" ? "toast.update.action.installRestart" : "toast.update.action.viewDownload"),
-    activate: () => void (platform.updater?.state().status === "ready" ? platform.updater.install() : platform.updater?.openDownload()),
+    actionLabel: () =>
+      language.t(
+        platform.updater?.state().status === "ready"
+          ? "toast.update.action.installRestart"
+          : "toast.update.action.viewDownload",
+      ),
+    activate: () =>
+      void (platform.updater?.state().status === "ready"
+        ? platform.updater.install()
+        : platform.updater?.openDownload()),
   }
 
   return (
@@ -104,7 +145,7 @@ export default function NewLayout(props: ParentProps) {
         }
       />
       <div class="flex flex-1 min-h-0 min-w-0">
-        <Show when={sidebar()}>
+        <Show when={sidebar() && layout.sidebarV2.opened()}>
           <aside
             class="flex w-72 shrink-0 min-h-0 flex-col bg-transparent px-2.5 pb-2.5 pt-1"
             aria-label={language.t("home.sessions.search.sessions")}
@@ -247,15 +288,59 @@ export default function NewLayout(props: ParentProps) {
               search={state.sidebarQuery}
               mode={mode() === "projects" ? "projects" : "sessions"}
               onControls={setSidebarControls}
+              canOpenPane={canOpenPane}
+              onOpenPane={(session) => setPanes(panes.length, session)}
             />
           </aside>
         </Show>
-        <main class="flex-1 min-h-0 min-w-0 overflow-x-hidden flex flex-col items-start contain-strict">
-          <Suspense>{props.children}</Suspense>
-        </main>
+        <div class="flex flex-1 min-h-0 min-w-0 overflow-hidden">
+          <main class="flex-1 min-h-0 min-w-0 overflow-x-hidden flex flex-col items-start contain-strict">
+            <Suspense>
+              <Show
+                when={layout.route().type !== "home" || (!sidebar() && hasProjects())}
+                fallback={
+                  <div class="flex size-full items-center justify-center text-12-regular text-v2-text-text-faint">
+                    {language.t("common.loading")}
+                  </div>
+                }
+              >
+                {props.children}
+              </Show>
+            </Suspense>
+          </main>
+          <For each={panes}>
+            {(pane) => (
+              <section
+                data-component="session-pane"
+                data-session-id={pane.sessionId}
+                class="flex flex-1 min-h-0 min-w-0 flex-col border-l border-v2-border-border-muted"
+              >
+                <div class="flex h-9 shrink-0 items-center justify-between gap-2 border-b border-v2-border-border-muted px-3 text-12-medium text-v2-text-text-muted">
+                  <span class="truncate">{pane.title}</span>
+                  <button
+                    type="button"
+                    data-action="session-pane-close"
+                    class="rounded px-2 py-1 hover:bg-[var(--v2-glass-surface-hover)]"
+                    aria-label={language.t("common.close")}
+                    onClick={() =>
+                      setPanes((current) =>
+                        current.filter((item) => item.server !== pane.server || item.sessionId !== pane.sessionId),
+                      )
+                    }
+                  >
+                    <IconV2 name="xmark-small" size="small" />
+                  </button>
+                </div>
+                <Suspense>
+                  <SessionPane server={pane.server} sessionId={pane.sessionId} />
+                </Suspense>
+              </section>
+            )}
+          </For>
+        </div>
       </div>
       {import.meta.env.DEV && state.debugTools && <DebugBar inline />}
-      <TabsInfoPopup />
+      <AgentInfoPopup />
       <ToastRegion v2 />
     </div>
   )

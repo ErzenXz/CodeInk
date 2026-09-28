@@ -334,7 +334,7 @@
 
 [data-component="markdown"][data-animate-streaming="true"] {
   > [data-markdown-entering] > * {
-    animation: markdown-stream-enter 180ms ease-out both;
+    animation: markdown-stream-enter 120ms ease-out both;
   }
 
   > [data-markdown-block]:last-child :is(p, li, h1, h2, h3, h4, h5, h6):last-child::after {

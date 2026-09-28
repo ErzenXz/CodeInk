@@ -5,7 +5,8 @@ import { Iterable, pipe } from "effect"
 import { createEffect, createMemo, type Accessor } from "solid-js"
 import { selectProviderCatalog } from "./provider-catalog"
 
-export const popularProviders = ["local-codex", "local-claude", "local-opencode", "local-pi"]
+export const popularProviders = ["local-codeink", "local-codex", "local-claude", "local-opencode", "local-pi"]
+export const isRetiredModelProvider = (id: string) => id === "opencode-go"
 
 const popularProviderSet = new Set(popularProviders)
 
@@ -46,7 +47,7 @@ export function useProviders(directory: Accessor<string | undefined>) {
       return pipe(
         providers().all,
         Iterable.map(([, p]) => p),
-        Iterable.filter((p) => connected.has(p.id)),
+        Iterable.filter((p) => connected.has(p.id) && !isRetiredModelProvider(p.id)),
         (v) => Array.from(v),
       )
     },
@@ -57,7 +58,8 @@ export function useProviders(directory: Accessor<string | undefined>) {
           providers().all,
           ([id]) =>
             connected.has(id) &&
-            (id !== "opencode" || Object.values(providers().all.get(id)?.models ?? {}).some((m) => m.cost?.input)),
+            !isRetiredModelProvider(id) &&
+            (id !== "opencode" || Object.values(providers().all.get(id)?.models ?? {}).some((model) => model.cost?.input)),
         ),
       ]
       return paid

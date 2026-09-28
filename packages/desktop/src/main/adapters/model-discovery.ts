@@ -4,6 +4,7 @@ import { AgentProcess } from "./process"
 import { array, object, string } from "./types"
 import { openCodeServer } from "./opencode-server"
 import { acpModels } from "./acp"
+import { gatewayEndpoints, type GatewayProvider } from "../gateway-keys"
 
 export type AgentModel = {
   id: string
@@ -14,6 +15,7 @@ export type AgentModel = {
   variants?: string[]
   context?: number
   output?: number
+  image?: boolean
   /** Supports the agent's fast mode (Codex "priority" tier, Claude Code fastMode). */
   fast?: boolean
   /** Supports automatic review of actions instead of prompting (Claude Code auto mode). */
@@ -25,11 +27,13 @@ export type ModelDiscoveryOptions = {
   directory: string
   env: NodeJS.ProcessEnv
   signal: AbortSignal
+  gatewayKey?: (provider: GatewayProvider) => string | undefined
 }
 
 export async function discoverModels(options: ModelDiscoveryOptions): Promise<AgentModel[]> {
   if (!options.agent.executable) return []
   if (options.signal.aborted) throw new Error(t("processStopped"))
+  if (options.agent.protocol === "codeink") return gatewayModels(options)
   if (options.agent.protocol === "opencode") return openCodeModels(options)
   if (options.agent.protocol === "acp") return acpModels(options)
   const proc = new AgentProcess({
@@ -163,6 +167,53 @@ export async function discoverModels(options: ModelDiscoveryOptions): Promise<Ag
     options.signal.removeEventListener("abort", dispose)
     dispose()
   }
+}
+
+export async function gatewayModels(
+  options: ModelDiscoveryOptions,
+  endpoints = gatewayEndpoints,
+): Promise<AgentModel[]> {
+  const results = await Promise.allSettled(
+    (["vercel", "openrouter"] as const).flatMap((provider) => {
+      const key = options.gatewayKey?.(provider)
+      if (!key) return []
+      return [
+        fetch(`${endpoints[provider]}/models`, {
+          headers: { Authorization: `Bearer ${key}` },
+          signal: options.signal,
+        }).then(async (response) => {
+          if (!response.ok) throw new Error(`Gateway model request failed: ${response.status}`)
+          const body = object(await response.json())
+          return array(body.data)
+            .map(object)
+            .flatMap((item) => {
+              const id = string(item.id)
+              if (!id) return []
+              if (provider === "openrouter") {
+                const parameters = array(item.supported_parameters).map(string)
+                if (!parameters.includes("tools")) return []
+                // The free Inkling endpoint currently rejects CodeInk despite advertising tools.
+                if (id.startsWith("thinkingmachines/inkling") && id.endsWith(":free")) return []
+              }
+              const outputs = array(object(item.architecture).output_modalities).map(string)
+              if (outputs.length && !outputs.includes("text")) return []
+              const inputs = array(object(item.architecture).input_modalities).map(string)
+              return [
+                {
+                  id: `${provider}:${id}`,
+                  name: string(item.name) || id,
+                  tag: provider === "vercel" ? "Vercel" : "OpenRouter",
+                  context: number(item.context_length ?? item.context_window),
+                  output: number(object(item.top_provider).max_completion_tokens ?? item.max_output_tokens),
+                  image: inputs.includes("image"),
+                },
+              ]
+            })
+        }),
+      ]
+    }),
+  )
+  return results.flatMap((result) => (result.status === "fulfilled" ? result.value : []))
 }
 
 async function openCodeModels(options: ModelDiscoveryOptions): Promise<AgentModel[]> {

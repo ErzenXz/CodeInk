@@ -101,4 +101,24 @@ describe("app session cache", () => {
     expect(stale).toEqual(["ses_2", "ses_3"])
     expect([...seen]).toEqual(["ses_1", "ses_4"])
   })
+
+  test("evicts large inactive histories below the entry limit without dropping an active session", () => {
+    const seen = new Set(["active", "large", "small"])
+    expect(
+      pickSessionCacheEvictions({
+        seen,
+        keep: "current",
+        limit: 8,
+        preserve: ["active"],
+        maxBytes: 16,
+        sizes: new Map([
+          ["active", 8],
+          ["large", 32],
+          ["small", 4],
+          ["current", 4],
+        ]),
+      }),
+    ).toEqual(["large"])
+    expect([...seen]).toEqual(["active", "small", "current"])
+  })
 })

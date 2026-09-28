@@ -37,6 +37,7 @@ export type PromptInputV2ViewConfig = {
   submit: {
     stopping: Accessor<boolean>
     working?: Accessor<boolean>
+    label?: Accessor<string>
     onSubmit: () => void
     onStop: () => void
   }

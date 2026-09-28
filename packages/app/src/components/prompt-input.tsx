@@ -296,7 +296,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
 
     return (
       <div class="flex items-center gap-2">
-        <span>{language.t("prompt.action.send")}</span>
+        <span>{store.mode === "normal" && working() ? language.t("settings.general.row.followup.option.queue") : language.t("prompt.action.send")}</span>
         <Icon name="enter" size="small" class="text-icon-base" />
       </div>
     )
@@ -1584,7 +1584,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
                   icon={stopping() ? "stop" : store.mode === "shell" ? "arrow-undo-down" : "arrow-up"}
                   variant="primary"
                   class="size-8"
-                  aria-label={stopping() ? language.t("prompt.action.stop") : language.t("prompt.action.send")}
+                  aria-label={stopping() ? language.t("prompt.action.stop") : store.mode === "normal" && working() ? language.t("settings.general.row.followup.option.queue") : language.t("prompt.action.send")}
                 />
               </Tooltip>
             </div>

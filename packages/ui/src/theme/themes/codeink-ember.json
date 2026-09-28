@@ -1,0 +1,35 @@
+{
+  "$schema": "../desktop-theme.schema.json",
+  "name": "CodeInk Ember",
+  "id": "codeink-ember",
+  "light": {
+    "palette": {
+      "neutral": "#fbf8f3",
+      "ink": "#302720",
+      "primary": "#9d6248",
+      "accent": "#846ba1",
+      "success": "#547b60",
+      "warning": "#a2692d",
+      "error": "#b05450",
+      "info": "#657c94",
+      "interactive": "#965d48",
+      "diffAdd": "#a4c9a0",
+      "diffDelete": "#e9aaa0"
+    }
+  },
+  "dark": {
+    "palette": {
+      "neutral": "#211a17",
+      "ink": "#f2e8df",
+      "primary": "#e4a88a",
+      "accent": "#c8b0e0",
+      "success": "#a3cfab",
+      "warning": "#edbd7c",
+      "error": "#e7a09a",
+      "info": "#aac2d9",
+      "interactive": "#e5aa8d",
+      "diffAdd": "#738f74",
+      "diffDelete": "#ae726b"
+    }
+  }
+}

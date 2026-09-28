@@ -25,7 +25,7 @@ Run checks from the package you changed:
 ```sh
 cd packages/desktop
 bun typecheck
-bun test src/test
+bun run test
 bun run build
 ```
 

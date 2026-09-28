@@ -3,8 +3,6 @@ import { useSDK } from "@/context/sdk"
 import { useServerSync } from "@/context/server-sync"
 import { useSync } from "@/context/sync"
 
-const workspaceBarEnabled = import.meta.env.VITE_CODEINK_CHANNEL !== "prod"
-
 export function resolveNewSessionWorktree(input: {
   enabled: boolean
   selected?: string
@@ -27,6 +25,7 @@ export function resolveNewSessionBranch(input: {
   local?: string
   worktreeBranch: (worktree: string) => string | undefined
 }) {
+  if (input.worktree.startsWith("branch:")) return decodeURIComponent(input.worktree.slice("branch:".length))
   if (input.worktree === "main" || input.worktree === "create") return input.local
   return input.worktreeBranch(input.worktree) ?? input.local
 }
@@ -36,7 +35,7 @@ export function createNewSessionWorkspaceController() {
   const sync = useSync()
   const serverSync = useServerSync()
   const [worktree, setWorktree] = createSignal<string>()
-  const visible = createMemo(() => workspaceBarEnabled && sync().project?.vcs === "git")
+  const visible = createMemo(() => sync().project?.vcs === "git")
   const value = createMemo(() =>
     resolveNewSessionWorktree({
       enabled: visible(),
@@ -51,7 +50,9 @@ export function createNewSessionWorkspaceController() {
     resolveNewSessionBranch({
       worktree: value(),
       local: localBranch(),
-      worktreeBranch: (worktree) => serverSync().child(worktree)[0].vcs?.branch,
+      worktreeBranch: (worktree) =>
+        serverSync().child(worktree)[0].vcs?.branch ??
+        (sync().project as { codeinkWorktreeBranches?: Record<string, string> } | undefined)?.codeinkWorktreeBranches?.[worktree],
     }),
   )
 
@@ -65,6 +66,7 @@ export function createNewSessionWorkspaceController() {
     project: {
       root: projectRoot,
       workspaces: () => sync().project?.sandboxes ?? [],
+      branches: () => (sync().project as { codeinkBranches?: string[] } | undefined)?.codeinkBranches ?? [],
       git: () => sync().project?.vcs === "git",
     },
     bar: {

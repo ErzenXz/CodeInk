@@ -13,6 +13,7 @@ record({ argv: process.argv.slice(3), protocol })
 const send = (value: unknown) => process.stdout.write(JSON.stringify(value) + "\n")
 const text = "Hello 🌍\u2028from your agent"
 let initialized = false
+let experimentalApi = false
 let streaming = false
 let count = 0
 let promptRequest: unknown
@@ -285,6 +286,7 @@ if (protocol === "opencode") {
       if (protocol === "codex") {
         const params = object(message.params)
         if (message.method === "initialize") {
+          experimentalApi = object(params.capabilities).experimentalApi === true
           send({ id: message.id, result: { userAgent: "fixture" } })
           return
         }
@@ -334,13 +336,17 @@ if (protocol === "opencode") {
         }
         if (message.method === "thread/start" || message.method === "thread/resume") {
           if (message.method === "thread/resume" && params.threadId !== "native-session") {
-            send({ id: message.id, error: { message: "Wrong session" } })
+            send({ id: message.id, error: { message: `no rollout found for thread id ${params.threadId}` } })
             return
           }
           send({ id: message.id, result: { thread: { id: "native-session" } } })
           return
         }
         if (message.method === "turn/start") {
+          if (params.collaborationMode && !experimentalApi) {
+            send({ id: message.id, error: { message: "turn/start.collaborationMode requires experimentalApi capability" } })
+            return
+          }
           count++
           send({ id: message.id, result: { turn: { id: `turn-${count}` } } })
           send({ method: "turn/started", params: { threadId: "native-session", turn: { id: `turn-${count}` } } })
@@ -371,6 +377,14 @@ if (protocol === "opencode") {
           })
           if (process.env.CODEINK_FIXTURE_QUESTION_ASYNC)
             send({ method: "turn/completed", params: { threadId: "native-session", turn: { id: `turn-${count}`, status: "completed" } } })
+          return
+        }
+        if (message.method === "turn/steer") {
+          if (string(params.expectedTurnId) !== `turn-${count}`) {
+            send({ id: message.id, error: { message: "Active turn changed" } })
+            return
+          }
+          send({ id: message.id, result: { turn: { id: `turn-${count}` } } })
           return
         }
         if (message.id === 900 || message.method === "turn/interrupt") {
@@ -509,6 +523,10 @@ if (protocol === "opencode") {
         }
       }
       if (protocol === "pi") {
+        if (message.type === "steer") {
+          send({ type: "response", id: message.id, command: "steer", success: streaming })
+          return
+        }
         if (message.type === "get_available_models") {
           send({
             type: "response",

@@ -5,7 +5,7 @@ import { Switch } from "@codeink/ui/switch"
 import { Tabs } from "@codeink/ui/tabs"
 import { showToast } from "@/utils/toast"
 import { useNavigate } from "@solidjs/router"
-import { type Accessor, createEffect, createMemo, For, type JSXElement, onCleanup, Show } from "solid-js"
+import { type Accessor, createEffect, createMemo, For, onCleanup, Show } from "solid-js"
 import { createStore } from "solid-js/store"
 import { ServerHealthIndicator, ServerRow } from "@/components/server/server-row"
 import { useLanguage } from "@/context/language"
@@ -17,18 +17,6 @@ import { useGlobal } from "@/context/global"
 import { useSettings } from "@/context/settings"
 import { useMcpToggle } from "@/context/mcp"
 import { useServerProtocol } from "@/context/server-sdk"
-
-const pluginEmptyMessage = (value: string, file: string): JSXElement => {
-  const parts = value.split(file)
-  if (parts.length === 1) return value
-  return (
-    <>
-      {parts[0]}
-      <code class="bg-surface-raised-base px-1.5 py-0.5 rounded-sm text-text-base">{file}</code>
-      {parts.slice(1).join(file)}
-    </>
-  )
-}
 
 const listServersByHealth = (
   list: ServerConnection.Any[],
@@ -295,7 +283,7 @@ export function StatusPopoverBody(props: { shown: Accessor<boolean> }) {
     (sync().data.config.plugin ?? []).map((item) => (typeof item === "string" ? item : item[0])),
   )
   const pluginCount = createMemo(() => plugins().length)
-  const pluginEmpty = createMemo(() => pluginEmptyMessage(language.t("dialog.plugins.empty"), "opencode.json"))
+  const pluginEmpty = createMemo(() => language.t("dialog.plugins.empty"))
 
   return (
     <div class="flex items-center gap-1 w-[360px] rounded-xl shadow-[var(--v2-elevation-floating)]">

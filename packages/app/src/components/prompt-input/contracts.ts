@@ -53,5 +53,6 @@ export interface PromptInputProps {
   shouldQueue?: () => boolean
   onQueue?: (draft: FollowupDraft) => void
   onAbort?: () => void
+  onBeforeSubmit?: () => boolean
   onSubmit?: () => void
 }

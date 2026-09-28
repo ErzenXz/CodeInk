@@ -78,33 +78,34 @@ export function HomeSessionsView(props: HomeSessionsViewProps) {
       class="min-h-0 min-w-0 flex-1 flex flex-col"
       aria-label={props.language.t("sidebar.project.recentSessions")}
     >
-      <div class="sticky top-0 z-30 shrink-0 bg-v2-background-bg-base pb-3 pt-6 lg:pt-12" onWheel={props.onWheel}>
-        <HomeSessionSearch {...props} />
-        <Suspense>
-          <Show when={props.groups().length > 0 && props.canCreateSession()}>
-            <div class="pointer-events-none absolute right-0 top-[84px] z-20 flex lg:top-[108px]">
-              <ButtonV2
-                data-action="home-new-session"
-                variant="ghost-muted"
-                size="normal"
-                icon="edit"
-                class="pointer-events-auto h-7 px-2 [font-weight:530]"
-                onClick={props.onCreateSession}
-              >
-                {props.language.t("command.session.new")}
-              </ButtonV2>
-            </div>
+      <div class="sticky top-0 z-30 shrink-0 bg-v2-background-bg-base pb-2 pt-4" onWheel={props.onWheel}>
+        <div class="mb-2 flex h-8 items-center justify-between pl-2.5 pr-1">
+          <span class="text-12-medium text-v2-text-text-faint">
+            {props.language.t("home.sessions.search.sessions")}
+          </span>
+          <Show when={props.canCreateSession()}>
+            <ButtonV2
+              data-action="home-new-session"
+              variant="ghost-muted"
+              size="normal"
+              icon="edit"
+              class="h-7 px-2 text-[13px] [font-weight:440]"
+              onClick={props.onCreateSession}
+            >
+              {props.language.t("command.session.new")}
+            </ButtonV2>
           </Show>
-        </Suspense>
+        </div>
+        <HomeSessionSearch {...props} />
       </div>
-      <div class="pointer-events-none sticky top-[84px] z-40 h-0 -mr-3 lg:top-[108px]">
+      <div class="pointer-events-none sticky top-[96px] z-40 h-0 -mr-3">
         <div
           ref={props.onSetThumbTrack}
           data-component="home-session-scroll-track"
-          class="relative ml-auto h-[calc(100cqh-84px)] w-3 lg:h-[calc(100cqh-108px)]"
+          class="relative ml-auto h-[calc(100cqh-96px)] w-3"
         />
       </div>
-      <div class="-mr-3 min-h-[calc(100cqh-72px)] lg:min-h-[calc(100cqh-96px)]">
+      <div class="-mr-3 min-h-[calc(100cqh-96px)]">
         <Suspense
           fallback={
             <div class="pt-3">
@@ -115,10 +116,7 @@ export function HomeSessionsView(props: HomeSessionsViewProps) {
           <Show
             when={props.groups().length > 0}
             fallback={
-              <HomeSessionsEmpty
-                onNewSession={props.canCreateSession() ? props.onCreateSession : undefined}
-                language={props.language}
-              />
+              <HomeSessionsEmpty language={props.language} />
             }
           >
             <div ref={props.onSetContent} class="flex flex-col pt-3 pr-3 pb-16">
@@ -268,9 +266,9 @@ function HomeSessionSearch(props: HomeSessionsViewProps) {
         </Show>
         <label
           class={`
-            relative z-20 flex h-9 w-full items-center gap-2 rounded-md py-1 pl-3 pr-2
-            bg-v2-background-bg-layer-02/60 text-v2-icon-icon-muted transition-[background-color,box-shadow]
-            duration-[120ms] ease-in-out hover:bg-v2-background-bg-layer-02 focus-within:bg-v2-background-bg-layer-02
+            relative z-20 flex h-8 w-full items-center gap-2 rounded-md py-1 pl-2.5 pr-2
+            bg-[var(--v2-glass-surface-hover)] text-v2-icon-icon-muted transition-colors
+            duration-150 hover:bg-v2-background-bg-layer-02 focus-within:bg-v2-background-bg-layer-02
           `}
         >
           <IconV2 name="magnifying-glass" />
@@ -402,8 +400,8 @@ function HomeSessionGroupHeader(props: {
     <div
       ref={props.onSetRef}
       class={`
-        pointer-events-none sticky top-[84px] flex h-7 min-w-0 items-center justify-between
-        bg-v2-background-bg-base pl-3 lg:top-[108px]
+        pointer-events-none sticky top-[96px] flex h-7 min-w-0 items-center justify-between
+        bg-v2-background-bg-base pl-2.5
       `}
       classList={{ "home-session-group-header z-[5]": !!props.elevated, "z-10": !props.elevated }}
     >
@@ -420,17 +418,17 @@ function HomeSessionRow(props: HomeSessionsViewProps & { record: HomeSessionReco
 
   return (
     <div
-      class="group/session relative flex h-10 min-w-0 items-center rounded-md"
+      class="group/session relative flex h-8 min-w-0 items-center rounded-md"
       classList={{ group: !!showProjectName() }}
     >
       <button
         type="button"
         data-component="home-session-row"
         class={`
-          flex h-10 min-w-0 w-full flex-1 shrink-0 cursor-pointer items-center gap-2 rounded-md border-0
-          bg-transparent py-3 pl-3 pr-10 text-left text-v2-text-text-muted [font-weight:530]
-          transition-[background-color,color,box-shadow] duration-[120ms] ease-in-out
-          hover:bg-v2-overlay-simple-overlay-hover focus-visible:bg-v2-overlay-simple-overlay-hover focus-visible:outline-none
+          flex h-8 min-w-0 w-full flex-1 shrink-0 cursor-pointer items-center gap-2.5 rounded-md border-0
+          bg-transparent pl-2.5 pr-10 text-left text-v2-text-text-base [font-weight:440]
+          transition-colors duration-150
+          hover:bg-[var(--v2-glass-surface-hover)] focus-visible:bg-[var(--v2-glass-surface-hover)] focus-visible:outline-none
         `}
         onMouseDown={(event) => {
           if (event.button === 1) event.preventDefault()
@@ -506,7 +504,7 @@ function HomeSessionProjectName(props: { name: string; search?: boolean }) {
   )
 }
 
-function HomeSessionsEmpty(props: { onNewSession?: () => void; language: ReturnType<typeof useLanguage> }) {
+function HomeSessionsEmpty(props: { language: ReturnType<typeof useLanguage> }) {
   return (
     <div class="flex min-h-full flex-col items-center gap-4 px-6 pt-[52px] text-center">
       <div
@@ -525,13 +523,6 @@ function HomeSessionsEmpty(props: { onNewSession?: () => void; language: ReturnT
       >
         {props.language.t("home.sessions.empty.description")}
       </p>
-      <Show when={props.onNewSession}>
-        {(onNewSession) => (
-          <ButtonV2 data-action="home-new-session" variant="neutral" size="normal" icon="edit" onClick={onNewSession()}>
-            {props.language.t("command.session.new")}
-          </ButtonV2>
-        )}
-      </Show>
     </div>
   )
 }

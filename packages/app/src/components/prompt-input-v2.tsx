@@ -224,6 +224,7 @@ export function usePromptInputV2Controller(props: PromptInputV2ControllerProps):
     shouldQueue: props.shouldQueue,
     onQueue: props.onQueue,
     onAbort: props.onAbort,
+    onBeforeSubmit: props.onBeforeSubmit,
     onSubmit: props.onSubmit,
     model: props.controls.model.selection,
   })
@@ -410,6 +411,9 @@ export function usePromptInputV2Controller(props: PromptInputV2ControllerProps):
       submit: {
         stopping,
         working,
+        label: () => mode() === "normal" && working() && !blank()
+          ? language.t("settings.general.row.followup.option.queue")
+          : language.t("prompt.action.send"),
         onSubmit: () => void submission.handleSubmit(new Event("submit")),
         onStop: () => void submission.abort(),
       },

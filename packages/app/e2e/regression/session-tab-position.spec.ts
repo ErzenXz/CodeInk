@@ -2,6 +2,88 @@ import { expect, test } from "@playwright/test"
 import { fixture, pageMessages } from "../smoke/session-timeline.fixture"
 import { mockOpenCodeServer } from "../utils/mock-server"
 
+test("collapses and restores the full session sidebar", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 })
+  await mockOpenCodeServer(page, {
+    protocol: "v1",
+    sessions: fixture.sessions,
+    provider: fixture.provider,
+    directory: fixture.directory,
+    project: fixture.project,
+    pageMessages,
+  })
+  await page.addInitScript((directory) => {
+    localStorage.setItem(
+      "settings.v3",
+      JSON.stringify({ general: { newLayoutDesigns: true, sessionTabPosition: "sidebar" } }),
+    )
+    localStorage.setItem(
+      "opencode.global.dat:server",
+      JSON.stringify({
+        projects: { local: [{ worktree: directory, expanded: true }] },
+        lastProject: { local: directory },
+      }),
+    )
+  }, fixture.directory)
+
+  await page.goto(`/server/${Buffer.from(fixture.serverKey).toString("base64url")}/session/${fixture.targetID}`)
+  const sidebar = page.getByRole("complementary", { name: "Sessions" })
+  const toggle = page.locator('[data-slot="titlebar-v2"]').getByRole("button", { name: "Toggle sidebar" })
+  await expect(sidebar).toBeVisible()
+  await toggle.click()
+  await expect(sidebar).toBeHidden()
+  await expect(toggle).toHaveAttribute("aria-expanded", "false")
+  await toggle.click()
+  await expect(sidebar).toBeVisible()
+  await expect(toggle).toHaveAttribute("aria-expanded", "true")
+})
+
+test("shows two active sessions in separate panes", async ({ page }) => {
+  await page.setViewportSize({ width: 1600, height: 900 })
+  await mockOpenCodeServer(page, {
+    protocol: "v1",
+    sessions: fixture.sessions,
+    provider: fixture.provider,
+    directory: fixture.directory,
+    project: fixture.project,
+    pageMessages,
+  })
+  await page.addInitScript((directory) => {
+    localStorage.setItem(
+      "settings.v3",
+      JSON.stringify({ general: { newLayoutDesigns: true, sessionTabPosition: "sidebar" } }),
+    )
+    localStorage.setItem(
+      "opencode.global.dat:server",
+      JSON.stringify({
+        projects: { local: [{ worktree: directory, expanded: true }] },
+        lastProject: { local: directory },
+      }),
+    )
+  }, fixture.directory)
+
+  await page.goto(`/server/${Buffer.from(fixture.serverKey).toString("base64url")}/session/${fixture.targetID}`)
+  await expect(page.getByRole("heading", { name: fixture.expected.targetTitle, exact: true })).toBeVisible()
+  await page
+    .locator(`[data-action="sidebar-session"][data-session-id="${fixture.sourceID}"]`)
+    .click({ button: "right" })
+  await page.locator('[data-action="sidebar-session-open-pane"]').click()
+
+  const pane = page.locator(`[data-component="session-pane"][data-session-id="${fixture.sourceID}"]`)
+  await expect(pane).toBeVisible()
+  await expect(pane.getByRole("heading", { name: fixture.expected.sourceTitle, exact: true })).toBeVisible()
+  await expect(page.getByRole("heading", { name: fixture.expected.targetTitle, exact: true })).toBeVisible()
+  await pane.locator('[data-component="prompt-input"]').fill("Continue this session")
+  const sent = page.waitForRequest(
+    (request) => request.method() === "POST" && request.url().includes(`/session/${fixture.sourceID}/`),
+  )
+  await pane.getByRole("button", { name: "Send" }).click()
+  await sent
+  await expect(page.getByRole("heading", { name: fixture.expected.targetTitle, exact: true })).toBeVisible()
+  await pane.locator('[data-action="session-pane-close"]').click()
+  await expect(pane).toBeHidden()
+})
+
 test("shows project sessions and activity in the sidebar, then moves to the top bar", async ({ page }) => {
   await mockOpenCodeServer(page, {
     protocol: "v1",
@@ -231,18 +313,19 @@ test("pages long project chats and keeps an open chat visible across layouts", a
   await page.goto("/")
   const sidebar = page.getByRole("complementary", { name: "Sessions" })
   const project = sidebar.locator('[data-sidebar-group^="project:"]')
-  await expect(project.locator('[data-action="sidebar-session"]')).toHaveCount(5)
+  const sessionRows = project.locator('[data-action="sidebar-session"][data-session-id]')
+  await expect(sessionRows).toHaveCount(5)
   await expect(project.locator('[data-slot="sidebar-session-count"]')).toHaveCount(0)
   await project.locator('[data-action="sidebar-group-more"]').click()
-  await expect(project.locator('[data-action="sidebar-session"]')).toHaveCount(12)
+  await expect(sessionRows).toHaveCount(12)
   await project.locator('[data-action="sidebar-group-more"]').click()
-  await expect(project.locator('[data-action="sidebar-session"]')).toHaveCount(18)
+  await expect(sessionRows).toHaveCount(18)
   await expect(project.locator('[data-action="sidebar-group-more"]')).toHaveCount(0)
 
   await project.locator('[data-session-id="ses_sidebar_page_00"]').click()
   await expect(page).toHaveURL(/ses_sidebar_page_00/)
   await project.locator('[data-action="sidebar-group-less"]').click()
-  await expect(project.locator('[data-action="sidebar-session"]')).toHaveCount(7)
+  await expect(sessionRows).toHaveCount(7)
   await sidebar.locator('[data-action="sidebar-settings"]').click()
   await page.getByRole("tab", { name: "Appearance" }).click()
   await page.locator('[data-action="settings-session-tabs"]').click()
@@ -255,7 +338,7 @@ test("pages long project chats and keeps an open chat visible across layouts", a
   await page.locator('[data-action="settings-session-tabs"]').click()
   await page.getByRole("option", { name: "Sidebar" }).click()
   await expect(sidebar.locator('[data-session-id="ses_sidebar_page_00"]')).toBeVisible()
-  await expect(project.locator('[data-action="sidebar-session"]')).toHaveCount(7)
+  await expect(sessionRows).toHaveCount(7)
   await sidebar.locator('[data-session-id="ses_sidebar_page_00"]').click()
   await expect(page).toHaveURL(/\/session\/ses_sidebar_page_00$/)
 })
@@ -342,9 +425,9 @@ test("keeps the chat canvas flat in sidebar mode and restores its frame in top-b
   await page.goto(`/server/${btoa(fixture.serverKey)}/session/${fixture.targetID}`)
   const sidebar = page.getByRole("complementary", { name: "Sessions" })
   await expect(sidebar).toHaveCSS("border-right-width", "0px")
-  const panel = page.locator('[data-slot="session-panel-frame"]').first()
+  const panel = page.locator('[data-slot="session-panel-frame"]')
   await expect(panel).toHaveCSS("border-top-left-radius", "0px")
-  await expect(panel).toHaveCSS("box-shadow", "none")
+  await expect(panel).toHaveCSS("box-shadow", /inset/)
 
   await sidebar.locator('[data-action="sidebar-settings"]').click()
   await page.getByRole("tab", { name: "Appearance" }).click()
@@ -354,7 +437,7 @@ test("keeps the chat canvas flat in sidebar mode and restores its frame in top-b
     .locator('[data-slot="titlebar-tabs"] [data-titlebar-tab]')
     .filter({ hasText: fixture.expected.targetTitle })
     .click()
-  await expect(panel).toHaveCSS("border-top-left-radius", "10px")
+  await expect(panel).toHaveCSS("border-top-left-radius", "16px")
   expect(await panel.evaluate((element) => getComputedStyle(element).boxShadow)).not.toBe("none")
 })
 

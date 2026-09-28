@@ -3,7 +3,10 @@ import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { pathToFileURL } from "node:url"
-import { legacyMessages, startBridge } from "../main/bridge"
+import { execFile } from "node:child_process"
+import { promisify } from "node:util"
+import { legacyMessages, legacySession, startBridge } from "../main/bridge"
+import { WorkspaceStore } from "../main/agent-store"
 import type { Session } from "../shared/types"
 import { createOpencodeClient } from "@codeink/sdk/v2/client"
 
@@ -12,10 +15,71 @@ afterEach(async () => {
   for (const fn of cleanup.splice(0)) await fn()
 })
 
+test("Git projects expose branches and worktrees, and branch selection opens the right worktree", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "codeink-git-selector-"))
+  const repository = join(directory, "repo")
+  const data = join(directory, "data")
+  await Bun.$`mkdir -p ${repository} ${data}`
+  const git = (args: string[], cwd = repository) => promisify(execFile)("git", args, { cwd })
+  await git(["init", "-b", "main"])
+  await git(["-c", "user.name=CodeInk Test", "-c", "user.email=test@example.com", "commit", "--allow-empty", "-m", "init"])
+  await git(["branch", "feature/existing"])
+
+  const bridge = await startBridge("127.0.0.1", 0, "test-password", data, process.env)
+  cleanup.push(async () => {
+    await bridge.stop()
+    await rm(directory, { recursive: true, force: true })
+  })
+  const address = bridge.server.address()
+  if (!address || typeof address === "string") throw new Error("No listener")
+  const base = `http://127.0.0.1:${address.port}`
+  const headers = { Authorization: `Basic ${Buffer.from("opencode:test-password").toString("base64")}` }
+  const query = `directory=${encodeURIComponent(repository)}`
+  const request = (path: string, name?: string) => fetch(`${base}${path}?${query}`, {
+    method: name ? "POST" : "GET",
+    headers: { ...headers, ...(name ? { "Content-Type": "application/json" } : {}) },
+    ...(name ? { body: JSON.stringify({ name }) } : {}),
+  }).then((response) => response.json())
+
+  expect(await request("/project/current")).toMatchObject({
+    vcs: "git",
+    sandboxes: [],
+    codeinkBranches: ["feature/existing", "main"],
+  })
+  const created = await request("/experimental/worktree", "feature/existing")
+  expect(created).toMatchObject({ branch: "feature/existing" })
+  expect(await git(["branch", "--show-current"], created.directory).then((result) => result.stdout.trim())).toBe(
+    "feature/existing",
+  )
+  expect((await request("/experimental/worktree", "feature/existing")).directory).toBe(created.directory)
+  expect(await request("/experimental/worktree")).toContain(created.directory)
+  expect(await request("/project/current")).toMatchObject({
+    vcs: "git",
+    sandboxes: [created.directory],
+    codeinkWorktreeBranches: { [created.directory]: "feature/existing" },
+  })
+  expect(await request("/project/current")).toMatchObject({ codeinkBranches: ["feature/existing", "main"] })
+  const fresh = await fetch(`${base}/experimental/worktree?${query}`, {
+    method: "POST",
+    headers: { ...headers, "Content-Type": "application/json" },
+    body: "{}",
+  }).then((response) => response.json())
+  expect(fresh.branch.startsWith("codeink-")).toBe(true)
+  expect(await git(["branch", "--show-current"], fresh.directory).then((result) => result.stdout.trim())).toBe(
+    fresh.branch,
+  )
+})
+
 test("active-turn projection matches the full timeline", () => {
   const session: Session = {
-    id: "ses_test", agentID: "codex", directory: "/tmp", model: "fixture", title: "test",
-    updatedAt: 10, status: "running", approvals: [],
+    id: "ses_test",
+    agentID: "codex",
+    directory: "/tmp",
+    model: "fixture",
+    title: "test",
+    updatedAt: 10,
+    status: "running",
+    approvals: [],
     messages: [
       { id: "old-user", role: "user", text: "Old prompt", createdAt: 1 },
       { id: "old-answer", role: "assistant", text: "Old answer", createdAt: 2 },
@@ -40,39 +104,84 @@ test("conversation pages exclude older tool output and retain complete turns", a
   const address = bridge.server.address()
   if (!address || typeof address === "string") throw new Error("No listener")
   const base = `http://127.0.0.1:${address.port}/session/ses_pages/message`
-  const headers = { Authorization: `Basic ${Buffer.from("opencode:test-password").toString("base64")}`, Origin: "codeink://renderer" }
+  const headers = {
+    Authorization: `Basic ${Buffer.from("opencode:test-password").toString("base64")}`,
+    Origin: "codeink://renderer",
+  }
   const session: Session = {
-    id: "ses_pages", agentID: "codex", directory, model: "fixture", title: "Pages",
-    updatedAt: 10, status: "idle", approvals: [],
+    id: "ses_pages",
+    agentID: "codex",
+    directory,
+    model: "fixture",
+    title: "Pages",
+    updatedAt: 10,
+    status: "idle",
+    approvals: [],
     messages: Array.from({ length: 5 }, (_, index) => [
       { id: `user-${index}`, role: "user" as const, text: `Prompt ${index}` },
-      { id: `tool-${index}`, role: "tool" as const, text: `Tool output ${index}`, tool: { name: "bash", output: `Tool output ${index}` } },
+      {
+        id: `tool-${index}`,
+        role: "tool" as const,
+        text: `Tool output ${index}`,
+        tool: { name: "bash", output: `Tool output ${index}` },
+      },
       { id: `answer-${index}`, role: "assistant" as const, text: `Answer ${index}` },
     ]).flat(),
   }
   bridge.store.state.sessions.push(session)
+  let statusChanges = 0
+  const unsubscribeStatus = bridge.subscribeSessionStatus(() => statusChanges++)
   const first = await fetch(`${base}?limit=4`, { headers })
   expect(first.ok).toBe(true)
   expect(first.headers.get("Access-Control-Expose-Headers")).toContain("x-next-cursor")
-  expect((await first.json()).map((item: { info: { id: string }; parts: { type: string; state?: { output?: string } }[] }) => [item.info.id, item.parts.find((part) => part.type === "tool")?.state?.output])).toEqual([
-    ["user-3", undefined], ["user-3a", "Tool output 3"],
-    ["user-4", undefined], ["user-4a", "Tool output 4"],
+  expect(
+    (await first.json()).map(
+      (item: { info: { id: string }; parts: { type: string; state?: { output?: string } }[] }) => [
+        item.info.id,
+        item.parts.find((part) => part.type === "tool")?.state?.output,
+      ],
+    ),
+  ).toEqual([
+    ["user-3", undefined],
+    ["user-3a", "Tool output 3"],
+    ["user-4", undefined],
+    ["user-4a", "Tool output 4"],
   ])
   const second = await fetch(`${base}?limit=4&before=${first.headers.get("x-next-cursor")}`, { headers })
-  expect((await second.json()).map((item: { info: { id: string } }) => item.info.id)).toEqual(["user-1", "user-1a", "user-2", "user-2a"])
+  expect((await second.json()).map((item: { info: { id: string } }) => item.info.id)).toEqual([
+    "user-1",
+    "user-1a",
+    "user-2",
+    "user-2a",
+  ])
   const third = await fetch(`${base}?limit=4&before=${second.headers.get("x-next-cursor")}`, { headers })
   expect((await third.json()).map((item: { info: { id: string } }) => item.info.id)).toEqual(["user-0", "user-0a"])
   expect(third.headers.get("x-next-cursor")).toBeNull()
-  expect((await fetch(base, { headers }).then((response) => response.json()))).toHaveLength(10)
-  expect((await fetch(`${base}/user-0a`, { headers }).then((response) => response.json())).parts.some((part: { type: string }) => part.type === "tool")).toBe(true)
+  expect(await fetch(base, { headers }).then((response) => response.json())).toHaveLength(10)
+  expect(
+    (await fetch(`${base}/user-0a`, { headers }).then((response) => response.json())).parts.some(
+      (part: { type: string }) => part.type === "tool",
+    ),
+  ).toBe(true)
   bridge.store.state.sessions.push({ ...session, id: "newer-session", updatedAt: 20 })
-  expect((await fetch(`${base.replace("/ses_pages/message", "")}?limit=1&directory=${encodeURIComponent(directory)}`, { headers }).then((response) => response.json())).map((item: { id: string }) => item.id)).toEqual(["newer-session"])
+  expect(
+    (
+      await fetch(`${base.replace("/ses_pages/message", "")}?limit=1&directory=${encodeURIComponent(directory)}`, {
+        headers,
+      }).then((response) => response.json())
+    ).map((item: { id: string }) => item.id),
+  ).toEqual(["newer-session"])
   const abort = new AbortController()
-  const stream = await fetch(`${base.replace("/session/ses_pages/message", "")}/event?directory=${encodeURIComponent(directory)}`, { headers, signal: abort.signal })
+  const stream = await fetch(
+    `${base.replace("/session/ses_pages/message", "")}/event?directory=${encodeURIComponent(directory)}`,
+    { headers, signal: abort.signal },
+  )
   const reader = stream.body?.getReader()
   if (!reader) throw new Error("No event stream")
   const update = await fetch(`${base.replace("/message", "")}`, {
-    method: "PATCH", headers: { ...headers, "Content-Type": "application/json" }, body: JSON.stringify({ title: "Renamed" }),
+    method: "PATCH",
+    headers: { ...headers, "Content-Type": "application/json" },
+    body: JSON.stringify({ title: "Renamed" }),
   })
   expect(update.ok).toBe(true)
   const events: { type: string }[] = []
@@ -86,6 +195,7 @@ test("conversation pages exclude older tool output and retain complete turns", a
     events.push(...complete.filter((item) => item.startsWith("data: ")).map((item) => JSON.parse(item.slice(6))))
   }
   expect(events.filter((item) => item.type.startsWith("message."))).toEqual([])
+  expect(statusChanges).toBe(1)
   session.messages.push(
     { id: "user-5", role: "user", text: "New prompt" },
     { id: "tool-5", role: "tool", text: "New tool output", tool: { name: "bash", output: "New tool output" } },
@@ -93,7 +203,9 @@ test("conversation pages exclude older tool output and retain complete turns", a
   session.status = "running"
   session.updatedAt = 30
   await fetch(`${base.replace("/message", "")}`, {
-    method: "PATCH", headers: { ...headers, "Content-Type": "application/json" }, body: JSON.stringify({ title: "Running" }),
+    method: "PATCH",
+    headers: { ...headers, "Content-Type": "application/json" },
+    body: JSON.stringify({ title: "Running" }),
   })
   const live: { type: string; properties: { info?: { id: string } } }[] = []
   while (!live.some((item) => item.type === "session.status")) {
@@ -105,7 +217,12 @@ test("conversation pages exclude older tool output and retain complete turns", a
     live.push(...complete.filter((item) => item.startsWith("data: ")).map((item) => JSON.parse(item.slice(6))))
   }
   abort.abort()
-  expect(live.filter((item) => item.type === "message.updated").map((item) => item.properties.info?.id)).toEqual(["user-5", "user-5a"])
+  expect(statusChanges).toBe(2)
+  unsubscribeStatus()
+  expect(live.filter((item) => item.type === "message.updated").map((item) => item.properties.info?.id)).toEqual([
+    "user-5",
+    "user-5a",
+  ])
 })
 
 test("the unmodified desktop SDK contract drives an external agent with native approvals", async () => {
@@ -190,14 +307,92 @@ test("the unmodified desktop SDK contract drives an external agent with native a
     state: { input: { command: "ls -la" }, output: "README.md", status: "completed" },
   })
   expect(messages[1].info.finish).toBe("stop")
+  // The HTTP route does not return the in-memory session. Historical tool payloads must not be cloned on admission.
+  const historicalTool = bridge.sessions.get(session.id).messages.find((message) => message.role === "tool")
+  if (!historicalTool?.tool) throw new Error("Missing historical tool")
+  historicalTool.tool.input = new Proxy({ command: "ls -la" }, {})
+  expect(() => structuredClone(historicalTool)).toThrow()
+  await post(`/session/${session.id}/prompt_async`, {
+    messageID: "msg_002",
+    model: { providerID: "local-codex", modelID: "fixture-model-two" },
+    variant: "low",
+    parts: [{ type: "text", text: "Continue" }],
+  })
   await writeFile(join(directory, "test.ts"), "export const value = 1")
   expect((await get("/file")).some((item: { name: string }) => item.name === "test.ts")).toBe(true)
+})
+
+test("steers a running Codex turn once through the desktop prompt route", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "codeink-steer-"))
+  const log = join(directory, "agent.log")
+  const bridge = await startBridge("127.0.0.1", 0, "test-password", directory, {
+    ...process.env,
+    CODEINK_FIXTURE_RECORD: log,
+  })
+  cleanup.push(async () => {
+    await bridge.stop()
+    await rm(directory, { recursive: true, force: true })
+  })
+  const address = bridge.server.address()
+  if (!address || typeof address === "string") throw new Error("No listener")
+  const base = `http://127.0.0.1:${address.port}`
+  const headers = {
+    Authorization: `Basic ${Buffer.from("opencode:test-password").toString("base64")}`,
+    "Content-Type": "application/json",
+  }
+  bridge.store.state.agents = []
+  await bridge.saveAgent({
+    id: "codex",
+    name: "Codex",
+    protocol: "codex",
+    command: process.execPath,
+    args: [join(import.meta.dirname, "fixtures/agent.ts"), "codex"],
+  })
+  const session = await fetch(`${base}/session?directory=${encodeURIComponent(directory)}`, {
+    method: "POST",
+    headers,
+    body: "{}",
+  }).then((response) => response.json())
+  const prompt = (id: string, text: string, delivery?: "steer") =>
+    fetch(`${base}/session/${session.id}/prompt_async?directory=${encodeURIComponent(directory)}`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        messageID: id,
+        delivery,
+        model: { providerID: "local-codex", modelID: "fixture-model-two" },
+        parts: [{ type: "text", text }],
+      }),
+    })
+  expect((await prompt("msg_start", "Start work")).ok).toBe(true)
+  const deadline = Date.now() + 5000
+  while (!bridge.sessions.get(session.id).approvals.length) {
+    if (Date.now() > deadline) throw new Error("Turn did not pause for approval")
+    await new Promise((resolve) => setTimeout(resolve, 10))
+  }
+  const concurrent = await Promise.all([
+    prompt("msg_steer", "Change direction", "steer"),
+    prompt("msg_steer", "Change direction", "steer"),
+  ])
+  expect(concurrent.every((response) => response.ok)).toBe(true)
+  expect((await prompt("msg_steer", "Change direction", "steer")).ok).toBe(true)
+  expect(bridge.sessions.get(session.id).messages.filter((message) => message.id === "msg_steer")).toHaveLength(1)
+  const calls = (await readFile(log, "utf8"))
+    .split("\n")
+    .filter(Boolean)
+    .map((line) => JSON.parse(line) as { method?: string; params?: { expectedTurnId?: string } })
+    .filter((item) => item.method === "turn/steer")
+  expect(calls).toHaveLength(1)
+  expect(calls[0]?.params?.expectedTurnId).toBe("turn-1")
 })
 
 test("a new agent receives handoff context without adding it to the visible user message", async () => {
   const directory = await mkdtemp(join(tmpdir(), "codeink-handoff-"))
   const log = join(directory, "requests.jsonl")
-  const bridge = await startBridge("127.0.0.1", 0, "test-password", directory, { ...process.env, CODEINK_FIXTURE_RECORD: log })
+  const bridge = await startBridge("127.0.0.1", 0, "test-password", directory, {
+    ...process.env,
+    CODEINK_FIXTURE_RECORD: log,
+  })
   cleanup.push(async () => {
     await bridge.stop()
     await rm(directory, { recursive: true, force: true })
@@ -211,16 +406,37 @@ test("a new agent receives handoff context without adding it to the visible user
     throwOnError: true,
   })
   bridge.store.state.agents = []
-  await bridge.saveAgent({ id: "codex", name: "Codex", protocol: "codex", command: process.execPath, args: [join(import.meta.dirname, "fixtures/agent.ts"), "codex"] })
+  await bridge.saveAgent({
+    id: "codex",
+    name: "Codex",
+    protocol: "codex",
+    command: process.execPath,
+    args: [join(import.meta.dirname, "fixtures/agent.ts"), "codex"],
+  })
   bridge.store.state.sessions.push({
-    id: "source-session", agentID: "claude", directory, title: "Source", model: "claude-model", updatedAt: 1,
-    status: "idle", approvals: [], messages: [
+    id: "source-session",
+    agentID: "claude",
+    directory,
+    title: "Source",
+    model: "claude-model",
+    updatedAt: 1,
+    status: "idle",
+    approvals: [],
+    messages: [
       { id: "source-user", role: "user", text: "Keep the tests passing" },
-      { id: "source-tool", role: "tool", text: "SECRET_OUTPUT".repeat(1000), tool: { name: "bash", output: "SECRET_OUTPUT".repeat(1000) } },
+      {
+        id: "source-tool",
+        role: "tool",
+        text: "SECRET_OUTPUT".repeat(1000),
+        tool: { name: "bash", output: "SECRET_OUTPUT".repeat(1000) },
+      },
       { id: "source-answer", role: "assistant", text: "I changed auth.ts and added a test." },
     ],
   })
-  const created = await client.session.create({ directory, model: { id: "fixture-model-two", providerID: "local-codex" } })
+  const created = await client.session.create({
+    directory,
+    model: { id: "fixture-model-two", providerID: "local-codex" },
+  })
   if (!created.data) throw new Error("No session")
   expect(bridge.sessions.get(created.data.id)).toMatchObject({ agentID: "codex", model: "fixture-model-two" })
   await client.session.promptAsync({
@@ -234,33 +450,114 @@ test("a new agent receives handoff context without adding it to the visible user
     if (Date.now() > deadline) throw new Error("Native turn did not start")
     await Bun.sleep(10)
   }
-  expect(bridge.sessions.get(created.data.id).messages.find((item) => item.role === "user")?.text).toBe("Continue with Codex")
-  const requests = (await readFile(log, "utf8")).trim().split("\n").map((line) => JSON.parse(line))
+  expect(bridge.sessions.get(created.data.id).messages.find((item) => item.role === "user")?.text).toBe(
+    "Continue with Codex",
+  )
+  const requests = (await readFile(log, "utf8"))
+    .trim()
+    .split("\n")
+    .map((line) => JSON.parse(line))
   const nativePrompt = requests.find((item) => item.method === "turn/start")?.params.input[0].text
   expect(nativePrompt).toContain("source-session (claude)")
   expect(nativePrompt).toContain("Keep the tests passing")
   expect(nativePrompt).toContain("Tools used: bash")
   expect(nativePrompt).toContain("Current request:\nContinue with Codex")
   expect(nativePrompt).not.toContain("SECRET_OUTPUT")
-  bridge.store.state.sessions.push({
-    id: "other-project", agentID: "claude", directory: "/another-project", title: "Other", model: "", updatedAt: 1,
-    status: "idle", approvals: [], messages: [{ id: "private", role: "user", text: "Private context" }],
+  expect(bridge.handoffPrompt(created.data.id)).toBe(nativePrompt)
+  expect(bridge.sessions.get(created.data.id).handoff).toMatchObject({
+    fromSessionID: "source-session",
+    fromAgentID: "claude",
+    context: expect.stringContaining("Keep the tests passing"),
   })
-  const other = await client.session.create({ directory, model: { id: "fixture-model-two", providerID: "local-codex" } })
+  expect(legacySession(bridge.sessions.get(created.data.id))).toMatchObject({
+    codeinkHandoff: { fromSessionID: "source-session", fromAgentID: "claude" },
+  })
+  expect(JSON.stringify(legacySession(bridge.sessions.get(created.data.id)))).not.toContain("Keep the tests passing")
+  const reloaded = new WorkspaceStore(join(directory, "agents.json"))
+  await reloaded.load()
+  expect(reloaded.state.sessions.find((item) => item.id === created.data.id)?.handoff?.context).toContain(
+    "Keep the tests passing",
+  )
+  bridge.store.state.sessions.push({
+    id: "other-project",
+    agentID: "claude",
+    directory: "/another-project",
+    title: "Other",
+    model: "",
+    updatedAt: 1,
+    status: "idle",
+    approvals: [],
+    messages: [{ id: "private", role: "user", text: "Private context" }],
+  })
+  const other = await client.session.create({
+    directory,
+    model: { id: "fixture-model-two", providerID: "local-codex" },
+  })
   if (!other.data) throw new Error("No second session")
-  await expect(client.session.promptAsync({
-    sessionID: other.data.id,
-    model: { providerID: "local-codex", modelID: "fixture-model-two" },
-    system: "codeink-handoff:other-project",
-    parts: [{ type: "text", text: "Do not cross projects" }],
-  })).rejects.toThrow()
+  await expect(
+    client.session.promptAsync({
+      sessionID: other.data.id,
+      model: { providerID: "local-codex", modelID: "fixture-model-two" },
+      system: "codeink-handoff:other-project",
+      parts: [{ type: "text", text: "Do not cross projects" }],
+    }),
+  ).rejects.toThrow()
   expect(bridge.sessions.get(other.data.id).messages).toHaveLength(0)
+
+  await bridge.saveAgent({
+    id: "claude",
+    name: "Claude Code",
+    protocol: "claude",
+    command: process.execPath,
+    args: [join(import.meta.dirname, "fixtures/agent.ts"), "claude"],
+  })
+  bridge.store.state.sessions.push({
+    id: "codex-source",
+    agentID: "codex",
+    directory,
+    title: "Codex source",
+    model: "fixture-model-two",
+    updatedAt: 1,
+    status: "idle",
+    approvals: [],
+    messages: [
+      { id: "codex-user", role: "user", text: "Fix the failing auth tests" },
+      { id: "codex-answer", role: "assistant", text: "I changed auth.ts and verified the unit tests." },
+    ],
+  })
+  const claudeSession = await client.session.create({
+    directory,
+    model: { id: "fixture-claude-two", providerID: "local-claude" },
+  })
+  if (!claudeSession.data) throw new Error("No Claude session")
+  await client.session.promptAsync({
+    sessionID: claudeSession.data.id,
+    model: { providerID: "local-claude", modelID: "fixture-claude-two" },
+    system: "codeink-handoff:codex-source",
+    parts: [{ type: "text", text: "Continue with Claude" }],
+  })
+  const claudeDeadline = Date.now() + 5000
+  while (!bridge.sessions.get(claudeSession.data.id).approvals.length) {
+    if (Date.now() > claudeDeadline) throw new Error("Claude turn did not start")
+    await Bun.sleep(10)
+  }
+  const claudePrompt = (await readFile(log, "utf8"))
+    .trim()
+    .split("\n")
+    .map((line) => JSON.parse(line))
+    .findLast((item) => item.protocol === "claude" && item.type === "user")
+  expect(JSON.stringify(claudePrompt)).toContain("Fix the failing auth tests")
+  expect(JSON.stringify(claudePrompt)).toContain("Current request:\\nContinue with Claude")
+  expect(bridge.handoffPrompt(claudeSession.data.id)).toContain("codex-source (codex)")
 })
 
 test("Claude image uploads survive the bridge and reach the native prompt", async () => {
   const directory = await mkdtemp(join(tmpdir(), "codeink-image-"))
   const log = join(directory, "requests.jsonl")
-  const bridge = await startBridge("127.0.0.1", 0, "test-password", directory, { ...process.env, CODEINK_FIXTURE_RECORD: log })
+  const bridge = await startBridge("127.0.0.1", 0, "test-password", directory, {
+    ...process.env,
+    CODEINK_FIXTURE_RECORD: log,
+  })
   cleanup.push(async () => {
     await bridge.stop()
     await rm(directory, { recursive: true, force: true })
@@ -273,50 +570,122 @@ test("Claude image uploads survive the bridge and reach the native prompt", asyn
     "Content-Type": "application/json",
   }
   bridge.store.state.agents = []
-  await bridge.saveAgent({ id: "claude", name: "Claude", protocol: "claude", command: process.execPath, args: [join(import.meta.dirname, "fixtures/agent.ts"), "claude"] })
-  const sessionResponse = await fetch(`${base}/session?directory=${encodeURIComponent(directory)}`, { method: "POST", headers, body: "{}" })
+  await bridge.saveAgent({
+    id: "claude",
+    name: "Claude",
+    protocol: "claude",
+    command: process.execPath,
+    args: [join(import.meta.dirname, "fixtures/agent.ts"), "claude"],
+  })
+  const sessionResponse = await fetch(`${base}/session?directory=${encodeURIComponent(directory)}`, {
+    method: "POST",
+    headers,
+    body: "{}",
+  })
   expect(sessionResponse.ok).toBe(true)
   const session = await sessionResponse.json()
   const image = (await readFile(join(import.meta.dirname, "../../icons/codeink/32x32.png"))).toString("base64")
-  const upload = JSON.stringify({ messageID: "msg_image", model: { providerID: "local-claude", modelID: "default" }, parts: [{ type: "text", text: "What is this?" }, { id: "prt_image", type: "file", mime: "image/png", filename: "pixel.png", url: `data:image/png;base64,${image}` }] })
-  const response = await fetch(`${base}/session/${session.id}/prompt_async?directory=${encodeURIComponent(directory)}`, {
-    method: "POST", headers,
-    body: upload,
+  const upload = JSON.stringify({
+    messageID: "msg_image",
+    model: { providerID: "local-claude", modelID: "default" },
+    parts: [
+      { type: "text", text: "What is this?" },
+      {
+        id: "prt_image",
+        type: "file",
+        mime: "image/png",
+        filename: "pixel.png",
+        url: `data:image/png;base64,${image}`,
+      },
+    ],
   })
+  const response = await fetch(
+    `${base}/session/${session.id}/prompt_async?directory=${encodeURIComponent(directory)}`,
+    {
+      method: "POST",
+      headers,
+      body: upload,
+    },
+  )
   expect(response.status).toBe(200)
-  expect((await fetch(`${base}/session/${session.id}/prompt_async?directory=${encodeURIComponent(directory)}`, { method: "POST", headers, body: upload })).status).toBe(200)
+  expect(
+    (
+      await fetch(`${base}/session/${session.id}/prompt_async?directory=${encodeURIComponent(directory)}`, {
+        method: "POST",
+        headers,
+        body: upload,
+      })
+    ).status,
+  ).toBe(200)
   expect(bridge.sessions.get(session.id).messages.filter((message) => message.role === "user")).toHaveLength(1)
-  expect((await readFile(join(directory, "agents.json"), "utf8"))).not.toContain(image)
+  expect(await readFile(join(directory, "agents.json"), "utf8")).not.toContain(image)
   const deadline = Date.now() + 5000
   while (!bridge.sessions.get(session.id).approvals.length) {
     if (Date.now() > deadline) throw new Error("No approval")
     await new Promise((resolve) => setTimeout(resolve, 10))
   }
-  const messages = await fetch(`${base}/session/${session.id}/message?directory=${encodeURIComponent(directory)}`, { headers }).then((response) => response.json())
+  const messages = await fetch(`${base}/session/${session.id}/message?directory=${encodeURIComponent(directory)}`, {
+    headers,
+  }).then((response) => response.json())
   const file = messages[0].parts.find((part: { type: string }) => part.type === "file")
   expect(file).toMatchObject({ mime: "image/png", filename: "pixel.png" })
   expect((await fetch(file.url)).status).toBe(200)
-  const records = (await readFile(log, "utf8")).trim().split("\n").map((line) => JSON.parse(line))
-  expect(records.find((item) => item.type === "user")?.message.content[1]).toMatchObject({ type: "image", source: { type: "base64", media_type: "image/png", data: image } })
-  const selectedSession = await fetch(`${base}/session?directory=${encodeURIComponent(directory)}`, { method: "POST", headers, body: "{}" }).then((response) => response.json())
-  const selected = await fetch(`${base}/session/${selectedSession.id}/prompt_async?directory=${encodeURIComponent(directory)}`, {
-    method: "POST", headers,
-    body: JSON.stringify({ model: { providerID: "local-claude", modelID: "default" }, parts: [{ type: "text", text: "Describe this file" }, { type: "file", mime: "image/png", filename: "icon.png", url: pathToFileURL(join(import.meta.dirname, "../../icons/codeink/32x32.png")).href }] }),
+  const records = (await readFile(log, "utf8"))
+    .trim()
+    .split("\n")
+    .map((line) => JSON.parse(line))
+  expect(records.find((item) => item.type === "user")?.message.content[1]).toMatchObject({
+    type: "image",
+    source: { type: "base64", media_type: "image/png", data: image },
   })
+  const selectedSession = await fetch(`${base}/session?directory=${encodeURIComponent(directory)}`, {
+    method: "POST",
+    headers,
+    body: "{}",
+  }).then((response) => response.json())
+  const selected = await fetch(
+    `${base}/session/${selectedSession.id}/prompt_async?directory=${encodeURIComponent(directory)}`,
+    {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        model: { providerID: "local-claude", modelID: "default" },
+        parts: [
+          { type: "text", text: "Describe this file" },
+          {
+            type: "file",
+            mime: "image/png",
+            filename: "icon.png",
+            url: pathToFileURL(join(import.meta.dirname, "../../icons/codeink/32x32.png")).href,
+          },
+        ],
+      }),
+    },
+  )
   expect(selected.ok).toBe(true)
   while (!bridge.sessions.get(selectedSession.id).approvals.length) {
     if (Date.now() > deadline) throw new Error("No selected-file approval")
     await new Promise((resolve) => setTimeout(resolve, 10))
   }
-  const selectedRecords = (await readFile(log, "utf8")).trim().split("\n").map((line) => JSON.parse(line))
-  expect(selectedRecords.filter((item) => item.type === "user").at(-1)?.message.content[1]).toMatchObject({ type: "image", source: { type: "base64", media_type: "image/png", data: image } })
+  const selectedRecords = (await readFile(log, "utf8"))
+    .trim()
+    .split("\n")
+    .map((line) => JSON.parse(line))
+  expect(selectedRecords.filter((item) => item.type === "user").at(-1)?.message.content[1]).toMatchObject({
+    type: "image",
+    source: { type: "base64", media_type: "image/png", data: image },
+  })
 })
 
 for (const protocol of ["codex", "claude", "opencode", "pi"] as const) {
   test(`${protocol} questions accept answers through the desktop SDK route`, async () => {
     const directory = await mkdtemp(join(tmpdir(), "codeink-question-"))
     const log = join(directory, "requests.jsonl")
-    const bridge = await startBridge("127.0.0.1", 0, "test-password", directory, { ...process.env, CODEINK_FIXTURE_RECORD: log, CODEINK_FIXTURE_QUESTION: "1" })
+    const bridge = await startBridge("127.0.0.1", 0, "test-password", directory, {
+      ...process.env,
+      CODEINK_FIXTURE_RECORD: log,
+      CODEINK_FIXTURE_QUESTION: "1",
+    })
     cleanup.push(async () => {
       await bridge.stop()
       await rm(directory, { recursive: true, force: true })
@@ -324,36 +693,90 @@ for (const protocol of ["codex", "claude", "opencode", "pi"] as const) {
     const address = bridge.server.address()
     if (!address || typeof address === "string") throw new Error("No listener")
     const base = `http://127.0.0.1:${address.port}`
-    const headers = { Authorization: `Basic ${Buffer.from("opencode:test-password").toString("base64")}`, "Content-Type": "application/json" }
+    const headers = {
+      Authorization: `Basic ${Buffer.from("opencode:test-password").toString("base64")}`,
+      "Content-Type": "application/json",
+    }
     bridge.store.state.agents = []
-    await bridge.saveAgent({ id: protocol, name: protocol, protocol, command: process.execPath, args: [join(import.meta.dirname, "fixtures/agent.ts"), protocol] })
-    const session = await fetch(`${base}/session?directory=${encodeURIComponent(directory)}`, { method: "POST", headers, body: "{}" }).then((response) => response.json())
-    const prompt = await fetch(`${base}/session/${session.id}/prompt_async?directory=${encodeURIComponent(directory)}`, {
-      method: "POST", headers,
-      body: JSON.stringify({ model: { providerID: `local-${protocol}`, modelID: "default" }, parts: [{ type: "text", text: "Ask me" }] }),
+    await bridge.saveAgent({
+      id: protocol,
+      name: protocol,
+      protocol,
+      command: process.execPath,
+      args: [join(import.meta.dirname, "fixtures/agent.ts"), protocol],
     })
+    const session = await fetch(`${base}/session?directory=${encodeURIComponent(directory)}`, {
+      method: "POST",
+      headers,
+      body: "{}",
+    }).then((response) => response.json())
+    const prompt = await fetch(
+      `${base}/session/${session.id}/prompt_async?directory=${encodeURIComponent(directory)}`,
+      {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          model: { providerID: `local-${protocol}`, modelID: "default" },
+          parts: [{ type: "text", text: "Ask me" }],
+        }),
+      },
+    )
     expect(prompt.ok).toBe(true)
     const deadline = Date.now() + 5000
     while (!bridge.sessions.get(session.id).approvals.length) {
       if (Date.now() > deadline) throw new Error("No question")
       await new Promise((resolve) => setTimeout(resolve, 10))
     }
-    const questions = await fetch(`${base}/question?directory=${encodeURIComponent(directory)}`, { headers }).then((response) => response.json())
+    if (protocol === "pi") {
+      const steer = await fetch(`${base}/session/${session.id}/prompt_async?directory=${encodeURIComponent(directory)}`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          messageID: "msg_pi_steer",
+          delivery: "steer",
+          model: { providerID: "local-pi", modelID: "default" },
+          parts: [{ type: "text", text: "Focus on the tests" }],
+        }),
+      })
+      expect(steer.ok).toBe(true)
+    }
+    const questions = await fetch(`${base}/question?directory=${encodeURIComponent(directory)}`, { headers }).then(
+      (response) => response.json(),
+    )
     expect(questions[0].questions[0].question).toBe("Which option?")
     expect(questions[0].questions[0].options.map((item: { label: string }) => item.label)).toEqual(["First", "Second"])
-    const reply = await fetch(`${base}/question/${encodeURIComponent(questions[0].id)}/reply?directory=${encodeURIComponent(directory)}`, {
-      method: "POST", headers, body: JSON.stringify({ answers: [["Second"]] }),
-    })
+    const reply = await fetch(
+      `${base}/question/${encodeURIComponent(questions[0].id)}/reply?directory=${encodeURIComponent(directory)}`,
+      {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ answers: [["Second"]] }),
+      },
+    )
     expect(reply.ok).toBe(true)
     while (bridge.sessions.get(session.id).status === "running") {
       if (Date.now() > deadline) throw new Error("Question turn did not complete")
       await new Promise((resolve) => setTimeout(resolve, 10))
     }
-    const records = (await readFile(log, "utf8")).trim().split("\n").map((line) => JSON.parse(line))
-    if (protocol === "codex") expect(records.find((item) => item.id === 900)?.result).toEqual({ answers: { choice: { answers: ["Second"] } } })
-    if (protocol === "claude") expect(records.find((item) => item.type === "control_response" && item.response.request_id === "permission")?.response.response.updatedInput.answers).toEqual({ "Which option?": "Second" })
-    if (protocol === "opencode") expect(records.findLast((item) => item.path === "/question/question/reply")?.body).toEqual({ answers: [["Second"]] })
-    if (protocol === "pi") expect(records.find((item) => item.type === "extension_ui_response")?.value).toBe("Second")
+    const records = (await readFile(log, "utf8"))
+      .trim()
+      .split("\n")
+      .map((line) => JSON.parse(line))
+    if (protocol === "codex")
+      expect(records.find((item) => item.id === 900)?.result).toEqual({ answers: { choice: { answers: ["Second"] } } })
+    if (protocol === "claude")
+      expect(
+        records.find((item) => item.type === "control_response" && item.response.request_id === "permission")?.response
+          .response.updatedInput.answers,
+      ).toEqual({ "Which option?": "Second" })
+    if (protocol === "opencode")
+      expect(records.findLast((item) => item.path === "/question/question/reply")?.body).toEqual({
+        answers: [["Second"]],
+      })
+    if (protocol === "pi") {
+      expect(records.find((item) => item.type === "extension_ui_response")?.value).toBe("Second")
+      expect(records.find((item) => item.type === "steer")?.message).toBe("Focus on the tests")
+    }
   })
 }
 
@@ -361,7 +784,10 @@ test("Codex keeps a question available after a nonblocking turn ends", async () 
   const directory = await mkdtemp(join(tmpdir(), "codeink-async-question-"))
   const log = join(directory, "requests.jsonl")
   const bridge = await startBridge("127.0.0.1", 0, "test-password", directory, {
-    ...process.env, CODEINK_FIXTURE_RECORD: log, CODEINK_FIXTURE_QUESTION: "1", CODEINK_FIXTURE_QUESTION_ASYNC: "1",
+    ...process.env,
+    CODEINK_FIXTURE_RECORD: log,
+    CODEINK_FIXTURE_QUESTION: "1",
+    CODEINK_FIXTURE_QUESTION_ASYNC: "1",
   })
   cleanup.push(async () => {
     await bridge.stop()
@@ -370,12 +796,30 @@ test("Codex keeps a question available after a nonblocking turn ends", async () 
   const address = bridge.server.address()
   if (!address || typeof address === "string") throw new Error("No listener")
   const base = `http://127.0.0.1:${address.port}`
-  const headers = { Authorization: `Basic ${Buffer.from("opencode:test-password").toString("base64")}`, "Content-Type": "application/json" }
+  const headers = {
+    Authorization: `Basic ${Buffer.from("opencode:test-password").toString("base64")}`,
+    "Content-Type": "application/json",
+  }
   bridge.store.state.agents = []
-  await bridge.saveAgent({ id: "codex", name: "Codex", protocol: "codex", command: process.execPath, args: [join(import.meta.dirname, "fixtures/agent.ts"), "codex"] })
-  const session = await fetch(`${base}/session?directory=${encodeURIComponent(directory)}`, { method: "POST", headers, body: "{}" }).then((response) => response.json())
+  await bridge.saveAgent({
+    id: "codex",
+    name: "Codex",
+    protocol: "codex",
+    command: process.execPath,
+    args: [join(import.meta.dirname, "fixtures/agent.ts"), "codex"],
+  })
+  const session = await fetch(`${base}/session?directory=${encodeURIComponent(directory)}`, {
+    method: "POST",
+    headers,
+    body: "{}",
+  }).then((response) => response.json())
   const prompt = await fetch(`${base}/session/${session.id}/prompt_async?directory=${encodeURIComponent(directory)}`, {
-    method: "POST", headers, body: JSON.stringify({ model: { providerID: "local-codex", modelID: "fixture-model-two" }, parts: [{ type: "text", text: "Ask asynchronously" }] }),
+    method: "POST",
+    headers,
+    body: JSON.stringify({
+      model: { providerID: "local-codex", modelID: "fixture-model-two" },
+      parts: [{ type: "text", text: "Ask asynchronously" }],
+    }),
   })
   expect(prompt.ok).toBe(true)
   const deadline = Date.now() + 5000
@@ -383,11 +827,18 @@ test("Codex keeps a question available after a nonblocking turn ends", async () 
     if (Date.now() > deadline) throw new Error("Question did not survive completion")
     await new Promise((resolve) => setTimeout(resolve, 10))
   }
-  const questions = await fetch(`${base}/question?directory=${encodeURIComponent(directory)}`, { headers }).then((response) => response.json())
+  const questions = await fetch(`${base}/question?directory=${encodeURIComponent(directory)}`, { headers }).then(
+    (response) => response.json(),
+  )
   expect(questions).toHaveLength(1)
-  const reply = await fetch(`${base}/question/${encodeURIComponent(questions[0].id)}/reply?directory=${encodeURIComponent(directory)}`, {
-    method: "POST", headers, body: JSON.stringify({ answers: [["First"]] }),
-  })
+  const reply = await fetch(
+    `${base}/question/${encodeURIComponent(questions[0].id)}/reply?directory=${encodeURIComponent(directory)}`,
+    {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ answers: [["First"]] }),
+    },
+  )
   expect(reply.ok).toBe(true)
   expect((await readFile(log, "utf8")).includes('"First"')).toBe(true)
 })

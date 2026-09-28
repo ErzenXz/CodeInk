@@ -58,7 +58,7 @@ export type TitlebarUpdate = {
 export function useTitlebarRightMount() {
   const language = useLanguage()
   const [mount, setMount] = createSignal<HTMLElement | null>(null)
-  const sync = () => setMount(document.getElementById("opencode-titlebar-right"))
+  const sync = () => setMount(document.getElementById("codeink-titlebar-right"))
   onMount(sync)
   createEffect(on(language.direction, sync, { defer: true }))
   return mount
@@ -335,9 +335,16 @@ export function Titlebar(props: { update?: TitlebarUpdate; debugTools?: { visibl
                 return project ? [{ server: ServerConnection.key(conn), project }] : []
               })[0]
               if (!fallback) {
-                navigate("/")
-                const conn = server.current ?? global.servers.list()[0]
+                const conn =
+                  (server.current && global.ensureServerCtx(server.current).sync.data.path.home ? server.current : undefined) ??
+                  global.servers.list().find((item) => global.ensureServerCtx(item).sync.data.path.home) ??
+                  server.current ?? global.servers.list()[0]
                 if (!conn) return
+                const home = global.ensureServerCtx(conn).sync.data.path.home
+                if (home) {
+                  void tabs.newDraft({ server: ServerConnection.key(conn), directory: home })
+                  return
+                }
                 pickDirectory({
                   server: conn,
                   title: language.t("command.project.open"),
@@ -486,6 +493,21 @@ export function Titlebar(props: { update?: TitlebarUpdate; debugTools?: { visibl
                 <ChannelIndicator debugTools={props.debugTools} />
                 <Show when={windows() || linux()}>
                   <WindowsAppMenu command={command} platform={platform} variant="v2" />
+                </Show>
+                <Show when={wide() && settings.general.sessionTabPosition() !== "top"}>
+                  <TooltipV2 placement="bottom" value={language.t("command.sidebar.toggle")}>
+                    <IconButtonV2
+                      type="button"
+                      variant="ghost-muted"
+                      size="large"
+                      class="!w-9 shrink-0"
+                      icon={<IconV2 name="sidebar-right" />}
+                      state={layout.sidebarV2.opened() ? "pressed" : undefined}
+                      onClick={layout.sidebarV2.toggle}
+                      aria-label={language.t("command.sidebar.toggle")}
+                      aria-expanded={layout.sidebarV2.opened()}
+                    />
+                  </TooltipV2>
                 </Show>
                 <TooltipV2
                   placement="bottom"
@@ -675,7 +697,7 @@ export function Titlebar(props: { update?: TitlebarUpdate; debugTools?: { visibl
                         </Tooltip>
                       </div>
                     </Show>
-                    <div id="opencode-titlebar-left" class="flex items-center gap-3 min-w-0 px-2" />
+                    <div id="codeink-titlebar-left" class="flex items-center gap-3 min-w-0 px-2" />
                   </div>
                 </div>
                 <ChannelIndicator debugTools={props.debugTools} />
@@ -684,7 +706,7 @@ export function Titlebar(props: { update?: TitlebarUpdate; debugTools?: { visibl
 
             <div class="min-w-0 flex items-center justify-center pointer-events-none">
               <div
-                id="opencode-titlebar-center"
+                id="codeink-titlebar-center"
                 class="pointer-events-auto min-w-0 flex justify-center w-fit max-w-full"
               />
             </div>
@@ -710,7 +732,7 @@ export function Titlebar(props: { update?: TitlebarUpdate; debugTools?: { visibl
                   aria-pressed={layout.route().type === "settings"}
                 />
               </TooltipKeybind>
-              <div id="opencode-titlebar-right" class="flex items-center gap-1 shrink-0 justify-end" />
+              <div id="codeink-titlebar-right" class="flex items-center gap-1 shrink-0 justify-end" />
               <Show when={windows()}>
                 <div class="shrink-0" style={{ width: windowsControlsWidth() }} />
               </Show>
@@ -740,7 +762,7 @@ function TitlebarV2Right(props: { state: TitlebarV2RightState }) {
       <Show when={props.state.update.visible}>
         <TitlebarUpdateIconButton state={props.state.update} />
       </Show>
-      <div id="opencode-titlebar-right" class="flex shrink-0 items-center justify-end gap-0" />
+      <div id="codeink-titlebar-right" class="flex shrink-0 items-center justify-end gap-0" />
     </div>
   )
 }

@@ -6,9 +6,12 @@ import { IconButton } from "@codeink/ui/icon-button"
 import { useLanguage } from "@/context/language"
 
 export function SessionFollowupDock(props: {
-  items: { id: string; text: string }[]
+  items: { id: string; text: string; canSteer: boolean }[]
   sending?: string
+  busy: boolean
   onSend: (id: string) => void
+  onSteer: (id: string) => void
+  onRemove: (id: string) => void
   onEdit: (id: string) => void
 }) {
   const language = useLanguage()
@@ -77,15 +80,17 @@ export function SessionFollowupDock(props: {
             {(item) => (
               <div class="flex items-center gap-2 min-w-0 py-1">
                 <span class="min-w-0 flex-1 truncate text-13-regular text-text-strong">{item.text}</span>
-                <Button
-                  size="small"
-                  variant="secondary"
-                  class="shrink-0"
-                  disabled={!!props.sending}
-                  onClick={() => props.onSend(item.id)}
-                >
-                  {language.t("session.followupDock.sendNow")}
-                </Button>
+                <Show when={!props.busy || item.canSteer}>
+                  <Button
+                    size="small"
+                    variant="secondary"
+                    class="shrink-0"
+                    disabled={!!props.sending}
+                    onClick={() => props.busy ? props.onSteer(item.id) : props.onSend(item.id)}
+                  >
+                    {props.busy ? language.t("settings.general.row.followup.option.steer") : language.t("session.followupDock.sendNow")}
+                  </Button>
+                </Show>
                 <Button
                   size="small"
                   variant="ghost"
@@ -95,6 +100,14 @@ export function SessionFollowupDock(props: {
                 >
                   {language.t("session.followupDock.edit")}
                 </Button>
+                <IconButton
+                  icon="trash"
+                  size="normal"
+                  variant="ghost"
+                  disabled={!!props.sending}
+                  aria-label={language.t("common.delete")}
+                  onClick={() => props.onRemove(item.id)}
+                />
               </div>
             )}
           </For>

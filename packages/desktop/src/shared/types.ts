@@ -1,4 +1,4 @@
-export type Protocol = "codex" | "claude" | "opencode" | "pi" | "acp"
+export type Protocol = "codex" | "claude" | "opencode" | "pi" | "acp" | "codeink"
 export type ToolInfo = {
   name: string
   input?: Record<string, unknown>
@@ -34,6 +34,7 @@ export type Message = {
   tool?: ToolInfo
   usage?: Usage
   costs?: Record<string, number>
+  weeklyDelta?: number
 }
 export type Attachment = { id: string; filename: string; mime: string }
 export type PromptAttachment = Attachment & { path: string }
@@ -53,6 +54,7 @@ export type Session = {
   updatedAt: number
   status: "idle" | "running" | "error"
   approvals: Approval[]
+  handoff?: { fromSessionID: string; fromAgentID: string; context: string }
 }
 export type Project = { directory: string; name: string; icon?: Record<string, unknown> }
 /** CodeInk's shared vocabulary for how much an agent may do without asking; adapters map it to native modes. */
@@ -88,12 +90,14 @@ export type Answer = { allow: boolean; answers?: Record<string, string[]> }
 export type SendInput = {
   sessionID?: string
   messageID?: string
+  delivery?: "steer" | "queue"
   agentID: string
   directory: string
   model: string
   variant?: string
   text: string
   handoffContext?: string
+  handoffSource?: { sessionID: string; agentID: string }
   attachments?: PromptAttachment[]
 }
 
@@ -138,9 +142,12 @@ export type AgentUsageReport = {
   installed: boolean
   plan?: string
   windows: AgentLimitWindow[]
+  metrics?: { id: string; value: number; unit: string }[]
   /** "live" comes from the agent's API; "cache" from the agent's own local usage cache. */
   source?: "live" | "cache"
   fetchedAt?: number
+  expiresAt?: number
+  stale?: boolean
   error?: string
   totals: AgentUsageTotals
 }

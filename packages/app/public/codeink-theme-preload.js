@@ -1,12 +1,9 @@
 ;(function () {
   var key = "codeink-theme-id"
   var previous = localStorage.getItem(key) || localStorage.getItem("opencode-theme-id")
-  var themeId =
-    previous === "oc-1" || previous === "oc-2"
-      ? "codeink"
-      : previous === "opencode"
-        ? "codeink-classic"
-        : previous || "codeink"
+  var themeId = ["codeink", "codeink-slate", "codeink-sage", "codeink-ember", "codeink-violet"].includes(previous)
+    ? previous
+    : "codeink"
   localStorage.setItem(key, themeId)
   localStorage.removeItem("opencode-theme-id")
 

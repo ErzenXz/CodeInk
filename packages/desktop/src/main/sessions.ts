@@ -4,6 +4,7 @@ import type { AgentEvent, AgentRules, Answer, Message, SendInput, Session } from
 import type { Adapter } from "./adapters/types"
 import { connectAgent, resolveExecutable } from "./agents"
 import { WorkspaceStore } from "./agent-store"
+import type { GatewayProvider } from "./gateway-keys"
 
 export class Sessions {
   private adapters = new Map<string, Adapter>()
@@ -11,6 +12,7 @@ export class Sessions {
   private dirty = new Set<Session>()
   private messageIndexes = new WeakMap<Session, Map<string, Message>>()
   private currentUsers = new WeakMap<Session, Message>()
+  private pendingSteers = new Map<string, { input: SendInput; result: Promise<Session> }>()
   private flushTimer?: ReturnType<typeof setTimeout>
   /** Sessions whose agent must relaunch before the next turn so changed rules take effect. */
   private stale = new Set<string>()
@@ -22,6 +24,8 @@ export class Sessions {
       fast: [],
       auto: [],
     }),
+    private gatewayKey: (provider: GatewayProvider) => string | undefined = () => undefined,
+    private connect = connectAgent,
   ) {}
 
   rules(agentID: string): AgentRules {
@@ -52,15 +56,65 @@ export class Sessions {
       })
   }
 
-  async send(input: SendInput) {
+  async send(input: SendInput): Promise<Session>
+  async send(input: SendInput, snapshot: false): Promise<void>
+  async send(input: SendInput, snapshot = true): Promise<Session | void> {
+    const pendingKey = input.sessionID && input.messageID ? `${input.sessionID}:${input.messageID}` : undefined
+    const pending = pendingKey ? this.pendingSteers.get(pendingKey) : undefined
+    if (pending) {
+      if (
+        pending.input.text !== input.text ||
+        pending.input.agentID !== input.agentID ||
+        pending.input.directory !== input.directory ||
+        pending.input.model !== input.model ||
+        pending.input.variant !== input.variant ||
+        pending.input.delivery !== input.delivery ||
+        JSON.stringify(pending.input.attachments ?? []) !== JSON.stringify(input.attachments ?? [])
+      ) throw new Error(t("messageConflict"))
+      const session = await pending.result
+      return snapshot ? structuredClone(session) : undefined
+    }
     const agent = this.store.state.agents.find((value) => value.id === input.agentID)
     if (!agent) throw new Error(t("unknownAgent"))
     const existing = input.sessionID ? this.get(input.sessionID) : undefined
-    if (existing && this.retry(existing, input)) return structuredClone(existing)
-    if (existing?.status === "running") throw new Error(t("busy"))
+    if (existing && this.retry(existing, input)) return snapshot ? structuredClone(existing) : undefined
     if (existing && (existing.agentID !== input.agentID || existing.directory !== input.directory))
       throw new Error(t("modelLocked"))
-    const executable = await resolveExecutable(agent.command, this.env)
+    if (existing?.status === "running") {
+      if (input.delivery !== "steer") throw new Error(t("busy"))
+      if (existing.model !== input.model || existing.variant !== input.variant) throw new Error(t("steerModelMismatch"))
+      const adapter = this.adapters.get(existing.id)
+      if (!adapter?.steer) throw new Error(t("unsupportedFeature"))
+      const token = this.connections.get(existing.id)
+      const result = (async () => {
+        await adapter.steer!(input.text, input.attachments)
+        if (existing.status !== "running" || this.connections.get(existing.id) !== token) throw new Error(t("busy"))
+        const message: Message = {
+          id: input.messageID ?? `msg_${Date.now().toString(16)}${randomUUID().replaceAll("-", "")}`,
+          role: "user",
+          text: input.text,
+          attachments: input.attachments?.map(({ id, filename, mime }) => ({ id, filename, mime })),
+          model: existing.model,
+          variant: existing.variant,
+          mode: this.rules(agent.id).access === "plan" ? "plan" : "build",
+          createdAt: Date.now(),
+        }
+        existing.messages.push(message)
+        this.currentUsers.set(existing, message)
+        existing.updatedAt = Date.now()
+        await this.store.save()
+        this.publish(existing)
+        return existing
+      })()
+      if (pendingKey) this.pendingSteers.set(pendingKey, { input, result })
+      try {
+        const session = await result
+        return snapshot ? structuredClone(session) : undefined
+      } finally {
+        if (pendingKey) this.pendingSteers.delete(pendingKey)
+      }
+    }
+    const executable = agent.protocol === "codeink" ? "builtin" : await resolveExecutable(agent.command, this.env)
     if (!executable) throw new Error(t("missingAgent"))
     const session: Session = existing ?? {
       id: randomUUID(),
@@ -75,7 +129,7 @@ export class Sessions {
       approvals: [],
     }
     // Recheck after executable resolution, which yields to concurrent IPC requests.
-    if (this.retry(session, input)) return structuredClone(session)
+    if (this.retry(session, input)) return snapshot ? structuredClone(session) : undefined
     if (session.status === "running") throw new Error(t("busy"))
     if (this.stale.delete(session.id)) {
       this.connections.delete(session.id)
@@ -100,6 +154,15 @@ export class Sessions {
     }
     session.model = input.model
     session.variant = input.variant
+    const nativePrompt = input.handoffContext
+      ? `${input.handoffContext}\n\nCurrent request:\n${input.text}`
+      : input.text
+    if (input.handoffSource)
+      session.handoff = {
+        fromSessionID: input.handoffSource.sessionID,
+        fromAgentID: input.handoffSource.agentID,
+        context: input.handoffContext ?? "",
+      }
     if (!existing) this.store.state.sessions.unshift(session)
     const message: Message = {
       id: input.messageID ?? `msg_${Date.now().toString(16)}${randomUUID().replaceAll("-", "")}`,
@@ -125,7 +188,7 @@ export class Sessions {
     }
     const adapter =
       this.adapters.get(session.id) ??
-      connectAgent({
+      this.connect({
         agent,
         executable,
         env: this.env,
@@ -133,14 +196,29 @@ export class Sessions {
         model: session.model,
         variant: session.variant,
         remoteID: session.remoteID,
+        history: session.remoteID
+          ? session.messages
+              .slice(agent.protocol === "codeink" ? -100 : -25, -1)
+              .filter(
+                (message): message is Message & { role: "user" | "assistant" } =>
+                  message.role === "user" || message.role === "assistant",
+              )
+              .slice(agent.protocol === "codeink" ? -40 : -12)
+              .map((message) => ({
+                role: message.role,
+                text: message.text.slice(agent.protocol === "codeink" ? -4000 : -1000),
+              }))
+          : undefined,
         rules: () => this.effectiveRules(session),
         emit,
+        gatewayKey: this.gatewayKey,
       })
     this.adapters.set(session.id, adapter)
     // IPC returns the admitted session immediately; process events stream separately.
-    void adapter.prompt(input.handoffContext ? `${input.handoffContext}\n\nCurrent request:\n${input.text}` : input.text, input.attachments)
+    void adapter
+      .prompt(nativePrompt, input.attachments)
       .catch((error: Error) => emit({ type: "error", text: error.message }))
-    return structuredClone(session)
+    return snapshot ? structuredClone(session) : undefined
   }
 
   private receive(session: Session, event: AgentEvent) {
@@ -195,6 +273,10 @@ export class Sessions {
         message.completedAt = Date.now()
         if (message.tool?.status === "running") message.tool.status = "completed"
       })
+    }
+    if (event.type === "done" || event.type === "error") {
+      this.messageIndexes.delete(session)
+      this.currentUsers.delete(session)
     }
     session.updatedAt = Date.now()
     // Coalesce all active agents into one disk snapshot per 50 ms window.
@@ -257,6 +339,8 @@ export class Sessions {
     this.adapters.delete(id)
     session.status = "idle"
     session.approvals = []
+    this.messageIndexes.delete(session)
+    this.currentUsers.delete(session)
     this.publish(session)
     await this.store.save()
   }

@@ -1,6 +1,16 @@
 # Agent integrations and icon sources
 
-CodeInk keeps the original OpenCode interface and connects to independently installed agents. It never invokes `npx`, `uvx`, a package installer, or a downloaded agent runtime automatically.
+CodeInk provides one desktop interface for its built-in agent and independently installed coding agents. It never invokes `npx`, `uvx`, a package installer, or a downloaded external agent runtime automatically.
+
+## CodeInk Agent
+
+CodeInk Agent uses one terminal tool. Add a Vercel AI Gateway or OpenRouter API key in Settings → CodeInk Agent, then select a model from that gateway in a chat. CodeInk discovers models through each gateway's models API. Plan mode exposes no terminal tool. Ask mode requests approval for each command. Full access runs commands without per-command approval.
+
+Gateway keys are stored in the desktop user-data directory as `gateway-keys.json` with owner-only file permissions. The keys stay out of the renderer's settings store and child agent process environment, and CodeInk sends them to the selected gateway for API requests. Terminal commands run as your user account, so review commands before approving them. Prompts and terminal results go to the selected gateway.
+
+Image attachments are sent to the selected model as image content; the model must support images. Other attachments are supplied as a filename, media type, and local path, which the agent can read through its terminal tool when command access is enabled. Plan mode cannot read these local files because it exposes no terminal tool. Terminal output is limited to 16 KiB, and each user turn has a bounded model-step allowance.
+
+The built-in model tool is `terminal({ command })`. It runs a shell command in the selected project and reports output and exit status. It does not expose separate file-editing, browser, or subagent tools. External agents bring their own tool sets, which can differ by version and permission mode.
 
 The four native adapters are Codex app-server, Claude Code stream JSON, OpenCode HTTP/SSE, and Pi RPC. An additional ACP adapter supports protocol v1, text streaming, tool updates, one-time permission decisions, cancellation, session model/reasoning options, and native resume when advertised. It supports both current `configOptions` catalogs and older `models.availableModels` catalogs. Agents retain ownership of filesystem and terminal tools; client-hosted filesystem and terminal capabilities are not advertised. ACP versions that require those client capabilities are not compatible with this adapter yet.
 
@@ -39,7 +49,7 @@ Custom agents can use any of the five supported protocols. Existing configuratio
 
 ## Icons
 
-- OpenAI and Anthropic: retained upstream provider SVGs from [anomalyco/opencode](https://github.com/anomalyco/opencode/tree/dev/packages/ui/src/assets/icons/provider).
+- OpenAI and Anthropic: retained provider SVGs from the source snapshot documented in [UPSTREAM.md](UPSTREAM.md).
 - Pi: the [official pi.dev favicon](https://pi.dev/favicon.svg).
 - OpenCode and the 22 ACP presets: each agent's `icon.svg` in the [official ACP registry](https://github.com/agentclientprotocol/registry). Original files are retained under `packages/ui/src/assets/icons/agent`; the compiled sprite uses `currentColor` for monochrome artwork so the icons work with the app's light and dark themes.
 

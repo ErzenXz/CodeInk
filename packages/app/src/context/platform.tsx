@@ -31,7 +31,7 @@ export type FatalRendererErrorLog = {
 export type LocalAgentConnection = {
   id: string
   name: string
-  protocol: "codex" | "claude" | "opencode" | "pi" | "acp"
+  protocol: "codex" | "claude" | "opencode" | "pi" | "acp" | "codeink"
   command: string
   args: string[]
   executable?: string
@@ -69,8 +69,11 @@ export type AgentUsageReport = {
   installed: boolean
   plan?: string
   windows: AgentLimitWindow[]
+  metrics?: { id: string; value: number; unit: string }[]
   source?: "live" | "cache"
   fetchedAt?: number
+  stale?: boolean
+  expiresAt?: number
   error?: string
   totals: {
     sessions: number
@@ -111,6 +114,9 @@ type PlatformBase = {
   }
   /** Skills, plugins, MCP servers, plan usage, and global instructions of locally installed agents. */
   agentWorkspace?: {
+    gatewayStatus(): Promise<{ vercel: boolean; openrouter: boolean }>
+    handoffPrompt(sessionID: string): Promise<string | undefined>
+    setGatewayKey(provider: "vercel" | "openrouter", key: string): Promise<{ vercel: boolean; openrouter: boolean }>
     extensions(refresh?: boolean): Promise<AgentExtensionReport[]>
     setExtensionEnabled(input: {
       agentID: string
@@ -120,6 +126,9 @@ type PlatformBase = {
       enabled: boolean
     }): Promise<void>
     usage(refresh?: boolean): Promise<AgentUsageReport[]>
+    usageMonitoringEnabled(): Promise<boolean>
+    setUsageMonitoringEnabled(enabled: boolean): Promise<boolean>
+    onUsageMonitoringChange(callback: (enabled: boolean) => void): () => void
     /** Per-agent access level and fast mode, applied to the agent's next turn. */
     rules(): Promise<AgentRulesReport[]>
     setRules(agentID: string, rules: { access: AgentAccess; fast: boolean }): Promise<AgentRulesReport[]>

@@ -8,9 +8,12 @@ import { getSessionHandoff, setSessionHandoff } from "@/pages/session/handoff"
 import type { SessionComposerController } from "./session-composer-state"
 
 export type SessionComposerFollowupDock = {
-  items: { id: string; text: string }[]
+  items: { id: string; text: string; canSteer: boolean }[]
   sending?: string
+  busy: boolean
   onSend: (id: string) => void
+  onSteer: (id: string) => void
+  onRemove: (id: string) => void
   onEdit: (id: string) => void
 }
 

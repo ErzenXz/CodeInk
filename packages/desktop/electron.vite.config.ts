@@ -36,6 +36,6 @@ export default defineConfig({
     plugins: [appPlugin],
     publicDir: "../../../app/public",
     root: "src/renderer",
-    build: { rollupOptions: { input: { main: "src/renderer/index.html" } } },
+    build: { minify: "esbuild", rollupOptions: { input: { main: "src/renderer/index.html" } } },
   },
 })

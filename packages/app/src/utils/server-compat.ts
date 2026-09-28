@@ -204,6 +204,7 @@ function createV1Api(input: CompatibleInput): CompatibleApi {
         await legacy().session.promptAsync({
           sessionID: value.sessionID,
           messageID: value.id ?? undefined,
+          ...{ delivery: value.delivery },
           agent: value.agent,
           model: value.model,
           variant: value.variant,

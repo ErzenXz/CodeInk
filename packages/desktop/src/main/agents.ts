@@ -7,6 +7,7 @@ import { claude } from "./adapters/claude"
 import { opencode } from "./adapters/opencode"
 import { pi } from "./adapters/pi"
 import { acp } from "./adapters/acp"
+import { codeink } from "./adapters/codeink"
 import type { AdapterOptions } from "./adapters/types"
 
 export const defaults: Agent[] = [
@@ -42,6 +43,7 @@ export const defaults: Agent[] = [
       ["nova", "Nova", "nova", ["acp"]],
     ] satisfies [string, string, string, string[]][]
   ).map(([id, name, command, args]) => ({ id, name, command, args, protocol: "acp" as const })),
+  { id: "codeink", name: "CodeInk Agent", protocol: "codeink", command: "builtin", args: [] },
 ]
 
 /** Access levels each native protocol can express; other agents keep their own defaults. */
@@ -49,6 +51,7 @@ export const accessOptions: Partial<Record<Agent["protocol"], AgentAccess[]>> = 
   claude: ["ask", "edits", "auto", "plan", "full"],
   codex: ["ask", "auto", "plan", "full"],
   opencode: ["ask", "plan"],
+  codeink: ["ask", "plan", "full"],
 }
 
 export async function resolveExecutable(command: string, env: NodeJS.ProcessEnv) {
@@ -71,12 +74,24 @@ export async function resolveExecutable(command: string, env: NodeJS.ProcessEnv)
   }
 }
 
-export async function detectAgents(agents: Agent[], env: NodeJS.ProcessEnv): Promise<AgentStatus[]> {
+export async function detectAgents(
+  agents: Agent[],
+  env: NodeJS.ProcessEnv,
+  gatewayConfigured = false,
+): Promise<AgentStatus[]> {
   return Promise.all(
-    agents.map(async (agent) => ({ ...agent, executable: await resolveExecutable(agent.command, env) })),
+    agents.map(async (agent) => ({
+      ...agent,
+      executable:
+        agent.protocol === "codeink"
+          ? gatewayConfigured
+            ? "builtin"
+            : undefined
+          : await resolveExecutable(agent.command, env),
+    })),
   )
 }
 
 export function connectAgent(options: AdapterOptions) {
-  return { codex, claude, opencode, pi, acp }[options.agent.protocol](options)
+  return { codex, claude, opencode, pi, acp, codeink }[options.agent.protocol](options)
 }

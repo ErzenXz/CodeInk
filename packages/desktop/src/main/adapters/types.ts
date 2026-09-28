@@ -1,22 +1,27 @@
 import type { Agent, AgentEvent, AgentRules, Answer, PromptAttachment } from "../../shared/types"
+import type { GatewayProvider } from "../gateway-keys"
 
 export type AdapterOptions = {
   agent: Agent
   executable: string
   directory: string
   remoteID?: string
+  history?: { role: "user" | "assistant"; text: string }[]
   model: string
   variant?: string
   env: NodeJS.ProcessEnv
   /** Current access and speed rules; read at launch and, where the agent allows it, on every turn. */
   rules: () => AgentRules
   emit: (event: AgentEvent) => void
+  gatewayKey?: (provider: GatewayProvider) => string | undefined
 }
 export type Adapter = {
   configure?(model: string, variant?: string): void
   /** Applies changed rules to the running agent; returns false when it must restart to take effect. */
   setRules?(rules: AgentRules): boolean
   prompt(text: string, attachments?: PromptAttachment[]): Promise<void>
+  /** Admit input into the active turn. Absent when the native protocol cannot steer. */
+  steer?(text: string, attachments?: PromptAttachment[]): Promise<void>
   stop(): Promise<void>
   answer(id: string, answer: Answer): Promise<void>
   dispose(): void

@@ -1,0 +1,35 @@
+{
+  "$schema": "../desktop-theme.schema.json",
+  "name": "CodeInk Violet",
+  "id": "codeink-violet",
+  "light": {
+    "palette": {
+      "neutral": "#f8f7fa",
+      "ink": "#2d2934",
+      "primary": "#746193",
+      "accent": "#9a617f",
+      "success": "#448167",
+      "warning": "#996b36",
+      "error": "#b35362",
+      "info": "#5c6f9a",
+      "interactive": "#6e5c95",
+      "diffAdd": "#95c8ad",
+      "diffDelete": "#e5a3ae"
+    }
+  },
+  "dark": {
+    "palette": {
+      "neutral": "#1d1924",
+      "ink": "#eee8f3",
+      "primary": "#bda8da",
+      "accent": "#d5a4bd",
+      "success": "#91cdb0",
+      "warning": "#dfb87d",
+      "error": "#e69ca8",
+      "info": "#aab8e1",
+      "interactive": "#c1afe3",
+      "diffAdd": "#6c997f",
+      "diffDelete": "#a96d7a"
+    }
+  }
+}

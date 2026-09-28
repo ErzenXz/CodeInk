@@ -1,7 +1,9 @@
+import { englishFallback } from "./locale-fallback"
 import { dict as en } from "./en"
 type Keys = keyof typeof en
 
 export const dict = {
+  ...englishFallback,
   "desktop.menu.app": "CodeInk",
   "desktop.menu.file": "Arkiv",
   "desktop.menu.edit": "Rediger",
@@ -205,10 +207,6 @@ export const dict = {
   "dialog.provider.group.popular": "Populære",
   "dialog.provider.group.other": "Andre",
   "dialog.provider.custom.label": "Egendefinert OpenAI-kompatibel leverandør",
-  "dialog.provider.tag.recommended": "Anbefalt",
-  "dialog.provider.opencode.note": "Utvalgte modeller inkludert Claude, GPT, Gemini og mer",
-  "dialog.provider.opencode.tagline": "Pålitelige, optimaliserte modeller",
-  "dialog.provider.opencodeGo.tagline": "Rimelig abonnement for alle",
   "dialog.provider.anthropic.note": "Direkte tilgang til Claude-modeller, inkludert Pro og Max",
   "dialog.provider.copilot.note": "AI-modeller for kodeassistanse via GitHub Copilot",
   "dialog.provider.openai.note": "GPT-modeller for raske, dyktige generelle AI-oppgaver",
@@ -222,12 +220,6 @@ export const dict = {
   "dialog.model.manage": "Administrer modeller",
   "dialog.model.manage.description": "Tilpass hvilke modeller som vises i modellvelgeren.",
   "dialog.model.manage.provider.toggle": "Veksle alle {{provider}}-modeller",
-
-  "dialog.model.unpaid.freeModels.title": "Gratis modeller levert av OpenCode",
-  "dialog.model.unpaid.addMore.title": "Legg til flere modeller fra populære leverandører",
-  "dialog.model.unpaid.viewMoreProviders": "Se over 70 flere leverandører",
-
-  "dialog.provider.viewAll": "Vis flere leverandører",
 
   "provider.connect.title": "Koble til {{provider}}",
   "provider.connect.title.anthropicProMax": "Logg inn med Claude Pro/Max",
@@ -243,13 +235,6 @@ export const dict = {
   "provider.connect.apiKey.label": "{{provider}}-API-nøkkel",
   "provider.connect.apiKey.placeholder": "API-nøkkel",
   "provider.connect.apiKey.required": "API-nøkkel er påkrevd",
-  "provider.connect.opencodeZen.line1":
-    "OpenCode Zen gir deg tilgang til et utvalg av pålitelige optimaliserte modeller for kodeagenter.",
-  "provider.connect.opencodeZen.line2":
-    "Med én enkelt API-nøkkel får du tilgang til modeller som Claude, GPT, Gemini, GLM og flere.",
-  "provider.connect.opencodeZen.visit.prefix": "Besøk ",
-  "provider.connect.opencodeZen.visit.link": "opencode.ai/zen",
-  "provider.connect.opencodeZen.visit.suffix": " for å hente API-nøkkelen din.",
   "provider.connect.oauth.code.visit.prefix": "Besøk ",
   "provider.connect.oauth.code.visit.link": "denne lenken",
   "provider.connect.oauth.code.visit.suffix":
@@ -413,8 +398,6 @@ export const dict = {
   "dialog.mcp.empty": "Ingen MCP-er konfigurert",
 
   "dialog.lsp.empty": "LSP-er automatisk oppdaget fra filtyper",
-  "dialog.plugins.empty": "Programtillegg konfigurert i opencode.json",
-
   "mcp.status.connected": "tilkoblet",
   "mcp.status.failed": "mislyktes",
   "mcp.status.needs_auth": "trenger autentisering",
@@ -472,8 +455,6 @@ export const dict = {
   "dialog.project.edit.worktree.startup": "Oppstartsskript for arbeidsområde",
   "dialog.project.edit.worktree.startup.description": "Kjører etter at et nytt arbeidsområde (worktree) er opprettet.",
   "dialog.project.edit.worktree.startup.placeholder": "f.eks. bun install",
-
-  "dialog.usageExceeded.dontShowAgain": "Ikke vis igjen",
 
   "context.breakdown.title": "Kontekstfordeling",
   "context.breakdown.note":
@@ -605,7 +586,6 @@ export const dict = {
   "error.chain.responseBody": "Responsinnhold:\n{{body}}",
   "error.chain.didYouMean": "Mente du: {{suggestions}}",
   "error.chain.modelNotFound": "Modell ikke funnet: {{provider}}/{{model}}",
-  "error.chain.checkConfig": "Sjekk leverandør-/modellnavnene i konfigurasjonen din (opencode.json)",
   "error.chain.mcpFailed": 'MCP-server "{{name}}" mislyktes. Merk at CodeInk ikke støtter MCP-autentisering ennå.',
   "error.chain.providerAuthFailed": "Leverandørautentisering mislyktes ({{provider}}): {{message}}",
   "error.chain.providerInitFailed":
@@ -814,51 +794,12 @@ export const dict = {
   "settings.updates.toast.latest.title": "CodeInk er oppdatert",
   "settings.updates.toast.latest.description": "Du bruker den nyeste versjonen av CodeInk.",
   "sound.option.none": "Ingen",
-  "sound.option.alert01": "Varsel 01",
-  "sound.option.alert02": "Varsel 02",
-  "sound.option.alert03": "Varsel 03",
-  "sound.option.alert04": "Varsel 04",
-  "sound.option.alert05": "Varsel 05",
-  "sound.option.alert06": "Varsel 06",
-  "sound.option.alert07": "Varsel 07",
-  "sound.option.alert08": "Varsel 08",
-  "sound.option.alert09": "Varsel 09",
-  "sound.option.alert10": "Varsel 10",
-  "sound.option.bipbop01": "Bip-bop 01",
-  "sound.option.bipbop02": "Bip-bop 02",
-  "sound.option.bipbop03": "Bip-bop 03",
-  "sound.option.bipbop04": "Bip-bop 04",
-  "sound.option.bipbop05": "Bip-bop 05",
-  "sound.option.bipbop06": "Bip-bop 06",
-  "sound.option.bipbop07": "Bip-bop 07",
-  "sound.option.bipbop08": "Bip-bop 08",
-  "sound.option.bipbop09": "Bip-bop 09",
-  "sound.option.bipbop10": "Bip-bop 10",
-  "sound.option.staplebops01": "Staplebops 01",
-  "sound.option.staplebops02": "Staplebops 02",
-  "sound.option.staplebops03": "Staplebops 03",
-  "sound.option.staplebops04": "Staplebops 04",
-  "sound.option.staplebops05": "Staplebops 05",
-  "sound.option.staplebops06": "Staplebops 06",
-  "sound.option.staplebops07": "Staplebops 07",
-  "sound.option.nope01": "Nei 01",
-  "sound.option.nope02": "Nei 02",
-  "sound.option.nope03": "Nei 03",
-  "sound.option.nope04": "Nei 04",
-  "sound.option.nope05": "Nei 05",
-  "sound.option.nope06": "Nei 06",
-  "sound.option.nope07": "Nei 07",
-  "sound.option.nope08": "Nei 08",
-  "sound.option.nope09": "Nei 09",
-  "sound.option.nope10": "Nei 10",
-  "sound.option.nope11": "Nei 11",
-  "sound.option.nope12": "Nei 12",
-  "sound.option.yup01": "Ja 01",
-  "sound.option.yup02": "Ja 02",
-  "sound.option.yup03": "Ja 03",
-  "sound.option.yup04": "Ja 04",
-  "sound.option.yup05": "Ja 05",
-  "sound.option.yup06": "Ja 06",
+  "sound.option.glow": "Glow",
+  "sound.option.pulse": "Pulse",
+  "sound.option.drop": "Drop",
+  "sound.option.spark": "Spark",
+  "sound.option.bloom": "Bloom",
+  "sound.option.tap": "Tap",
 
   "settings.general.notifications.agent.title": "Agent",
   "settings.general.notifications.agent.description":

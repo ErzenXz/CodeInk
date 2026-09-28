@@ -85,6 +85,17 @@ describe("desktop native translations", () => {
     expect(parseDesktopNativeBundle(bundle)).toEqual(bundle)
   })
 
+  test("keeps positional translations aligned as native copy grows", async () => {
+    const hr = await import("./hr")
+    const translated: Record<string, string> = hr.dict
+    expect(translated["desktop.menu.app"]).toBe("CodeInk")
+    expect(translated["desktop.updater.dialog.ready.message"]).toBe(
+      "Ažuriranje {{version}} je preuzeto. Ponovno pokrenuti sada?",
+    )
+    expect(translated["desktop.recovery.action.quit"]).toBe("Izađi")
+    expect(translated["desktop.tray.usage"]).toBe("Usage")
+  })
+
   test("rejects unsupported locales and mismatched key sets", () => {
     const bundle = createDesktopNativeBundle("en", (key) => DESKTOP_NATIVE_ENGLISH[key])
     expect(parseDesktopNativeBundle({ ...bundle, locale: "en-US" })).toBeUndefined()

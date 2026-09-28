@@ -4,6 +4,10 @@ import { defaults, detectAgents } from "../main/agents"
 import { tmpdir } from "node:os"
 
 for (const agent of await detectAgents(defaults, process.env)) {
+  if (agent.protocol === "codeink") {
+    console.log(`${agent.name}: built in; gateway catalog is covered by adapter tests`)
+    continue
+  }
   if (!agent.executable) {
     console.log(`${agent.name}: not installed; skipped`)
     continue

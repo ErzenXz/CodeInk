@@ -7,6 +7,7 @@ import type { DesktopMenuAction } from "@codeink/app/desktop-menu"
 import { parseDesktopNativeBundle, type DesktopNativeBundle } from "@codeink/app/i18n/desktop-native"
 
 import type { FatalRendererError, ServerReadyData, TitlebarTheme } from "../preload/types"
+import { t } from "../shared/i18n"
 import { runDesktopMenuAction } from "./desktop-menu-actions"
 import { setForceFocus } from "./debug"
 import { assertAttachmentBudget, createPickedFileAuthorizations } from "./attachment-picker"
@@ -26,6 +27,9 @@ import { createDesktopDraftStore } from "./draft-store"
 import { nativeT } from "./native-translations"
 import {
   listAgentRules,
+  gatewayStatus,
+  setGatewayKey,
+  handoffPrompt,
   setAgentRules,
   listInstalledAgentExtensions,
   listInstalledAgents,
@@ -36,6 +40,7 @@ import {
   writeInstalledAgentInstructions,
 } from "./server"
 import { agentSchema } from "./agent-store"
+import { setUsageMonitoringEnabled, usageMonitoringEnabled } from "./usage-monitoring"
 
 const pickerFilters = (ext?: string[]) => {
   if (!ext || ext.length === 0) return undefined
@@ -75,6 +80,16 @@ export function registerIpcHandlers(deps: Deps) {
   app.on("browser-window-created", (_event, win) => win.on("session-end", () => drafts.flush()))
 
   ipcMain.handle("agents-list", () => listInstalledAgents())
+  ipcMain.handle("gateway-status", () => gatewayStatus())
+  ipcMain.handle("handoff-prompt", (_, sessionID: unknown) => {
+    if (typeof sessionID !== "string" || !/^ses_[a-f0-9]{32}$/.test(sessionID)) throw new TypeError(t("unknownSession"))
+    return handoffPrompt(sessionID)
+  })
+  ipcMain.handle("gateway-key-set", (_, provider: unknown, key: unknown) => {
+    if ((provider !== "vercel" && provider !== "openrouter") || typeof key !== "string" || key.length > 8192)
+      throw new TypeError("Invalid gateway credentials")
+    return setGatewayKey(provider, key)
+  })
   ipcMain.handle("agents-save", (_, agent: unknown) => saveInstalledAgent(agentSchema.parse(agent)))
   ipcMain.handle("agents-extensions", (_, refresh: unknown) => listInstalledAgentExtensions(refresh === true))
   ipcMain.handle("agents-extension-toggle", (_, input: unknown) =>
@@ -89,6 +104,13 @@ export function registerIpcHandlers(deps: Deps) {
     return setAgentRules(agentID, { access, fast: value.fast })
   })
   ipcMain.handle("agents-usage", (_, refresh: unknown) => readInstalledAgentUsage(refresh === true))
+  ipcMain.handle("agents-usage-enabled", () => usageMonitoringEnabled())
+  ipcMain.handle("agents-usage-enable", (_, enabled: unknown) => {
+    if (typeof enabled !== "boolean") throw new TypeError("Invalid usage preference")
+    const next = setUsageMonitoringEnabled(enabled)
+    BrowserWindow.getAllWindows().forEach((window) => window.webContents.send("agents-usage-changed", next))
+    return next
+  })
   ipcMain.handle("agents-instructions", () => readInstalledAgentInstructions())
   ipcMain.handle("agents-instructions-save", (_, agentID: unknown, content: unknown) => {
     if (typeof agentID !== "string" || typeof content !== "string") throw new TypeError("Invalid instructions")

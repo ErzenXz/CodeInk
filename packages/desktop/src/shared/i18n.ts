@@ -12,6 +12,7 @@ const en = {
   permission: "Approval required",
   messageConflict: "This message ID was already used for a different request.",
   busy: "This session is already running.",
+  steerModelMismatch: "This message uses a different model. Keep it queued until the current turn finishes.",
   unknownSession: "Session not found.",
   missingAgent: "Agent executable not found. Check its path in Settings.",
   unknownAgent: "Agent not found.",
@@ -33,6 +34,8 @@ const en = {
   modelLocked: "The agent and project are fixed for this session. Start a new session to change them.",
   invalidHandoff: "An agent handoff needs a new session in the same project.",
   sessionInterrupted: "This session was interrupted when CodeInk closed. Send a message to resume.",
+  historyCorrupt: "This conversation could not be read. Its saved files have been preserved.",
+  historySaveFailed: "The conversation could not be saved. Existing saved files have been preserved.",
   bridgeStarting: "Agent bridge is starting.",
   requestTooLarge: "This request is too large.",
   externalSignIn: "Sign in using the installed agent CLI.",
@@ -44,6 +47,13 @@ const en = {
   unknownTerminal: "Terminal not found in this project.",
   unsupportedTerminal: "Unsupported terminal request.",
   externalInstall: "Install the agent independently, then configure its executable in Agents.",
+  codeinkSetup: "Set a gateway API key and choose a CodeInk Agent model in Settings.",
+  codeinkRunTerminal: "Run terminal command",
+  codeinkCommandDeclined: "Command declined.",
+  codeinkCommandStopped: "Command stopped.",
+  codeinkOutputLimit: "The gateway response exceeded the output limit.",
+  codeinkTurnLimit: "CodeInk Agent reached its command limit for this turn. Send another message to continue.",
+  gatewayKeyRejected: "The gateway rejected this key. Check the key and try again.",
 } as const
 export function t(key: keyof typeof en) {
   return en[key]

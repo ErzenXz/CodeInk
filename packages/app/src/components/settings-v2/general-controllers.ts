@@ -16,7 +16,7 @@ import {
   terminalInput,
   useSettings,
 } from "@/context/settings"
-import { playSoundById, SOUND_OPTIONS } from "@/utils/sound"
+import { normalizeSoundID, playSoundById, SOUND_OPTIONS } from "@/utils/sound"
 import { createSoundPreviewController, type ShellOption } from "./general-controller-behavior"
 
 export { createShellOptions, createSoundPreviewController } from "./general-controller-behavior"
@@ -129,7 +129,7 @@ export function createSoundSettingsController() {
     set: (id: string) => void,
   ) => ({
     current: createMemo(() =>
-      enabled() ? (soundOptions.find((option) => option.id === current()) ?? noneSound) : noneSound,
+      enabled() ? (soundOptions.find((option) => option.id === normalizeSoundID(current())) ?? noneSound) : noneSound,
     ),
     highlight: (option: SoundSelectOption | undefined) => {
       if (!option) return

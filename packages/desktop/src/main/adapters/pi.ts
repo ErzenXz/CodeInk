@@ -113,6 +113,18 @@ export function pi(options: AdapterOptions): Adapter {
     return value
   }
   return {
+    async steer(text, attachments = []) {
+      await (ready ??= state())
+      const images = await Promise.all(attachments.filter((item) => item.mime.startsWith("image/")).map(async (item) => ({
+        type: "image", data: (await readFile(item.path)).toString("base64"), mimeType: item.mime,
+      })))
+      await proc.request((id) => ({
+        id,
+        type: "steer",
+        message: [text, ...attachments.filter((item) => !item.mime.startsWith("image/")).map((item) => `@${item.path}`)].filter(Boolean).join("\n"),
+        images,
+      }))
+    },
     async prompt(text, attachments = []) {
       await (ready ??= state())
       const images = await Promise.all(attachments.filter((item) => item.mime.startsWith("image/")).map(async (item) => ({

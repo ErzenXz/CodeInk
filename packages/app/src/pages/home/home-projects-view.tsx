@@ -69,8 +69,8 @@ export function HomeProjectsView(props: HomeProjectsViewProps) {
   return (
     <aside
       class={`
-        mt-6 flex min-h-0 min-w-0 flex-col gap-4 overflow-hidden
-        lg:sticky lg:top-14 lg:mt-14 lg:h-[calc(100cqh-56px)] lg:self-start lg:pt-[52px]
+        mt-4 flex min-h-0 min-w-0 flex-col gap-3 overflow-hidden
+        lg:sticky lg:top-0 lg:mt-0 lg:h-[100cqh] lg:self-start lg:border-r lg:border-v2-border-border-muted lg:pr-3 lg:pt-4
       `}
       aria-label={props.language.t("home.projects")}
       onWheel={(event) => {
@@ -78,8 +78,8 @@ export function HomeProjectsView(props: HomeProjectsViewProps) {
         props.onWheel(event)
       }}
     >
-      <div class="flex h-7 min-w-0 shrink-0 items-center justify-between pl-1.5 pr-3">
-        <div class="text-v2-text-text-muted [font-weight:530]">{props.language.t("home.projects")}</div>
+      <div class="flex h-8 min-w-0 shrink-0 items-center justify-between pl-2.5 pr-1">
+        <div class="text-12-medium text-v2-text-text-faint">{props.language.t("home.projects")}</div>
         <Show
           when={props.servers().length === 1 && !(props.projects().length === 0 && props.recentlyClosed().length > 0)}
         >
@@ -87,8 +87,8 @@ export function HomeProjectsView(props: HomeProjectsViewProps) {
             <IconButtonV2
               data-action="home-add-project"
               variant="ghost-muted"
-              size="large"
-              class="titlebar-icon [&_[data-slot=icon-svg]]:text-v2-icon-icon-muted"
+              size="small"
+              class="[&_[data-slot=icon-svg]]:text-v2-icon-icon-muted"
               icon={<IconV2 name="folder-add-left" />}
               disabled={props.serverHealth(props.servers()[0])?.healthy === false}
               onClick={() => props.onChooseProject(props.servers()[0])}
@@ -145,7 +145,7 @@ export function HomeProjectsView(props: HomeProjectsViewProps) {
         </Show>
       </ScrollView>
       <HomeUtilityNav
-        class="mb-8 mt-4 hidden shrink-0 lg:flex"
+        class="mb-3 mt-2 hidden shrink-0 lg:flex"
         onOpenSettings={props.onOpenSettings}
         onOpenHelp={props.onOpenHelp}
         language={props.language}
@@ -473,7 +473,7 @@ function HomeProjectRow(
   return (
     <div
       ref={sortable.ref}
-      class="group/project relative flex h-7 min-w-0 items-center rounded-md"
+      class="group/project relative flex h-8 min-w-0 items-center rounded-md"
       classList={{ "z-10": sortable.isDragSource() }}
       onContextMenu={(event) => {
         event.preventDefault()
@@ -591,12 +591,11 @@ function HomeProjectNavButton(props: JSX.ButtonHTMLAttributes<HTMLButtonElement>
     <button
       {...rest}
       class={`
-        flex h-7 min-w-0 w-full shrink-0 cursor-pointer items-center gap-2 rounded-md bg-transparent px-1.5 text-left
-        text-v2-text-text-muted [font-weight:440] transition-[background-color,color,box-shadow] duration-[120ms] ease-in-out
-        hover:bg-v2-background-bg-layer-01 hover:text-v2-text-text-base
-        data-[selected]:bg-v2-background-bg-layer-03 data-[selected]:text-v2-text-text-base
-        data-[selected]:hover:bg-v2-background-bg-layer-03
-        focus-visible:bg-v2-background-bg-layer-01 focus-visible:text-v2-text-text-base focus-visible:outline-none
+        flex h-8 min-w-0 w-full shrink-0 cursor-pointer items-center gap-2.5 rounded-md bg-transparent px-2.5 text-left
+        text-[13px] leading-5 text-v2-text-text-base [font-weight:440] transition-colors duration-150
+        hover:bg-[var(--v2-glass-surface-hover)]
+        data-[selected]:bg-[var(--v2-glass-surface-pressed)]
+        focus-visible:bg-[var(--v2-glass-surface-hover)] focus-visible:outline-none
         focus-visible:[box-shadow:inset_0_0_0_0.5px_var(--v2-border-border-muted)]
         ${local.class ?? ""}
       `}

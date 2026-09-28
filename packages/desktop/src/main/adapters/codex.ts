@@ -10,6 +10,7 @@ export function codex(options: AdapterOptions): Adapter {
   let turn = ""
   let selectedModel = options.model
   let ready: Promise<void> | undefined
+  let recovered = false
   const requests = new Map<string, Record<string, unknown>>()
   const proc = new AgentProcess({
     ...options,
@@ -88,17 +89,30 @@ export function codex(options: AdapterOptions): Adapter {
   const rpc = async (method: string, params: unknown) =>
     object((await proc.request((id) => ({ id, method, params }))).result)
   const initialize = async () => {
-    await rpc("initialize", { clientInfo: { name: "codeink", title: "CodeInk", version: "0.1.0" } })
+    await rpc("initialize", {
+      clientInfo: { name: "codeink", title: "CodeInk", version: "0.1.0" },
+      capabilities: { experimentalApi: true },
+    })
     proc.send({ method: "initialized", params: {} })
     const access = codexAccess(options.rules())
-    const response = await rpc(thread ? "thread/resume" : "thread/start", {
+    const params = {
       ...(thread ? { threadId: thread } : {}),
       cwd: options.directory,
       ...(options.model ? { model: options.model } : {}),
       approvalPolicy: access.approvalPolicy,
       approvalsReviewer: access.approvalsReviewer,
       sandbox: access.sandbox,
-    })
+    }
+    const response = await (async () => {
+      if (!thread) return rpc("thread/start", params)
+      try {
+        return await rpc("thread/resume", params)
+      } catch (error) {
+        if (!(error instanceof Error) || !error.message.includes("no rollout found for thread id")) throw error
+        recovered = true
+        return rpc("thread/start", { ...params, threadId: undefined })
+      }
+    })()
     if (response.model) options.emit({ type: "usage", id: "model", usage: { model: string(response.model) } })
     selectedModel ||= string(response.model)
     thread = string(object(response.thread).id)
@@ -106,11 +120,34 @@ export function codex(options: AdapterOptions): Adapter {
     options.emit({ type: "session", id: thread })
   }
   return {
+    async steer(text, attachments = []) {
+      if (!thread || !turn) throw new Error(t("busy"))
+      await rpc("turn/steer", {
+        threadId: thread,
+        expectedTurnId: turn,
+        input: [
+          ...(text ? [{ type: "text", text }] : []),
+          ...attachments.filter((item) => item.mime.startsWith("image/")).map((item) => ({ type: "localImage", path: item.path })),
+          ...attachments.filter((item) => !item.mime.startsWith("image/")).map((item) => ({ type: "text", text: `@${item.path}` })),
+        ],
+      })
+    },
     async prompt(text, attachments = []) {
       await (ready ??= initialize())
       const rules = options.rules()
       const access = codexAccess(rules)
-      const promptText = [text, ...attachments.filter((item) => !item.mime.startsWith("image/")).map((item) => `@${item.path}`)].filter(Boolean).join("\n")
+      const promptText = [
+        ...(recovered && options.history?.length
+          ? [
+              "Previous conversation saved by CodeInk. Use it as context for the current request:",
+              ...options.history.map((message) => `${message.role}: ${message.text}`),
+              "Current request:",
+            ]
+          : []),
+        text,
+        ...attachments.filter((item) => !item.mime.startsWith("image/")).map((item) => `@${item.path}`),
+      ].filter(Boolean).join("\n")
+      recovered = false
       // Codex takes access and speed per turn, so rule changes apply without restarting the thread.
       const response = await rpc("turn/start", {
         threadId: thread,

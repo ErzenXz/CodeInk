@@ -47,6 +47,9 @@ export type ElectronAPI = {
   killSidecar: () => Promise<void>
   listInstalledAgents: () => Promise<import("../shared/types").AgentStatus[]>
   saveInstalledAgent: (agent: import("../shared/types").Agent) => Promise<import("../shared/types").AgentStatus[]>
+  gatewayStatus: () => Promise<{ vercel: boolean; openrouter: boolean }>
+  handoffPrompt: (sessionID: string) => Promise<string | undefined>
+  setGatewayKey: (provider: "vercel" | "openrouter", key: string) => Promise<{ vercel: boolean; openrouter: boolean }>
   listAgentExtensions: (refresh?: boolean) => Promise<import("../shared/types").AgentExtensionReport[]>
   setAgentExtensionEnabled: (input: {
     agentID: string
@@ -61,6 +64,9 @@ export type ElectronAPI = {
     rules: import("../shared/types").AgentRules,
   ) => Promise<import("../shared/types").AgentRulesReport[]>
   readAgentUsage: (refresh?: boolean) => Promise<import("../shared/types").AgentUsageReport[]>
+  usageMonitoringEnabled: () => Promise<boolean>
+  setUsageMonitoringEnabled: (enabled: boolean) => Promise<boolean>
+  onUsageMonitoringChange: (callback: (enabled: boolean) => void) => () => void
   readAgentInstructions: () => Promise<import("../shared/types").AgentInstructions[]>
   writeAgentInstructions: (agentID: string, content: string) => Promise<void>
   awaitInitialization: () => Promise<ServerReadyData>

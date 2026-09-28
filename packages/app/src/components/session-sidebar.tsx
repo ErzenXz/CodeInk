@@ -63,6 +63,8 @@ export function SessionSidebar(props: {
   /** `projects` shows only projects; their chats live in the top tab bar. */
   mode?: "sessions" | "projects"
   onControls?: (controls: SessionSidebarControls) => void
+  onOpenPane?: (session: { server: ServerConnection.Key; sessionId: string; title: string }) => void
+  canOpenPane?: (session: { server: ServerConnection.Key; sessionId: string }) => boolean
 }) {
   const global = useGlobal()
   const tabs = useTabs()
@@ -234,8 +236,6 @@ export function SessionSidebar(props: {
     }
     return list.filter(
       (item) =>
-        // Drafts stay off the list; a chat appears once its first message creates the session.
-        !item.draft &&
         (view() !== "activity" || (!!item.sessionId && item.status !== "idle")) &&
         (view() !== "attention" || item.status === "attention") &&
         (!item.blankDraft || blank.get(`${item.server}\n${pathKey(item.directory)}`) === item.key) &&
@@ -700,6 +700,14 @@ export function SessionSidebar(props: {
                                           : "sidebar.context.session.open",
                                       )}
                                     </MenuV2.Item>
+                                    <Show when={item.sessionId && props.onOpenPane && props.canOpenPane?.({ server: item.server, sessionId: item.sessionId })}>
+                                      <MenuV2.Item
+                                        data-action="sidebar-session-open-pane"
+                                        onSelect={() => props.onOpenPane?.({ server: item.server, sessionId: item.sessionId!, title: item.title })}
+                                      >
+                                        {language.t("sidebar.context.session.openPane")}
+                                      </MenuV2.Item>
+                                    </Show>
                                     <Show when={item.sessionId && !item.open}>
                                       <MenuV2.Item
                                         data-action="sidebar-session-open-background"

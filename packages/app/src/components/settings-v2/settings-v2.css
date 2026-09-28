@@ -7,42 +7,43 @@
   width: 100%;
   min-width: 0;
   min-height: 0;
-  background: var(--v2-background-bg-base);
+  background: var(--v2-glass-ambient);
   border-radius: var(--radius-xl);
   overflow: hidden;
 }
 
 [data-shell="sidebar"] .settings-v2-page {
   border-radius: 0;
-  box-shadow: inset 0.5px 0 0 var(--v2-border-border-muted);
 }
 
 .settings-v2-page
   .settings-v2[data-component="tabs-v2"][data-variant="settings"][data-orientation="vertical"]
   [data-slot="tabs-v2-list"] {
-  padding-top: 40px;
+  padding-top: 4px;
 }
 
 .settings-v2-page [data-slot="tabs-v2-content"] {
   min-width: 0;
+  background: var(--v2-background-bg-base);
+  box-shadow: inset 0.5px 0 0 var(--v2-border-border-muted);
 }
 
 .settings-v2-page .settings-v2-tab-header,
 .settings-v2-page .settings-v2-tab-body {
   width: 100%;
-  max-width: 960px;
-  margin-inline: auto;
+  max-width: 840px;
+  margin-inline: 0;
 }
 
 @media (max-width: 639px) {
   .settings-v2-page
     .settings-v2[data-component="tabs-v2"][data-variant="settings"][data-orientation="vertical"]
     [data-slot="tabs-v2-list"] {
-    padding-top: 24px;
+    padding-top: 4px;
   }
 
   .settings-v2-page .settings-v2-tab-header {
-    padding: 24px 20px 20px;
+    padding: 24px 20px 16px;
   }
 
   .settings-v2-page .settings-v2-tab-body {
@@ -84,23 +85,23 @@
   position: sticky;
   top: 0;
   z-index: 10;
-  padding: 40px 40px 32px;
-  background: linear-gradient(to bottom, var(--v2-background-bg-base) calc(100% - 24px), transparent);
+  padding: 28px 32px 20px;
+  background: var(--v2-background-bg-base);
 }
 
 .settings-v2-tab-title {
-  font-size: 15px;
-  font-weight: 640;
-  line-height: 1;
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 24px;
   color: var(--v2-text-text-base);
 }
 
 .settings-v2-tab-body {
   display: flex;
   flex-direction: column;
-  gap: 36px;
+  gap: 28px;
   width: 100%;
-  padding: 0 40px 40px;
+  padding: 0 32px 40px;
 }
 
 [data-slot="settings-v2-row-description"] a.settings-v2-link {
@@ -116,15 +117,15 @@
 .settings-v2-section {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
 }
 
 .settings-v2-section-title {
-  padding-bottom: 8px;
-  font-size: 15px;
-  font-weight: 640;
-  line-height: 1;
-  color: var(--v2-text-text-base);
+  padding-bottom: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 16px;
+  color: var(--v2-text-text-faint);
 }
 
 .settings-v2-section-title + [data-component="settings-v2-list"] {
@@ -133,15 +134,15 @@
 }
 
 [data-component="settings-v2-list"] {
-  border-radius: var(--radius-xl);
-  background-color: var(--v2-background-bg-base);
-  padding-inline: 22px;
-  box-shadow: var(--v2-glass-shadow-raised);
+  border-radius: 0;
+  background-color: transparent;
+  padding-inline: 0;
+  box-shadow: none;
 }
 
 .settings-v2-interface-feature [data-component="settings-v2-list"] {
-  background-color: var(--v2-background-bg-base);
-  box-shadow: var(--v2-elevation-raised);
+  background-color: transparent;
+  box-shadow: none;
 }
 
 [data-component="settings-v2-row"] {
@@ -149,7 +150,7 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 16px;
-  padding-block: 18px;
+  padding-block: 14px;
   border-bottom: 0.5px solid var(--v2-border-border-muted);
 }
 
@@ -223,17 +224,75 @@
   max-width: 100%;
 }
 
-/* The nav shares the page surface; a hairline separates it instead of a second grey column. */
+/* Match the project sidebar's ambient surface and compact navigation rows. */
 [data-component="tabs-v2"][data-variant="settings"][data-orientation="vertical"] [data-slot="tabs-v2-list"] {
   background-color: transparent;
 }
 
-@media (max-width: 639px) {
-  .settings-v2[data-component="tabs-v2"][data-variant="settings"][data-orientation="vertical"]
+.settings-v2-page .settings-v2[data-component="tabs-v2"][data-variant="settings"][data-orientation="vertical"]
+  [data-slot="tabs-v2-list"] {
+  width: 288px;
+  min-width: 288px;
+  padding-inline: 10px;
+  gap: 2px;
+  border-inline-end: 0;
+}
+
+.settings-v2-nav-title {
+  display: flex;
+  height: 44px;
+  flex: none;
+  align-items: center;
+  padding-inline: 10px;
+  color: var(--v2-text-text-base);
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.2px;
+}
+
+.settings-v2-page .settings-v2 [data-slot="tabs-v2-section-title"] {
+  display: flex;
+  min-height: 30px;
+  align-items: center;
+  padding-inline-start: 10px;
+}
+
+.settings-v2-page .settings-v2 [data-slot="tabs-v2-trigger-wrapper"] {
+  height: 32px;
+  color: var(--v2-text-text-base);
+}
+
+.settings-v2-page .settings-v2[data-component="tabs-v2"][data-variant="settings"][data-orientation="vertical"]
+  [data-slot="tabs-v2-trigger-wrapper"]:has([data-selected]) {
+  background-color: var(--v2-glass-surface-pressed);
+  color: var(--v2-text-text-base);
+}
+
+.settings-v2-page .settings-v2 [data-slot="tabs-v2-trigger"]:focus-visible {
+  outline: 2px solid var(--v2-border-border-focus);
+  outline-offset: -2px;
+  border-radius: var(--radius-md);
+}
+
+@media (max-width: 899px) {
+  .settings-v2-page .settings-v2[data-component="tabs-v2"][data-variant="settings"][data-orientation="vertical"]
     [data-slot="tabs-v2-list"] {
-    width: 144px;
-    min-width: 144px;
+    width: 220px;
+    min-width: 220px;
+  }
+}
+
+@media (max-width: 639px) {
+  .settings-v2-page .settings-v2[data-component="tabs-v2"][data-variant="settings"][data-orientation="vertical"]
+    [data-slot="tabs-v2-list"] {
+    width: 160px;
+    min-width: 160px;
     padding-inline: 8px;
+  }
+
+  .settings-v2-nav-title {
+    padding-inline: 10px;
+    font-size: 15px;
   }
 }
 
@@ -267,7 +326,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  padding-block: 18px;
+  padding-block: 14px;
   border-bottom: 0.5px solid var(--v2-border-border-muted);
 }
 
@@ -553,8 +612,8 @@
   display: flex;
   flex-direction: column;
   gap: 0;
-  padding: 20px;
-  border-radius: var(--radius-md);
+  padding: 0;
+  border-radius: 0;
 }
 
 .settings-v2-shortcuts [data-component="settings-v2-list"] > div {
@@ -661,8 +720,8 @@
   display: flex;
   flex-direction: column;
   gap: 0;
-  padding: 20px;
-  border-radius: var(--radius-md);
+  padding: 0;
+  border-radius: 0;
 }
 
 .settings-v2-servers-row {

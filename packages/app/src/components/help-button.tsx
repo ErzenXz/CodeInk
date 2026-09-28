@@ -1,78 +1,68 @@
-import { Icon as IconV2 } from "@codeink/ui/v2/icon"
+import { Icon } from "@codeink/ui/v2/icon"
 import { IconButtonV2 } from "@codeink/ui/v2/icon-button-v2"
 import { isRTL } from "@kobalte/core/i18n"
+import { useNavigate } from "@solidjs/router"
 import { createSignal, Show } from "solid-js"
-import { Drawer, DrawerClose, DrawerContent } from "@/components/ui/drawer"
+import { Drawer, DrawerClose, DrawerContent, DrawerTrigger } from "@/components/ui/drawer"
 import { usePlatform } from "@/context/platform"
 import { useSettings } from "@/context/settings"
 import { useLanguage } from "@/context/language"
-import introducingTabsVideo from "@/assets/help/introducing-tabs.mp4"
-import homeImage from "@/assets/help/home.png"
-import tabsImage from "@/assets/help/tabs.png"
+import agentArtwork from "@/assets/help/codeink-agent.webp"
 
-// TODO: wire to changelog / seen-state when available
-const showPopover = () => true
-
-// can remove this after the tabs rollout has been out for a while
-export function TabsInfoPopup() {
+export function AgentInfoPopup() {
   const settings = useSettings()
   const platform = usePlatform()
   const language = useLanguage()
+  const navigate = useNavigate()
   const [drawerOpen, setDrawerOpen] = createSignal(false)
   const windows = () => platform.platform === "desktop" && platform.os === "windows"
   const rtl = () => isRTL(language.intl())
 
   return (
-    <Drawer open={drawerOpen()} onOpenChange={setDrawerOpen} side={rtl() ? "left" : "right"}>
-      <Show when={settings.general.shouldDisplayTabsToast()}>
+    <Drawer
+      open={drawerOpen()}
+      // New Chat may focus its composer while the drawer opens; keep the drawer visible.
+      closeOnOutsideFocus={false}
+      onOpenChange={(open) => {
+        setDrawerOpen(open)
+        if (!open) settings.general.dismissAgentToast()
+      }}
+      side={rtl() ? "left" : "right"}
+    >
+      <Show when={settings.general.shouldDisplayAgentToast()}>
         <div
           class="fixed bottom-5 end-5 z-50 h-[240px] w-[192px] rounded-xl glass p-1 shadow-[var(--v2-elevation-floating)]"
-          aria-label={language.t("help.tabs.toast.ariaLabel")}
+          aria-label={language.t("help.agent.toast.ariaLabel")}
         >
           <button
             type="button"
-            aria-label={language.t("help.tabs.toast.dismiss")}
+            aria-label={language.t("help.agent.toast.dismiss")}
             class="absolute top-3 end-3 z-10 size-5 flex items-center justify-center rounded-sm bg-[rgba(0,0,0,0.4)]"
-            onClick={settings.general.dismissTabsToast}
+            style={{ color: "#fff" }}
+            onClick={settings.general.dismissAgentToast}
           >
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 16 16"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-              aria-hidden="true"
-            >
-              <path d="M4.25 11.75L11.75 4.25M11.75 11.75L4.25 4.25" stroke="white" />
-            </svg>
+            <Icon name="xmark-small" size="small" />
           </button>
-          <button
+          <DrawerTrigger
             type="button"
             class="relative block h-[232px] w-[184px] cursor-pointer overflow-hidden rounded-sm text-start"
-            onClick={() => {
-              settings.general.dismissTabsToast()
-              setDrawerOpen(true)
-            }}
           >
-            <video
-              src={introducingTabsVideo}
-              class="absolute inset-0 h-full w-full object-cover"
-              loop
-              muted
-              autoplay
-              playsinline
-              aria-hidden="true"
-              onContextMenu={(event) => event.preventDefault()}
-            />
+            <img src={agentArtwork} alt="" class="absolute inset-0 size-full object-cover" />
             <div class="absolute inset-x-0 bottom-0 flex w-full flex-col items-start gap-1.5 bg-[linear-gradient(180deg,rgba(0,0,0,0)_0%,#000000_100%)] px-3 py-5">
-              <p class="w-full select-none text-[13px] font-[530] leading-none tracking-[-0.04px] text-[#FFFFFF]">
-                {language.t("help.tabs.title")}
+              <p
+                class="w-full select-none text-[13px] font-[530] leading-none tracking-[-0.04px]"
+                style={{ color: "#fff" }}
+              >
+                {language.t("help.agent.title")}
               </p>
-              <p class="w-full select-none text-[13px] font-[440] leading-[140%] tracking-[-0.04px] text-[#808080]">
-                {language.t("help.tabs.description")}
+              <p
+                class="w-full select-none text-[13px] font-[440] leading-[140%] tracking-[-0.04px]"
+                style={{ color: "#d0d8e8" }}
+              >
+                {language.t("help.agent.description")}
               </p>
             </div>
-          </button>
+          </DrawerTrigger>
         </div>
       </Show>
       <DrawerContent
@@ -97,19 +87,13 @@ export function TabsInfoPopup() {
             size="small"
             variant="neutral"
             aria-label={language.t("common.close")}
-            icon={<IconV2 name="xmark-small" />}
+            icon={<Icon name="xmark-small" />}
             class="absolute top-[10px] start-[-36px]"
           />
         </Show>
-        <div
-          class="flex w-full shrink-0 items-center gap-4 self-stretch border-b border-v2-border-border-muted"
-          classList={{
-            "h-[40px] px-4": windows(),
-            "h-[52px] p-4": !windows(),
-          }}
-        >
-          <p class="min-h-0 min-w-0 flex-1 text-[13px] font-[530] leading-5 tracking-[-0.04px] tabular-nums text-v2-text-text-muted">
-            {language.t("help.tabs.date")}
+        <div class="flex h-[52px] w-full shrink-0 items-center gap-4 self-stretch border-b border-v2-border-border-muted p-4">
+          <p class="min-w-0 flex-1 text-[13px] font-[530] text-v2-text-text-muted">
+            {language.t("help.agent.eyebrow")}
           </p>
           <Show when={!windows()}>
             <DrawerClose
@@ -118,24 +102,32 @@ export function TabsInfoPopup() {
               size="small"
               variant="ghost-muted"
               aria-label={language.t("common.close")}
-              icon={<IconV2 name="xmark-small" />}
+              icon={<Icon name="xmark-small" />}
             />
           </Show>
         </div>
-        <div class="relative flex min-h-0 w-full flex-1 flex-col items-start gap-6 overflow-y-auto p-8">
-          <p class="w-full shrink-0 self-stretch text-[21px] font-[610] leading-6 tracking-[-0.37px] tabular-nums text-v2-text-text-base">
-            {language.t("help.tabs.title")}
-          </p>
-          <div class="flex w-full flex-1 flex-col gap-4 text-[13px] font-[440] leading-5 tracking-[-0.04px] text-v2-text-text-base">
-            <p>{language.t("help.tabs.introduction")}</p>
-            <img src={tabsImage} alt="" class="aspect-video w-full rounded-md object-cover" />
-            <p>{language.t("help.tabs.sessions")}</p>
-            <p>{language.t("help.tabs.organize")}</p>
-            <p>{language.t("help.tabs.home")}</p>
-            <img src={homeImage} alt="" class="aspect-video w-full rounded-md object-cover" />
-            <p>{language.t("help.tabs.persistence")}</p>
-            <p>{language.t("help.tabs.worktrees")}</p>
+        <div class="flex min-h-0 w-full flex-1 flex-col gap-5 overflow-y-auto p-8">
+          <h2 class="text-[21px] font-[610] leading-6 text-v2-text-text-base">{language.t("help.agent.title")}</h2>
+          <p class="text-[13px] leading-5 text-v2-text-text-base">{language.t("help.agent.introduction")}</p>
+          <img src={agentArtwork} alt="" class="aspect-[4/3] w-full rounded-lg object-cover object-[center_35%]" />
+          <div class="flex items-center gap-3 rounded-lg border border-v2-border-border-muted p-4 text-v2-text-text-base">
+            <span aria-hidden="true" class="font-mono text-[16px] leading-none">
+              &gt;_
+            </span>
+            <span class="text-[13px] leading-5">{language.t("help.agent.terminal")}</span>
           </div>
+          <p class="text-[13px] leading-5 text-v2-text-text-muted">{language.t("help.agent.keys")}</p>
+          <button
+            type="button"
+            class="w-fit rounded-md bg-v2-text-text-base px-3 py-2 text-[13px] font-medium text-v2-background-bg-base"
+            onClick={() => {
+              settings.general.dismissAgentToast()
+              setDrawerOpen(false)
+              navigate("/settings?tab=codeink-agent")
+            }}
+          >
+            {language.t("help.agent.setup")}
+          </button>
         </div>
       </DrawerContent>
     </Drawer>

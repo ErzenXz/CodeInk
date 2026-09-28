@@ -1,4 +1,4 @@
-import { Component, createMemo, createSignal, Show, startTransition } from "solid-js"
+import { Component, createEffect, createMemo, createSignal, Show, startTransition } from "solid-js"
 import { useSearchParams } from "@solidjs/router"
 import { TabsV2 } from "@codeink/ui/v2/tabs-v2"
 import { Icon } from "@codeink/ui/icon"
@@ -10,6 +10,7 @@ import { SettingsProvidersV2 } from "./providers"
 import { SettingsModelsV2 } from "./models"
 import { SettingsUsageV2 } from "./usage"
 import { SettingsInstructionsV2 } from "./instructions"
+import { SettingsCodeInkAgentV2 } from "./codeink-agent"
 import "./settings-v2.css"
 import { SettingsServersV2 } from "./servers"
 import { useTabs } from "@/context/tabs"
@@ -24,6 +25,7 @@ const sections = [
   "updates",
   "servers",
   "providers",
+  "codeink-agent",
   "models",
   "usage",
   "instructions",
@@ -36,6 +38,9 @@ const SettingsPage: Component = () => {
   const serverSync = useServerSync()
   const [search] = useSearchParams<{ tab?: string; session?: string; draft?: string }>()
   const [tab, setTab] = createSignal(sections.includes(search.tab ?? "") ? search.tab! : "general")
+  createEffect(() => {
+    if (sections.includes(search.tab ?? "")) setTab(search.tab!)
+  })
   const directory = createMemo(() => {
     if (search.draft) {
       const draft = tabs.store.find((item) => item.type === "draft" && item.draftID === search.draft)
@@ -60,10 +65,11 @@ const SettingsPage: Component = () => {
           <TabsV2.List>
             <div class="flex flex-col justify-between h-full w-full">
               <div class="flex flex-col gap-3 w-full">
+                <div class="settings-v2-nav-title">{language.t("sidebar.settings")}</div>
                 <div class="flex flex-col gap-3">
                   <div class="flex flex-col gap-1.5">
                     <TabsV2.SectionTitle>{language.t("settings.section.desktop")}</TabsV2.SectionTitle>
-                    <div class="flex flex-col gap-1.5 w-full">
+                    <div class="flex flex-col gap-0.5 w-full">
                       <TabsV2.Trigger value="general">
                         <Icon name="sliders" />
                         {language.t("settings.tab.general")}
@@ -95,7 +101,13 @@ const SettingsPage: Component = () => {
 
                   <div class="flex flex-col gap-1.5">
                     <TabsV2.SectionTitle>{language.t("command.category.agent")}</TabsV2.SectionTitle>
-                    <div class="flex flex-col gap-1.5 w-full">
+                    <div class="flex flex-col gap-0.5 w-full">
+                      <Show when={platform.platform === "desktop"}>
+                        <TabsV2.Trigger value="codeink-agent">
+                          <Icon name="code" />
+                          {language.t("settings.codeinkAgent.title")}
+                        </TabsV2.Trigger>
+                      </Show>
                       <TabsV2.Trigger value="providers">
                         <Icon name="providers" />
                         {language.t("settings.providers.title")}
@@ -153,6 +165,9 @@ const SettingsPage: Component = () => {
           </TabsV2.Content>
           <TabsV2.Content value="providers" class="settings-v2-panel">
             <SettingsProvidersV2 directory={directory} onBack={showProviders} />
+          </TabsV2.Content>
+          <TabsV2.Content value="codeink-agent" class="settings-v2-panel">
+            <SettingsCodeInkAgentV2 />
           </TabsV2.Content>
           <TabsV2.Content value="models" class="settings-v2-panel">
             <SettingsModelsV2 />

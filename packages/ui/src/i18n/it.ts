@@ -1,4 +1,6 @@
+import { englishFallback } from "./locale-fallback"
 export const dict: Record<string, string> = {
+  ...englishFallback,
   "ui.sessionReview.title": "Modifiche della sessione",
   "ui.sessionReview.title.git": "Modifiche Git",
   "ui.sessionReview.title.branch": "Modifiche del branch",
@@ -69,14 +71,6 @@ export const dict: Record<string, string> = {
   "ui.sessionTurn.retry.geminiHot": "Gemini è sovraccarico in questo momento",
   "ui.sessionTurn.error.freeUsageExceeded": "Utilizzo gratuito superato",
   "ui.sessionTurn.error.addCredits": "Aggiungi crediti",
-  "dialog.usageExceeded.freeTier.title": "Limite gratuito raggiunto",
-  "dialog.usageExceeded.freeTier.description":
-    "Abbonati a OpenCode Go per 10 $ al mese e accedi in modo affidabile ai migliori modelli open source.",
-  "dialog.usageExceeded.freeTier.actionLabel": "Iscriviti",
-  "dialog.usageExceeded.accountRateLimit.title": "Limite Go raggiunto",
-  "dialog.usageExceeded.accountRateLimit.description":
-    "Limite di utilizzo raggiunto. Per continuare a utilizzare questo modello adesso, abilita l'utilizzo dal saldo disponibile",
-  "dialog.usageExceeded.accountRateLimit.actionLabel": "Apri le impostazioni",
   "ui.sessionTurn.status.delegating": "Delega del lavoro",
   "ui.sessionTurn.status.planning": "Pianificazione dei prossimi passi",
   "ui.sessionTurn.status.gatheringContext": "Esplorazione",

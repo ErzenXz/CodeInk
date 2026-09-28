@@ -7,13 +7,12 @@ import { useDialog } from "@codeink/ui/context/dialog"
 import { useTheme } from "@codeink/ui/theme"
 import { createMemo, onCleanup, onMount, type Component, For, Show } from "solid-js"
 import { useLocal } from "@/context/local"
-import { useProviders } from "@/hooks/use-providers"
+import { isRetiredModelProvider, popularProviders, useProviders } from "@/hooks/use-providers"
 import { decode64 } from "@/utils/base64"
 import { useLanguage } from "@/context/language"
 import { ModelTooltip } from "./model-tooltip"
 
 type ModelState = ReturnType<typeof useLocal>["model"]
-const featuredProviders = ["opencode", "opencode-go", "openai", "anthropic", "google", "github-copilot"]
 const displayModelName = (name: string) => name.replace(/\s+(?:\(free\)|free)$/i, "")
 
 export const DialogSelectModelUnpaidV2: Component<{ model?: ModelState }> = (props) => {
@@ -30,8 +29,10 @@ export const DialogSelectModelUnpaidV2: Component<{ model?: ModelState }> = (pro
     return c ? `${c.provider.id}:${c.id}` : undefined
   })
   const isFree = (item: ReturnType<ModelState["list"]>[number]) =>
-    item.provider.id === "opencode" && (!item.cost || item.cost.input === 0)
-  const freeModels = createMemo(() => model.list().filter(isFree))
+    item.cost?.input === 0 && item.cost.output === 0
+  const freeModels = createMemo(() =>
+    model.list().filter((item) => !isRetiredModelProvider(item.provider.id) && isFree(item)),
+  )
 
   const openProviders = (provider?: string) => {
     void import("./dialog-connect-provider").then((x) => {
@@ -128,8 +129,8 @@ export const DialogSelectModelUnpaidV2: Component<{ model?: ModelState }> = (pro
               <div class="grid w-full grid-cols-1 gap-y-1.5 gap-x-2 sm:grid-cols-2">
                 <For
                   each={[...providers.popular()]
-                    .filter((provider) => featuredProviders.includes(provider.id))
-                    .sort((a, b) => featuredProviders.indexOf(a.id) - featuredProviders.indexOf(b.id))}
+                    .filter((provider) => popularProviders.includes(provider.id))
+                    .sort((a, b) => popularProviders.indexOf(a.id) - popularProviders.indexOf(b.id))}
                 >
                   {(provider) => (
                     <button
@@ -146,15 +147,6 @@ export const DialogSelectModelUnpaidV2: Component<{ model?: ModelState }> = (pro
                       <ProviderIcon id={provider.id} class="mt-0.5 size-4 shrink-0 text-v2-icon-icon-base" />
                       <span class="flex min-w-0 flex-col">
                         <span class="truncate">{provider.name}</span>
-                        <Show when={provider.id === "opencode" || provider.id === "opencode-go"}>
-                          <span class="truncate font-[440] text-v2-text-text-muted">
-                            {language.t(
-                              provider.id === "opencode"
-                                ? "dialog.provider.opencode.tagline"
-                                : "dialog.provider.opencodeGo.tagline",
-                            )}
-                          </span>
-                        </Show>
                       </span>
                     </button>
                   )}

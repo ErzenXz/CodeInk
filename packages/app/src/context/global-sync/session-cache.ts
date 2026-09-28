@@ -2,7 +2,8 @@ import type { Message, Part, PermissionRequest, QuestionRequest, SessionStatus, 
 import type { FileDiffInfo } from "@opencode-ai/client/promise"
 import type { SessionMessageInfo } from "@opencode-ai/client/promise"
 
-export const SESSION_CACHE_LIMIT = 40
+export const SESSION_CACHE_LIMIT = 8
+export const SESSION_CACHE_BYTES = 16 * 1024 * 1024
 
 type SessionCache = {
   session_status: Record<string, SessionStatus | undefined>
@@ -14,6 +15,21 @@ type SessionCache = {
   permission: Record<string, PermissionRequest[] | undefined>
   question: Record<string, QuestionRequest[] | undefined>
   part_text_accum_delta: Record<string, string | undefined>
+}
+
+export function sessionCacheBytes(store: SessionCache, sessionID: string) {
+  return (
+    retainedBytes(store.session_message[sessionID]) +
+    retainedBytes(store.session_diff[sessionID]) +
+    (store.message[sessionID] ?? []).reduce((total, message) => total + 512 + retainedBytes(store.part[message.id]), 0)
+  )
+}
+
+function retainedBytes(value: unknown): number {
+  if (typeof value === "string") return value.length * 2
+  if (Array.isArray(value)) return value.reduce((total, item) => total + retainedBytes(item), 32)
+  if (!value || typeof value !== "object") return 8
+  return Object.entries(value).reduce((total, [key, item]) => total + key.length * 2 + retainedBytes(item), 32)
 }
 
 export function dropSessionCaches(store: SessionCache, sessionIDs: Iterable<string>) {
@@ -45,15 +61,19 @@ export function pickSessionCacheEvictions(input: {
   keep: string
   limit: number
   preserve?: Iterable<string>
+  sizes?: ReadonlyMap<string, number>
+  maxBytes?: number
 }) {
   const stale: string[] = []
   const keep = new Set([input.keep, ...Array.from(input.preserve ?? [])])
   if (input.seen.has(input.keep)) input.seen.delete(input.keep)
   input.seen.add(input.keep)
+  let bytes = [...input.seen].reduce((total, id) => total + (input.sizes?.get(id) ?? 0), 0)
   for (const id of input.seen) {
-    if (input.seen.size - stale.length <= input.limit) break
+    if (input.seen.size - stale.length <= input.limit && bytes <= (input.maxBytes ?? Infinity)) break
     if (keep.has(id)) continue
     stale.push(id)
+    bytes -= input.sizes?.get(id) ?? 0
   }
   for (const id of stale) {
     input.seen.delete(id)

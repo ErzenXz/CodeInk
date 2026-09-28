@@ -1,0 +1,35 @@
+{
+  "$schema": "../desktop-theme.schema.json",
+  "name": "CodeInk Sage",
+  "id": "codeink-sage",
+  "light": {
+    "palette": {
+      "neutral": "#f7f8f4",
+      "ink": "#222b27",
+      "primary": "#3d705b",
+      "accent": "#7a7950",
+      "success": "#397b55",
+      "warning": "#926327",
+      "error": "#ac5550",
+      "info": "#487d7c",
+      "interactive": "#366e60",
+      "diffAdd": "#8dc49a",
+      "diffDelete": "#e2a19a"
+    }
+  },
+  "dark": {
+    "palette": {
+      "neutral": "#151c19",
+      "ink": "#e6ece7",
+      "primary": "#91c7a8",
+      "accent": "#c4c18a",
+      "success": "#8dcca0",
+      "warning": "#dbb475",
+      "error": "#e49b93",
+      "info": "#96c9c5",
+      "interactive": "#8bcbb4",
+      "diffAdd": "#638f72",
+      "diffDelete": "#a96561"
+    }
+  }
+}

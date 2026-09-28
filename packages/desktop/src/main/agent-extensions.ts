@@ -1,6 +1,6 @@
 import { execFile } from "node:child_process"
 import { mkdir, readdir, readFile, writeFile } from "node:fs/promises"
-import { homedir } from "node:os"
+import { homedir, userInfo } from "node:os"
 import { dirname, join } from "node:path"
 import { promisify } from "node:util"
 import type {
@@ -15,6 +15,7 @@ import type {
 import { t } from "../shared/i18n"
 import { AgentProcess } from "./adapters/process"
 import { array, object, string } from "./adapters/types"
+import { sessionSummary } from "./session-summary"
 
 const run = promisify(execFile)
 
@@ -40,6 +41,10 @@ function cached<T>(key: string, fresh: number, load: () => Promise<T>): Promise<
   return hit.value as Promise<T>
 }
 const agentsKey = (agents: AgentStatus[]) => agents.map((agent) => `${agent.id}=${agent.executable ?? ""}`).join(",")
+const usageCache = new Map<
+  string,
+  { at: number; value: Pick<AgentUsageReport, "plan" | "windows" | "source" | "fetchedAt" | "error">; refresh?: Promise<void> }
+>()
 
 // Agents whose skills, plugins, and MCP servers CodeInk can read through an official API or CLI.
 const managed = new Set(["codex", "claude"])
@@ -96,34 +101,55 @@ export async function readAgentUsage(
   sessions: Session[],
   env: NodeJS.ProcessEnv,
   refresh = false,
+  skipLimits = new Set<string>(),
 ) {
-  if (refresh) cache.delete(`usage:${agentsKey(agents)}`)
-  // Limits are cached briefly; CodeInk's own session totals are cheap and always current.
-  const limits = await cached(`usage:${agentsKey(agents)}`, 60_000, () =>
-    Promise.all(
-      agents.map((agent) =>
-        agentLimits(agent, env).catch((error: unknown) => ({
-          windows: [] as AgentLimitWindow[],
-          error: message(error),
-        })),
-      ),
-    ),
-  )
-  const used = new Set(sessions.map((session) => session.agentID))
+  // Keep quota probes separate so a slow provider does not delay another provider's next refresh.
+  const limits = await Promise.all(agents.map((agent) =>
+    skipLimits.has(agent.id) ? Promise.resolve({ windows: [] as AgentLimitWindow[] }) : cachedAgentLimits(agent, env, refresh)))
+  const grouped = sessions.reduce((items, session) => {
+    const group = items.get(session.agentID) ?? []
+    group.push(session)
+    items.set(session.agentID, group)
+    return items
+  }, new Map<string, Session[]>())
   return Promise.all(
     agents
       .map((agent, index) => ({ agent, limits: limits[index]! }))
-      .filter((entry) => entry.agent.executable || used.has(entry.agent.id))
+      .filter((entry) => entry.agent.executable || grouped.has(entry.agent.id))
       .map(async ({ agent, limits }): Promise<AgentUsageReport> => {
         return {
           agentID: agent.id,
           name: agent.name,
           installed: !!agent.executable,
           ...limits,
-          totals: usageTotals(sessions.filter((session) => session.agentID === agent.id)),
+          totals: usageTotals(grouped.get(agent.id) ?? []),
         }
       }),
   )
+}
+
+async function cachedAgentLimits(agent: AgentStatus, env: NodeJS.ProcessEnv, force: boolean) {
+  const key = `${agent.id}=${agent.executable ?? ""}`
+  const hit = usageCache.get(key)
+  if (hit && !force && Date.now() - hit.at < 5 * 60_000) return hit.value
+  if (hit?.refresh) {
+    if (force || !hit.value.fetchedAt) await hit.refresh
+    return usageCache.get(key)?.value ?? hit.value
+  }
+  const refresh = agentLimits(agent, env)
+    .then((value) => {
+      usageCache.set(key, { at: Date.now(), value })
+    })
+    .catch((error: unknown) => {
+      usageCache.set(key, {
+        at: Date.now(),
+        value: { ...hit?.value, windows: hit?.value.windows ?? [], error: message(error) },
+      })
+    })
+  usageCache.set(key, { at: hit?.at ?? 0, value: hit?.value ?? { windows: [] }, refresh })
+  // Return last-good data immediately for ordinary reads. Explicit refresh waits for a fresh answer.
+  if (force || !hit?.value.fetchedAt) await refresh
+  return usageCache.get(key)!.value
 }
 
 export async function readAgentInstructions(agents: AgentStatus[], env: NodeJS.ProcessEnv) {
@@ -340,33 +366,40 @@ function frontmatter(text: string) {
 async function agentLimits(
   agent: AgentStatus,
   env: NodeJS.ProcessEnv,
-): Promise<Pick<AgentUsageReport, "plan" | "windows" | "source" | "fetchedAt">> {
+): Promise<Pick<AgentUsageReport, "plan" | "windows" | "source" | "fetchedAt" | "error">> {
   if (agent.protocol === "codex" && agent.executable) {
     return withCodex(agent, env, async (rpc) => {
       const [account, limits] = await Promise.all([rpc("account/read", {}), rpc("account/rateLimits/read", {})])
       const rate = object(limits.rateLimits)
+      const byID = Object.entries(object(limits.rateLimitsByLimitId))
+      const buckets: [string, unknown][] = byID.length ? byID : [[string(rate.limitId) || "default", rate]]
       return {
         plan: planName(string(object(account.account).planType) || string(rate.planType)),
         source: "live",
         fetchedAt: Date.now(),
-        windows: (["primary", "secondary"] as const).flatMap((key) => {
-          const window = object(rate[key])
-          if (typeof window.usedPercent !== "number") return []
-          const minutes = typeof window.windowDurationMins === "number" ? window.windowDurationMins : 0
-          return [
-            {
-              id: key,
-              kind: minutes >= 7 * 24 * 60 ? "weekly" : minutes > 0 && minutes <= 24 * 60 ? "session" : "other",
-              usedPercent: window.usedPercent,
-              resetsAt: typeof window.resetsAt === "number" ? window.resetsAt * 1000 : undefined,
-            } satisfies AgentLimitWindow,
-          ]
-        }),
+        windows: buckets.flatMap(([id, value]) =>
+          (["primary", "secondary"] as const).flatMap((key) => {
+            const window = object(object(value)[key])
+            if (typeof window.usedPercent !== "number") return []
+            const minutes = typeof window.windowDurationMins === "number" ? window.windowDurationMins : 0
+            return [
+              {
+                id: `${id}:${key}`,
+                kind: minutes >= 7 * 24 * 60 ? "weekly" : minutes > 0 && minutes <= 24 * 60 ? "session" : "other",
+                usedPercent: window.usedPercent,
+                resetsAt: typeof window.resetsAt === "number" ? window.resetsAt * 1000 : undefined,
+                label: byID.length > 1 ? string(object(value).limitName) || id : undefined,
+              } satisfies AgentLimitWindow,
+            ]
+          }),
+        ),
       }
     })
   }
   if (agent.protocol === "claude") {
-    // Claude Code keeps its most recent plan-usage snapshot in ~/.claude.json; there is no public API for it.
+    // The saved utilization is a fallback. Claude Code's live account response can be newer.
+    const live = await claudeLiveUsage(env).catch(() => undefined)
+    if (live) return live
     const config = object(JSON.parse(await readFile(claudeConfigFile(env), "utf8").catch(() => "{}")))
     const cached = object(config.cachedUsageUtilization)
     const utilization = object(cached.utilization)
@@ -408,22 +441,114 @@ async function agentLimits(
   return { windows: [] }
 }
 
-function usageTotals(sessions: Session[]): AgentUsageReport["totals"] {
-  const messages = sessions.flatMap((session) => session.messages)
-  const sum = (pick: (usage: NonNullable<(typeof messages)[number]["usage"]>) => number | undefined) =>
-    messages.reduce((total, item) => total + (item.usage ? (pick(item.usage) ?? 0) : 0), 0)
-  const costs = sessions.flatMap((session) => (typeof session.reportedCost === "number" ? [session.reportedCost] : []))
-  const lastUsed = Math.max(0, ...sessions.map((session) => session.updatedAt))
-  return {
-    sessions: sessions.length,
-    messages: messages.filter((item) => item.role === "user").length,
-    input: sum((usage) => usage.input),
-    output: sum((usage) => usage.output),
-    cacheRead: sum((usage) => usage.cacheRead),
-    cacheWrite: sum((usage) => usage.cacheWrite),
-    cost: costs.length ? costs.reduce((total, value) => total + value, 0) : undefined,
-    lastUsed: lastUsed || undefined,
+export async function readAgentWeeklyLimit(agent: AgentStatus, env: NodeJS.ProcessEnv) {
+  const report = await agentLimits(agent, env)
+  if (report.source !== "live") return
+  const windows = report.windows.filter((window) => window.kind === "weekly" && !window.label)
+  if (windows.length !== 1) return
+  const window = windows[0]
+  return { id: window.id, usedPercent: window.usedPercent, resetsAt: window.resetsAt, sampledAt: Date.now() }
+}
+
+async function claudeLiveUsage(env: NodeJS.ProcessEnv) {
+  const keychain = process.platform === "darwin" && !env.CLAUDE_CONFIG_DIR
+    ? [
+        ["find-generic-password", "-a", env.USER || userInfo().username, "-s", "Claude Code-credentials", "-w"],
+        ["find-generic-password", "-s", "Claude Code-credentials", "-w"],
+      ]
+    : []
+  for (const args of keychain) {
+    const stored = await run("security", args, { timeout: 10_000, maxBuffer: 256 * 1024 })
+      .then((result) => result.stdout, () => "")
+    if (!stored) continue
+    const result = await claudeLiveUsageFromCredential(stored, env).catch(() => undefined)
+    if (result) return result
   }
+  const file = await readFile(join(claudeHome(env), ".credentials.json"), "utf8").catch(() => "")
+  return file ? claudeLiveUsageFromCredential(file, env).catch(() => undefined) : undefined
+}
+
+async function claudeLiveUsageFromCredential(stored: string, env: NodeJS.ProcessEnv) {
+  const raw = stored.trim()
+  const decoded = /^0x(?:[0-9a-f]{2})+$/i.test(raw) ? Buffer.from(raw.slice(2), "hex").toString("utf8") : raw
+  const oauth = object(object(JSON.parse(decoded)).claudeAiOauth)
+  const token = string(oauth.accessToken).trim()
+  if (!token) return
+  const configured = env.CLAUDE_CODE_CUSTOM_OAUTH_URL
+  const local = configured && new URL(configured)
+  if (local && !["localhost", "127.0.0.1", "::1"].includes(local.hostname)) return
+  const endpoint = new URL("/api/oauth/usage", local || "https://api.anthropic.com")
+  endpoint.searchParams.set("cedar_ember", "1")
+  const response = await fetch(endpoint, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      Accept: "application/json",
+      "Content-Type": "application/json",
+      "anthropic-beta": "oauth-2025-04-20",
+      "User-Agent": "claude-cli/2.1.280 (external, cli)",
+    },
+    signal: AbortSignal.timeout(10_000),
+  })
+  if (!response.ok) return
+  const usage = object(await response.json())
+  const windows = (["five_hour", "seven_day", "seven_day_sonnet"] as const).flatMap((id): AgentLimitWindow[] => {
+    const window = object(usage[id])
+    const used = usagePercent(window.utilization)
+    if (used === undefined) return []
+    return [{
+      id,
+      kind: id === "five_hour" ? "session" : "weekly",
+      usedPercent: used,
+      resetsAt: Date.parse(string(window.resets_at)) || undefined,
+      label: id === "seven_day_sonnet" ? "Sonnet" : undefined,
+    }]
+  })
+  windows.push(...array(usage.limits).map(object).flatMap((limit): AgentLimitWindow[] => {
+    const used = usagePercent(limit.percent)
+    if (limit.kind !== "weekly_scoped" || used === undefined) return []
+    const label = string(object(object(limit.scope).model).display_name)
+    return [{
+      id: `weekly_scoped:${label}`,
+      kind: "weekly",
+      usedPercent: used,
+      resetsAt: Date.parse(string(limit.resets_at)) || undefined,
+      label: label || undefined,
+    }]
+  }))
+  if (!windows.length) return
+  return {
+    plan: planName(string(oauth.subscriptionType)),
+    source: "live" as const,
+    fetchedAt: Date.now(),
+    windows,
+  }
+}
+
+function usagePercent(value: unknown) {
+  const number = typeof value === "number" ? value : typeof value === "string" && value.trim() ? Number(value) : NaN
+  return Number.isFinite(number) && number >= 0 ? number : undefined
+}
+
+function usageTotals(sessions: Session[]): AgentUsageReport["totals"] {
+  return sessions.reduce<AgentUsageReport["totals"]>((totals, session) => {
+    totals.sessions++
+    totals.lastUsed = Math.max(totals.lastUsed ?? 0, session.updatedAt)
+    if (session.reportedCost !== undefined) totals.cost = (totals.cost ?? 0) + session.reportedCost
+    const summary = sessionSummary(session)
+    totals.messages += summary.messages
+    totals.input += summary.input
+    totals.output += summary.output
+    totals.cacheRead += summary.cacheRead
+    totals.cacheWrite += summary.cacheWrite
+    return totals
+  }, {
+    sessions: 0,
+    messages: 0,
+    input: 0,
+    output: 0,
+    cacheRead: 0,
+    cacheWrite: 0,
+  })
 }
 
 type Rpc = (method: string, params: unknown) => Promise<Record<string, unknown>>

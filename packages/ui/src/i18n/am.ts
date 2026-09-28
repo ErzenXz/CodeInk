@@ -1,4 +1,6 @@
+import { englishFallback } from "./locale-fallback"
 export const dict: Record<string, string> = {
+  ...englishFallback,
   "ui.sessionReview.title": "የክፍለ ጊዜ ለውጦች",
   "ui.sessionReview.title.git": "Gitይለውጣል",
   "ui.sessionReview.title.branch": "ቅርንጫፍ ለውጦች",
@@ -67,13 +69,6 @@ export const dict: Record<string, string> = {
   "ui.sessionTurn.retry.geminiHot": "gemini አሁን በጣም ሞቃት ነው",
   "ui.sessionTurn.error.freeUsageExceeded": "ነፃ አጠቃቀም ታልፏል",
   "ui.sessionTurn.error.addCredits": "ክሬዲት አክል",
-  "dialog.usageExceeded.freeTier.title": "ነፃ ገደብ ላይ ደርሷል",
-  "dialog.usageExceeded.freeTier.description": "ለምርጥ ክፍት ምንጭ ሞዴሎች ታማኝ መዳረሻ ለማግኘት በወር $10 ለOpenCode Go ይመዝገቡ።",
-  "dialog.usageExceeded.freeTier.actionLabel": "ለደንበኝነት ይመዝገቡ",
-  "dialog.usageExceeded.accountRateLimit.title": "የሂድ ገደብ ላይ ደርሷል",
-  "dialog.usageExceeded.accountRateLimit.description":
-    "የአጠቃቀም ገደብ ላይ ደርሷል። ይህን ሞዴል አሁን መጠቀሙን ለመቀጠል ካለው ቀሪ ሒሳብ መጠቀምን ያንቁ",
-  "dialog.usageExceeded.accountRateLimit.actionLabel": "ክፍት ቅንብሮች",
   "ui.sessionTurn.status.delegating": "ሥራን በውክልና መስጠት",
   "ui.sessionTurn.status.planning": "ቀጣዮቹን ደረጃዎች ማቀድ",
   "ui.sessionTurn.status.gatheringContext": "ማሰስ",

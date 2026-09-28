@@ -19,7 +19,7 @@
     "package:win": "electron-builder --win --config electron-builder.config.ts",
     "package:linux": "electron-builder --linux --config electron-builder.config.ts",
     "native:build": "bun install --cwd native",
-    "test": "bun test src/test",
+    "test": "bun test src/test src/main",
     "test:installed": "bun run src/test/installed-smoke.ts",
     "test:native": "bun run src/test/native-fixture.ts",
     "predev": "bun run scripts/copy-icons.ts",
@@ -29,7 +29,9 @@
   },
   "main": "./out/main/index.js",
   "dependencies": {
+    "@ai-sdk/openai-compatible": "3.0.55",
     "@zip.js/zip.js": "2.7.62",
+    "ai": "7.0.113",
     "drizzle-orm": "catalog:",
     "effect": "catalog:",
     "electron-context-menu": "4.1.2",

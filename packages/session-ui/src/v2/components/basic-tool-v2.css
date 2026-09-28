@@ -135,7 +135,7 @@
     flex-shrink: 0;
     width: 16px;
     height: 16px;
-    transition: transform 0.15s ease-out;
+    transition: transform 0.12s ease-out;
   }
 
   &[data-expanded] > [data-slot="basic-tool-v2-trigger"] [data-slot="basic-tool-v2-chevron"] {
@@ -171,7 +171,7 @@
     }
 
     [data-slot="basic-tool-v2-title"] {
-      transition: color 0.15s ease-out;
+      transition: color 0.12s ease-out;
     }
   }
 

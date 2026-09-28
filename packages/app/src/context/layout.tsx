@@ -285,6 +285,7 @@ export const { use: useLayout, provider: LayoutProvider } = createSimpleContext(
           workspaces: {} as Record<string, boolean>,
           workspacesDefault: false,
         },
+        sidebarV2: { opened: true },
         terminal: {
           height: DEFAULT_TERMINAL_HEIGHT,
           opened: false,
@@ -691,6 +692,16 @@ export const { use: useLayout, provider: LayoutProvider } = createSimpleContext(
         toggleWorkspaces(directory: string) {
           const current = store.sidebar.workspaces[directory] ?? store.sidebar.workspacesDefault ?? false
           setStore("sidebar", "workspaces", directory, !current)
+        },
+      },
+      sidebarV2: {
+        opened: createMemo(() => store.sidebarV2?.opened ?? true),
+        toggle() {
+          if (!store.sidebarV2) {
+            setStore("sidebarV2", { opened: false })
+            return
+          }
+          setStore("sidebarV2", "opened", (opened) => !opened)
         },
       },
       terminal: {

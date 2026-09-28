@@ -10,6 +10,10 @@ export function handoffContext(source: Session) {
   for (let index = source.messages.length - 1; index >= 0 && users.length < 8; index--)
     if (source.messages[index].role === "user") users.push(index)
   users.reverse()
+  const originalIndex = source.messages.findIndex((message) => message.role === "user")
+  const original = originalIndex >= 0 && !users.includes(originalIndex)
+    ? `Original request: ${source.messages[originalIndex].text.slice(0, 1800)}\n\n`
+    : ""
   const turns = users.map((start, index) => {
     const user = source.messages[start]
     const events = source.messages.slice(start + 1, users[index + 1] ?? source.messages.length)
@@ -26,6 +30,6 @@ export function handoffContext(source: Session) {
   const selected = turns.toReversed().reduce<{ size: number; items: string[] }>((state, turn) => {
     if (state.size + turn.length > 12_000) return state
     return { size: state.size + turn.length, items: [...state.items, turn] }
-  }, { size: header.length, items: [] })
-  return `${header}\n\nRecent conversation:\n${selected.items.toReversed().join("\n\n")}`
+  }, { size: header.length + original.length, items: [] })
+  return `${header}\n\n${original}Recent conversation:\n${selected.items.toReversed().join("\n\n")}`
 }

@@ -65,6 +65,7 @@ import { partDefaultOpen } from "./part-default-open"
 import { animate } from "motion"
 import { attached, inline, kind, typeLabel } from "./message-file"
 import { readPartText } from "./message-part-text"
+import { taskResult, taskSessionTarget } from "./task-session"
 import { SessionProgressIndicatorV2 } from "../v2/components/session-progress-indicator-v2"
 
 async function writeClipboard(text: string): Promise<boolean> {
@@ -249,92 +250,34 @@ export type PartComponent = Component<MessagePartProps>
 
 export const PART_MAPPING: Record<string, PartComponent | undefined> = {}
 
-const TEXT_RENDER_PACE_MS = 24
-const TEXT_RENDER_IMMEDIATE = 512
-const TEXT_RENDER_SNAP = /[\s.,!?;:)\]]/
-
-function step(size: number) {
-  if (size <= 12) return 2
-  if (size <= 48) return 4
-  if (size <= 96) return 8
-  return Math.min(256, Math.ceil(size / 4))
-}
-
-function next(text: string, start: number) {
-  const end = Math.min(text.length, start + step(text.length - start))
-  const max = Math.min(text.length, end + 8)
-  for (let i = end; i < max; i++) {
-    if (TEXT_RENDER_SNAP.test(text[i] ?? "")) return i + 1
-  }
-  return end
-}
-
-function createPacedValue(getValue: () => string, live?: () => boolean) {
+function createFrameValue(getValue: () => string, live?: () => boolean) {
   const [value, setValue] = createSignal(getValue())
-  let shown = getValue()
-  let timeout: ReturnType<typeof setTimeout> | undefined
-
-  const clear = () => {
-    if (!timeout) return
-    clearTimeout(timeout)
-    timeout = undefined
-  }
-
-  const sync = (text: string) => {
-    shown = text
-    setValue(text)
-  }
-
-  const run = () => {
-    timeout = undefined
-    const text = getValue()
-    if (!live?.()) {
-      sync(text)
-      return
-    }
-    if (!text.startsWith(shown) || text.length <= shown.length) {
-      sync(text)
-      return
-    }
-    if (text.length - shown.length <= TEXT_RENDER_IMMEDIATE) {
-      sync(text)
-      return
-    }
-    const end = next(text, shown.length)
-    sync(text.slice(0, end))
-    if (end < text.length) timeout = setTimeout(run, TEXT_RENDER_PACE_MS)
-  }
+  let frame: number | undefined
 
   createEffect(() => {
     const text = getValue()
     if (!live?.()) {
-      clear()
-      sync(text)
+      if (frame !== undefined) cancelAnimationFrame(frame)
+      frame = undefined
+      setValue(text)
       return
     }
-    if (!text.startsWith(shown) || text.length < shown.length) {
-      clear()
-      sync(text)
-      return
-    }
-    if (text.length - shown.length <= TEXT_RENDER_IMMEDIATE) {
-      clear()
-      sync(text)
-      return
-    }
-    if (text.length === shown.length || timeout) return
-    timeout = setTimeout(run, TEXT_RENDER_PACE_MS)
+    if (frame !== undefined) return
+    frame = requestAnimationFrame(() => {
+      frame = undefined
+      setValue(getValue())
+    })
   })
 
   onCleanup(() => {
-    clear()
+    if (frame !== undefined) cancelAnimationFrame(frame)
   })
 
   return value
 }
 
-function PacedMarkdown(props: { text: string; cacheKey: string; streaming: boolean; animate?: boolean }) {
-  const value = createPacedValue(
+function StreamingMarkdown(props: { text: string; cacheKey: string; streaming: boolean; animate?: boolean }) {
+  const value = createFrameValue(
     () => props.text,
     () => props.streaming,
   )
@@ -1296,6 +1239,7 @@ export function UserMessageDisplay(props: {
     const match = data.store.provider?.all?.get(providerID)
     return match?.models?.[modelID]?.name ?? modelID
   })
+
   const timefmt = createMemo(() => new Intl.DateTimeFormat(i18n.locale(), { timeStyle: "short" }))
 
   const stamp = createMemo(() => {
@@ -1565,7 +1509,7 @@ export function registerTool(input: { name: string; render?: ToolComponent }) {
 }
 
 export function getTool(name: string) {
-  return state[name === "apply_patch" ? "patch" : name === "bash" ? "shell" : name]?.render
+  return state[name === "apply_patch" ? "patch" : name === "bash" || name === "terminal" ? "shell" : name]?.render
 }
 
 export const ToolRegistry = {
@@ -1627,8 +1571,10 @@ PART_MAPPING["tool"] = function ToolPartDisplay(props) {
   const partMetadata = () => part().state?.metadata ?? emptyMetadata
   const taskId = createMemo(() => {
     if (part().tool !== "task") return
-    const value = partMetadata().sessionId
-    if (typeof value === "string" && value) return value
+    return (
+      taskSessionTarget(partMetadata().sessionId, data.store.session) ??
+      taskSession(input(), data.sessionID, data.store.session, data.store.agent)
+    )
   })
   const taskHref = createMemo(() => {
     if (part().tool !== "task") return
@@ -1746,6 +1692,15 @@ PART_MAPPING["text"] = function TextPartDisplay(props) {
     return match?.models?.[message.modelID]?.name ?? message.modelID
   })
 
+  const weeklyDelta = createMemo(() => {
+    if (props.message.role !== "assistant") return
+    const value = (props.message as AssistantMessage & { codeinkWeeklyDelta?: number }).codeinkWeeklyDelta
+    if (typeof value !== "number" || value <= 0) return
+    return i18n.t("ui.message.weeklyDelta", {
+      percent: new Intl.NumberFormat(i18n.locale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value),
+    })
+  })
+
   const duration = createMemo(() => {
     if (props.message.role !== "assistant") return ""
     const message = props.message as AssistantMessage
@@ -1774,6 +1729,7 @@ PART_MAPPING["text"] = function TextPartDisplay(props) {
       agent ? agent[0]?.toUpperCase() + agent.slice(1) : "",
       model(),
       duration(),
+      weeklyDelta(),
       interrupted() ? i18n.t("ui.message.interrupted") : "",
     ]
     return items.filter((x) => !!x).join(" \u00B7 ")
@@ -1810,7 +1766,7 @@ PART_MAPPING["text"] = function TextPartDisplay(props) {
     <Show when={text()}>
       <div data-component="text-part" data-timeline-part-id={part().id}>
         <div data-slot="text-part-body">
-          <PacedMarkdown text={text()} cacheKey={part().id} streaming={streaming()} animate={isLastTextPart()} />
+          <StreamingMarkdown text={text()} cacheKey={part().id} streaming={streaming()} animate={isLastTextPart()} />
         </div>
         <Show when={showCopy()}>
           <div data-slot="text-part-copy-wrapper" data-interrupted={interrupted() ? "" : undefined}>
@@ -1823,7 +1779,11 @@ PART_MAPPING["text"] = function TextPartDisplay(props) {
               aria-label={copied() ? i18n.t("ui.message.copied") : i18n.t("ui.message.copyResponse")}
             />
             <Show when={meta()}>
-              <span data-slot="text-part-meta" class="text-12-regular text-text-weak cursor-default">
+              <span
+                data-slot="text-part-meta"
+                class="text-12-regular text-text-weak cursor-default"
+                title={weeklyDelta() ? i18n.t("ui.message.weeklyDeltaHint") : undefined}
+              >
                 {meta()}
               </span>
             </Show>
@@ -1845,7 +1805,7 @@ PART_MAPPING["reasoning"] = function ReasoningPartDisplay(props) {
   return (
     <Show when={text()}>
       <div data-component="reasoning-part" data-timeline-part-id={part().id}>
-        <PacedMarkdown text={text()} cacheKey={part().id} streaming={streaming()} />
+        <StreamingMarkdown text={text()} cacheKey={part().id} streaming={streaming()} />
       </div>
     </Show>
   )
@@ -2059,10 +2019,12 @@ ToolRegistry.register({
     const data = useData()
     const i18n = useI18n()
     const childSessionId = createMemo(() => {
-      const value = props.metadata.sessionId
-      if (typeof value === "string" && value) return value
-      return taskSession(props.input, data.sessionID, data.store.session, data.store.agent)
+      return (
+        taskSessionTarget(props.metadata.sessionId, data.store.session) ??
+        taskSession(props.input, data.sessionID, data.store.session, data.store.agent)
+      )
     })
+    const result = createMemo(() => taskResult(props.output))
     const agent = createMemo(() => taskAgent(props.input.subagent_type, data.store.agent))
     const title = createMemo(() => agent().name ?? i18n.t("ui.tool.agent.default"))
     const tone = createMemo(() => agent().color)
@@ -2149,13 +2111,18 @@ ToolRegistry.register({
         icon="task"
         status={props.status}
         trigger={trigger()}
-        hideDetails
-        triggerAsLink
+        hideDetails={clickable() || !result()}
+        defer
+        triggerAsLink={clickable()}
         triggerHref={href()}
         clickable={clickable()}
         onTriggerClick={navigate}
         onTriggerKeyDown={navigateKey}
-      />
+      >
+        <div data-component="task-tool-result">
+          <Markdown text={result()} />
+        </div>
+      </BasicTool>
     )
   },
 })

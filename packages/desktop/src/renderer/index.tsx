@@ -18,7 +18,7 @@ import {
 import type { UpdaterState } from "@codeink/app/updater"
 import * as Sentry from "@sentry/solid"
 import type { AsyncStorage } from "@solid-primitives/storage"
-import { createMemoryHistory, MemoryRouter, type BaseRouterProps } from "@solidjs/router"
+import { createMemoryHistory, MemoryRouter, useNavigate, type BaseRouterProps } from "@solidjs/router"
 import { createEffect, createMemo, createResource, createSignal, onCleanup, Show } from "solid-js"
 import { render } from "solid-js/web"
 import pkg from "../../package.json"
@@ -169,9 +169,15 @@ const createPlatform = (windowState: DesktopWindowState): Platform => {
     platform: "desktop",
     localAgents: { list: window.api.listInstalledAgents, save: window.api.saveInstalledAgent },
     agentWorkspace: {
+      gatewayStatus: window.api.gatewayStatus,
+      handoffPrompt: window.api.handoffPrompt,
+      setGatewayKey: window.api.setGatewayKey,
       extensions: window.api.listAgentExtensions,
       setExtensionEnabled: window.api.setAgentExtensionEnabled,
       usage: window.api.readAgentUsage,
+      usageMonitoringEnabled: window.api.usageMonitoringEnabled,
+      setUsageMonitoringEnabled: window.api.setUsageMonitoringEnabled,
+      onUsageMonitoringChange: window.api.onUsageMonitoringChange,
       rules: window.api.listAgentRules,
       setRules: window.api.setAgentRules,
       instructions: window.api.readAgentInstructions,
@@ -329,8 +335,10 @@ const createPlatform = (windowState: DesktopWindowState): Platform => {
 }
 
 let menuTrigger = null as null | ((id: string) => void)
+const pendingMenuCommands: string[] = []
 window.api.onMenuCommand((id) => {
-  menuTrigger?.(id)
+  if (menuTrigger) menuTrigger(id)
+  else pendingMenuCommands.push(id)
 })
 listenForDeepLinks()
 
@@ -368,7 +376,15 @@ function DesktopRoot(props: { windowState: DesktopWindowState }) {
 
   function Inner() {
     const cmd = useCommand()
-    menuTrigger = (id) => cmd.trigger(id)
+    const navigate = useNavigate()
+    menuTrigger = (id) => {
+      if (id === "tray.usage") return navigate("/settings?tab=usage")
+      const session = /^tray\.session:([A-Za-z0-9_-]+):([A-Za-z0-9_-]+)$/.exec(id)
+      if (session) return navigate(`/${session[1]}/session/${session[2]}`)
+      cmd.trigger(id)
+    }
+    pendingMenuCommands.splice(0).forEach((id) => menuTrigger?.(id))
+    onCleanup(() => (menuTrigger = null))
 
     const theme = useTheme()
 

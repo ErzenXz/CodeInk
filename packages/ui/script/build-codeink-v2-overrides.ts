@@ -1,14 +1,15 @@
 #!/usr/bin/env bun
 
 import { V2_PRIMITIVES_DEFAULT } from "../src/theme/v2/default-primitives"
+import { generateV2Primitives } from "../src/theme/v2/resolve"
 import type { DesktopTheme } from "../src/theme/types"
 
 const themePath = import.meta.dir + "/../src/theme/themes/codeink.json"
 const theme = (await Bun.file(themePath).json()) as DesktopTheme
 const css = await Bun.file(import.meta.dir + "/../src/v2/styles/theme.css").text()
 
-const light = { ...V2_PRIMITIVES_DEFAULT, ...readTokens("light") }
-const dark = { ...V2_PRIMITIVES_DEFAULT, ...readTokens("dark") }
+const light = { ...V2_PRIMITIVES_DEFAULT, ...readTokens("light"), ...paletteRamps("light") }
+const dark = { ...V2_PRIMITIVES_DEFAULT, ...readTokens("dark"), ...paletteRamps("dark") }
 
 const next: DesktopTheme = {
   ...theme,
@@ -28,5 +29,12 @@ function readTokens(mode: "light" | "dark") {
       // Fonts and the fixed avatar foreground remain global CSS rather than theme overrides.
       .filter(([, key]) => key !== "v2-avatar-fg" && key !== "v2-font-family-sans")
       .map(([, key, value]) => [key, value!.replace(/\s+/g, " ").trim()]),
+  )
+}
+
+function paletteRamps(mode: "light" | "dark") {
+  const values = generateV2Primitives(theme[mode], mode === "dark")
+  return Object.fromEntries(
+    Object.entries(values).filter(([key]) => /^v2-(red|orange|yellow|green|blue|purple|pink)-\d+$/.test(key)),
   )
 }
