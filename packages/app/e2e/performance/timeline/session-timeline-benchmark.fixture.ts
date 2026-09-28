@@ -146,6 +146,9 @@ export async function setupTimelineBenchmark(
   await page.goto(`/${base64Encode(directory)}/session/${sessionID}`)
   await expectSessionTitle(page, title)
   await expectAppVisible(scroller)
+  // Historical rows can render before the active assistant turn is hydrated.
+  // Inject stream events only after that turn's existing tool is rendered.
+  await expectAppVisible(page.locator(`[data-timeline-part-id="${editPartID}"]`))
   return {
     scroller,
     text,
