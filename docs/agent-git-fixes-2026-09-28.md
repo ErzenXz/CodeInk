@@ -1,0 +1,9 @@
+# Packaged CodeInk Agent and Git project discovery
+
+The installed 0.1.40 app failed a CodeInk Agent prompt with `Cannot find package 'zod'`. Its AI SDK dependency imports Zod at runtime as a peer dependency, but the desktop manifest listed Zod only under development dependencies. Source tests resolved it through the checkout; electron-builder omitted it from the installer. Zod is now a production dependency.
+
+`bun run test:packaged` from `packages/desktop` exercises the real CodeInk adapter with the SDK modules inside the packaged application's `app.asar`, using that application's Electron executable. A local SSE fixture verifies model request construction, terminal approval, terminal execution, and a streamed reply. It uses no account keys and makes no model-provider requests. An optional argument identifies a different packaged directory or a macOS `.app`. The check fails against the installed 0.1.40 app with the same missing-Zod error and passes against the corrected package. Release jobs run it after packaging on each platform, before submitting/publishing installers.
+
+The Git selector had a separate startup bug. A project opened after the startup project list was fetched could have a valid current project ID and branch but no project metadata in the global store. The UI therefore classified it as “No Git.” Directory discovery now loads and registers the complete project record after resolving the current project, preserving Git detection, local branches, and linked worktrees. It uses the existing project event reducer to keep the global list sorted and merge metadata.
+
+The Git E2E regression reproduces both a project known at startup and one registered when opened. It verifies the current branch, branch submenu, linked-worktree menu, and branch selection. The previous bootstrap fails the newly discovered case with “No Git”; the corrected bootstrap passes both. These tests now run in PR and release validation.

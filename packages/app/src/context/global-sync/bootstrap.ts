@@ -38,6 +38,7 @@ import {
   normalizeProviderList,
 } from "./utils"
 import { formatServerError } from "@/utils/server-errors"
+import { applyGlobalEvent } from "./event-reducer"
 import { QueryClient, queryOptions } from "@tanstack/solid-query"
 import { loadMcpQuery, loadMcpResourcesQuery } from "../server-sync"
 import { NormalizedProviderListResponse } from "@codeink/session-ui/context"
@@ -346,6 +347,7 @@ export async function bootstrapDirectory(input: {
   store: Store<State>
   setStore: SetStoreFunction<State>
   vcsCache: VcsCache
+  setGlobalProject: (next: Project[] | ((draft: Project[]) => Project[])) => void
   loadSessions: (directory: string) => Promise<void> | void
   translate: (key: string, vars?: Record<string, string | number>) => string
   global: {
@@ -412,9 +414,19 @@ export async function bootstrapDirectory(input: {
         ),
       !seededProject &&
         (() =>
-          retry(() => input.api.project.current({ location: { directory: input.directory } })).then((project) =>
-            input.setStore("project", project.id),
-          )),
+          retry(() => input.api.project.current({ location: { directory: input.directory } })).then(async (project) => {
+            // A newly opened directory may not appear in the initial project list.
+            // Keep its Git/worktree metadata, not just its identifier.
+            const discovered = (await retry(() => input.api.project.list())).find((value) => value.id === project.id)
+            if (discovered)
+              applyGlobalEvent({
+                event: { type: "project.updated", properties: normalizeProjectInfo(discovered) },
+                project: input.global.project,
+                setGlobalProject: input.setGlobalProject,
+                refresh() {},
+              })
+            input.setStore("project", project.id)
+          })),
       !seededPath &&
         (() =>
           input.queryClient

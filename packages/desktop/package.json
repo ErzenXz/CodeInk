@@ -22,6 +22,7 @@
     "test": "bun test src/test src/main",
     "test:installed": "bun run src/test/installed-smoke.ts",
     "test:native": "bun run src/test/native-fixture.ts",
+    "test:packaged": "bun scripts/verify-packaged-agent.ts",
     "predev": "bun run scripts/copy-icons.ts",
     "prebuild": "bun run scripts/copy-icons.ts && cd ../.. && bun scripts/third-party-notices.ts",
     "test:terminal": "bun build src/test/terminal-smoke.ts --target node --external @lydell/node-pty --external ws --outdir out/test && node out/test/terminal-smoke.js",
@@ -39,7 +40,8 @@
     "electron-store": "11.0.2",
     "electron-updater": "6.8.9",
     "electron-window-state": "^5.0.3",
-    "ws": "8.18.3"
+    "ws": "8.18.3",
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@codeink/app": "workspace:*",
@@ -66,7 +68,6 @@
     "sury": "11.0.0-alpha.4",
     "typescript": "~5.6.2",
     "vite": "catalog:",
-    "zod": "catalog:",
     "zod-openapi": "5.4.6"
   },
   "optionalDependencies": {

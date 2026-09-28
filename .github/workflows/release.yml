@@ -47,7 +47,7 @@ jobs:
       - run: bunx playwright install --with-deps chromium
         working-directory: packages/app
       - name: Verify session layout and streaming
-        run: bun run test:e2e e2e/regression/new-chat-overview.spec.ts e2e/regression/session-tab-position.spec.ts e2e/regression/session-stream-scroll.spec.ts e2e/regression/codeink-agent-popup.spec.ts e2e/user-story/model-selection-flow.spec.ts --workers=2 --retries=0
+        run: bun run test:e2e e2e/regression/new-chat-overview.spec.ts e2e/regression/session-tab-position.spec.ts e2e/regression/session-stream-scroll.spec.ts e2e/regression/codeink-agent-popup.spec.ts e2e/user-story/model-selection-flow.spec.ts e2e/user-story/git-workspace-selector.spec.ts --workers=2 --retries=0
         working-directory: packages/app
       - run: bun run test:terminal
         working-directory: packages/desktop
@@ -143,6 +143,14 @@ jobs:
           APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
           APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      - name: Install Linux Electron runtime dependencies
+        if: matrix.platform == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-0t64 libnss3 libasound2t64 libgbm1
+      - name: Verify packaged CodeInk Agent without model usage
+        run: bun run test:packaged
+        working-directory: packages/desktop
       - name: Submit signed macOS disk image to Apple
         if: matrix.platform == 'mac'
         shell: bash

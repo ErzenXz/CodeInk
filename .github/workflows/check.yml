@@ -37,5 +37,5 @@ jobs:
       - run: bunx playwright install --with-deps chromium
         working-directory: packages/app
       - name: Verify session layout and streaming
-        run: bun run test:e2e e2e/regression/new-chat-overview.spec.ts e2e/regression/session-tab-position.spec.ts e2e/regression/session-stream-scroll.spec.ts e2e/regression/codeink-agent-popup.spec.ts e2e/user-story/model-selection-flow.spec.ts --workers=2 --retries=0
+        run: bun run test:e2e e2e/regression/new-chat-overview.spec.ts e2e/regression/session-tab-position.spec.ts e2e/regression/session-stream-scroll.spec.ts e2e/regression/codeink-agent-popup.spec.ts e2e/user-story/model-selection-flow.spec.ts e2e/user-story/git-workspace-selector.spec.ts --workers=2 --retries=0
         working-directory: packages/app

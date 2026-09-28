@@ -487,6 +487,7 @@ export function createServerSyncContextInner(serverSDK: ServerSDK) {
         api: serverSDK.api,
         store: child[0],
         setStore: child[1],
+        setGlobalProject: setProjects,
         vcsCache: cache,
         loadSessions,
         translate: language.t,

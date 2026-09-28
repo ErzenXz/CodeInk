@@ -50,6 +50,8 @@ Run the desktop regression suite and type check, the changed frontend tests, a b
 
 The Context panel reports agent-provided values. Historical sessions from versions that discarded usage cannot be reconstructed exactly; they retain unknown statistics. Historical ACP text already concatenated across tools cannot be reliably split after the fact. New turns preserve the correct order. Stored tool input fields are normalized for display without rewriting the original history.
 
+After packaging, CI runs the CodeInk Agent with the installer's Electron executable and SDK dependencies. This local fixture checks schema loading, approval, terminal execution, and streaming without calling model providers. Run `bun run test:packaged` from `packages/desktop` after packaging to repeat this check locally. A missing runtime dependency prevents publication.
+
 ## License and privacy
 
 The current CodeInk distribution is GPL-3.0-or-later, with the upstream OpenCode MIT notice preserved in `licenses/UPSTREAM-MIT.txt`. Earlier CodeInk MIT releases keep their previously granted permissions. Packaged applications include the GPL text, upstream provenance and MIT notice, font licenses, agent icon sources, generated dependency license notices, and Electron's own notices. Each GitHub release tag exposes the corresponding source archive. Product and agent trademarks remain with their respective owners. See [LICENSE-NOTICE.md](LICENSE-NOTICE.md).

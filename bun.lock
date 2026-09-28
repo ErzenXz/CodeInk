@@ -98,6 +98,7 @@
         "electron-updater": "6.8.9",
         "electron-window-state": "^5.0.3",
         "ws": "8.18.3",
+        "zod": "catalog:",
       },
       "devDependencies": {
         "@codeink/app": "workspace:*",
@@ -124,7 +125,6 @@
         "sury": "11.0.0-alpha.4",
         "typescript": "~5.6.2",
         "vite": "catalog:",
-        "zod": "catalog:",
         "zod-openapi": "5.4.6",
       },
       "optionalDependencies": {
