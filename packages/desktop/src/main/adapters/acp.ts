@@ -71,11 +71,17 @@ export async function acpModels(options: ModelDiscoveryOptions): Promise<AgentMo
     const variants = (item: Record<string, unknown>): string[] => {
       const efforts = object(object(item._meta).harness).reasoningEfforts
       if (Array.isArray(efforts))
-        return [...new Set(efforts.filter((effort): effort is string => typeof effort === "string" && effort.length > 0))]
+        return [
+          ...new Set(
+            efforts.filter(
+              (effort): effort is string => typeof effort === "string" && effort.length > 0 && effort !== "default",
+            ),
+          ),
+        ]
       return reasoning
         ? choices(reasoning)
             .map((choice) => string(choice.value))
-            .filter(Boolean)
+            .filter((effort) => effort && effort !== "default")
         : []
     }
     const models = model
@@ -102,7 +108,7 @@ export async function acpModels(options: ModelDiscoveryOptions): Promise<AgentMo
           .filter((item) => item.id)
           .map((item) => ({
             ...item,
-            reasoning: item.variants.some((effort) => effort !== "default"),
+            reasoning: item.variants.length > 0,
           }))
       : [{ id: "default", name: t("agentDefaultModel"), default: true }]
   } finally {
@@ -254,7 +260,11 @@ export function acp(options: AdapterOptions): Adapter {
         } else throw new Error(t("acpModelUnavailable"))
       }
       const thought = config.find((option) => option.category === "thought_level" && option.type === "select")
-      if (selection.variant && thought) await setOption(thought, selection.variant)
+      // The picker supplies its own Default row and represents that selection as undefined.
+      const variant =
+        selection.variant ??
+        (thought && choices(thought).some((option) => option.value === "default") ? "default" : undefined)
+      if (variant && thought) await setOption(thought, variant)
       const promptText = [text, ...attachments.filter((item) => !item.mime.startsWith("image/")).map((item) => `@${item.path}`)].filter(Boolean).join("\n")
       messageID = randomUUID()
       tools.clear()

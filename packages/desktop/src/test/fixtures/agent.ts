@@ -39,6 +39,7 @@ const acpConfig = [
     type: "select",
     currentValue: "low",
     options: [
+      ...(process.env.CODEINK_FIXTURE_ACP_DEFAULT_EFFORT ? [{ value: "default", name: "Default" }] : []),
       { value: "low", name: "Low" },
       { value: "high", name: "High" },
     ],
@@ -243,6 +244,7 @@ if (protocol === "opencode") {
           return
         }
         if (message.method === "session/prompt") {
+          record({ acpEffort: acpConfig.find((option) => option.id === "effort")?.currentValue })
           promptRequest = message.id
           count++
           acpUpdate({ sessionUpdate: "agent_message_chunk", content: { type: "text", text } })
