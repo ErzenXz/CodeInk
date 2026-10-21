@@ -68,11 +68,22 @@ export async function acpModels(options: ModelDiscoveryOptions): Promise<AgentMo
     const model = config.find((option) => option.category === "model" && option.type === "select")
     const reasoning = config.find((option) => option.category === "thought_level" && option.type === "select")
     const native = object(session.models)
+    const variants = (item: Record<string, unknown>): string[] => {
+      const efforts = object(object(item._meta).harness).reasoningEfforts
+      if (Array.isArray(efforts))
+        return [...new Set(efforts.filter((effort): effort is string => typeof effort === "string" && effort.length > 0))]
+      return reasoning
+        ? choices(reasoning)
+            .map((choice) => string(choice.value))
+            .filter(Boolean)
+        : []
+    }
     const models = model
       ? choices(model).map((item) => ({
           id: string(item.value),
           name: string(item.name) || string(item.value),
           default: item.value === model.currentValue,
+          variants: variants(item),
         }))
       : array(native.availableModels)
           .map(object)
@@ -80,6 +91,7 @@ export async function acpModels(options: ModelDiscoveryOptions): Promise<AgentMo
             id: string(item.modelId),
             name: string(item.name) || string(item.modelId),
             default: item.modelId === native.currentModelId,
+            variants: variants(item),
           }))
     // Catalog probing never prompts. Remove its empty session when the agent
     // supports deletion; older ACP agents may retain an empty native session.
@@ -90,12 +102,7 @@ export async function acpModels(options: ModelDiscoveryOptions): Promise<AgentMo
           .filter((item) => item.id)
           .map((item) => ({
             ...item,
-            reasoning: Boolean(reasoning),
-            variants: reasoning
-              ? choices(reasoning)
-                  .map((choice) => string(choice.value))
-                  .filter(Boolean)
-              : [],
+            reasoning: item.variants.some((effort) => effort !== "default"),
           }))
       : [{ id: "default", name: t("agentDefaultModel"), default: true }]
   } finally {

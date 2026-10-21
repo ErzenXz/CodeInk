@@ -17,6 +17,9 @@ let experimentalApi = false
 let streaming = false
 let count = 0
 let promptRequest: unknown
+const acpEfforts = object(JSON.parse(process.env.CODEINK_FIXTURE_ACP_EFFORTS ?? "{}"))
+const acpModelMetadata = (model: string) =>
+  model in acpEfforts ? { _meta: { harness: { reasoningEfforts: acpEfforts[model] } } } : {}
 const acpConfig = [
   {
     id: "model",
@@ -25,8 +28,8 @@ const acpConfig = [
     type: "select",
     currentValue: "acp-one",
     options: [
-      { value: "acp-one", name: "ACP Model One" },
-      { value: "acp-two", name: "ACP Model Two" },
+      { value: "acp-one", name: "ACP Model One", ...acpModelMetadata("acp-one") },
+      { value: "acp-two", name: "ACP Model Two", ...acpModelMetadata("acp-two") },
     ],
   },
   {
@@ -216,12 +219,16 @@ if (protocol === "opencode") {
                   models: {
                     currentModelId: "acp-one",
                     availableModels: [
-                      { modelId: "acp-one", name: "ACP Model One" },
-                      { modelId: "acp-two", name: "ACP Model Two" },
+                      { modelId: "acp-one", name: "ACP Model One", ...acpModelMetadata("acp-one") },
+                      { modelId: "acp-two", name: "ACP Model Two", ...acpModelMetadata("acp-two") },
                     ],
                   },
                 }
-              : { configOptions: acpConfig }),
+              : {
+                  configOptions: acpConfig.filter(
+                    (option) => !process.env.CODEINK_FIXTURE_ACP_NO_REASONING || option.category !== "thought_level",
+                  ),
+                }),
           })
           return
         }
